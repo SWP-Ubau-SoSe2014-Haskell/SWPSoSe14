@@ -15,7 +15,7 @@
  import qualified Backend
 
  -- functions --
- --testPreProc   = "PreProcessor: " ~: (erwarteter wert) @=? (PreProc.process eingabe)
+ testPreProc   = "PreProcessor: " ~: ([["$"]]) @=? (PreProc.process ["fg", "d", "$"])
  --testLexer     = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
  --testSynAna    = "SyntactiaclAnalysis: " ~: (erwarteter wert) @=? (SynAna.process eingabe)
  --testSemAna    = "SemanticalAnalysis: " ~: (erwarteter wert) @=? (SemAna.process eingabe)
@@ -23,10 +23,11 @@
  --testCodeOpt   = "CodeOptimization: " ~: (erwarteter wert) @=? (CodeOpt.process eingabe)
  --testBackend   = "Backend: " ~: (erwarteter wert) @=? (Backend.process eingabe)
  
- testModules = undefined --runTestTT $ TestList [testPreProc,       -- tests the preprocessor module
-                         --            testLexer,         -- tests the lexer module
-                         --            testSynAna,        -- tests the syntactical analysis module
-                         --            testSemAna,        -- tests the semantical analysis module
-                         --            testInterCode,     -- tests the intermadiate code module
-                         --            testCodeOpt,       -- tests the code optimization mode
-                         --            testBackend]       -- tests the backend module
+ testModules = undefined runTestTT $ TestList [testPreProc       -- tests the preprocessor module
+                         --            ,testLexer         -- tests the lexer module
+                         --            ,testSynAna        -- tests the syntactical analysis module
+                         --            ,testSemAna        -- tests the semantical analysis module
+                         --            ,testInterCode     -- tests the intermadiate code module
+                         --            ,testCodeOpt       -- tests the code optimization mode
+                         --            ,testBackend        -- tests the backend module
+                         ]
