@@ -10,7 +10,7 @@
  process :: IDT.Input2PreProc -> IDT.PreProc2Lexer
  process (IIP input) = (IPL output)
   where
-   output = (removeEmptyLines . groupFunctionsTo2DGrids) input   
+   output = (removeLines . groupFunctionsToGrid2D) input   
     where
 	-- remove strings from list until first string begins with a dollar-sign
     removeLines :: Grid2D -> Grid2D
