@@ -18,7 +18,7 @@
                | (head line == '$') = (line:lines)
                | otherwise = removeLines lines
 			   
-   -- put every function/program into its on grid such that the dollar sign is the first character in the first line
+   -- put every function/program into its own grid such that the dollar sign is the first character in the first line
    groupFunctionsToGrid2Ds :: Grid2D -> [Grid2D]
    groupFunctionsToGrid2Ds grid = helperGFtG2D grid [] []
     where
