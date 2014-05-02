@@ -16,4 +16,4 @@
  -- testCodeOpt05 = "CodeOptimization: " ~: (erwarteter wert) @=? (CodeOpt.process eingabe)
  -- ...
  
- testModule = undefined -- [testCodeOpt01,testCodeOpt02,testCodeOpt03,testCodeOpt04,testCodeOpt05]
+ testModule = [] -- [testCodeOpt01,testCodeOpt02,testCodeOpt03,testCodeOpt04,testCodeOpt05]

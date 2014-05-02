@@ -16,4 +16,4 @@
  -- testSynAna05 = "SyntactiaclAnalysis: " ~: (erwarteter wert) @=? (SynAna.process eingabe)
  -- ...
  
- testModule = undefined -- [testSynAna01,testSynAna02,testSynAna03,testSynAna04,testSynAna05]
+ testModule = [] -- [testSynAna01,testSynAna02,testSynAna03,testSynAna04,testSynAna05]

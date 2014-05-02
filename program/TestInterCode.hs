@@ -16,4 +16,4 @@
  -- testInterCode05 = "IntermediateCode: " ~: (erwarteter wert) @=? (InterCode.process eingabe)
  -- ...
  
- testModule = undefined -- [testInterCode01,testInterCode02,testInterCode03,testInterCode04,testInterCode05]
+ testModule = [] -- [testInterCode01,testInterCode02,testInterCode03,testInterCode04,testInterCode05]

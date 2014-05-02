@@ -16,5 +16,5 @@
  -- testSemAna05 = "SemanticalAnalysis: " ~: (erwarteter wert) @=? (SemAna.process eingabe)
  -- ...
  
- testModule = undefined -- [testSemAna01,testSemAna02,testSemAna03,testSemAna04,testSemAna05]
+ testModule = [] -- [testSemAna01,testSemAna02,testSemAna03,testSemAna04,testSemAna05]
                          

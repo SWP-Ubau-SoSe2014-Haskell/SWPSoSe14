@@ -16,5 +16,5 @@
  -- testLexer05 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
  -- ...
  
- testModule = undefined -- [testLexer01,testLexer02,testLexer03,testLexer04,testLexer05]
+ testModule = [] -- [testLexer01,testLexer02,testLexer03,testLexer04,testLexer05]
                          

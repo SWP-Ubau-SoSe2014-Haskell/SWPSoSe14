@@ -16,4 +16,4 @@
  -- testBackend05 = "Backend: " ~: (erwarteter wert) @=? (Backend.process eingabe)
  -- ...
  
- testModule = undefined -- [testBackend01,testBackend02,testBackend03,testBackend04,testBackend05]
+ testModule = [] -- [testBackend01,testBackend02,testBackend03,testBackend04,testBackend05]
