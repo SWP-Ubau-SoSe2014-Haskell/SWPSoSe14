@@ -17,14 +17,11 @@
  
  -- functions --
  main :: IO()
- main = undefined  -- (todo...)
-
- -- 1. readfile               <- Readfile "inputfile"
- -- 2. resultOfPreProc        <- PreProc.process readfile
- -- 3. resultOfLexer          <- Lexer.process resultOfPreProc
- -- 4. resultOfSynAna         <- SynAna.process resultOfLexer
- -- 5. resultOfSemAna         <- SemAna.process resultOfSynAna
- -- 6. resultOfInterCode      <- InterCode resultOfSemAna
- -- 7. resultOfCodeOpt        <- CodeOpt.process resultOfInterCode
- -- 8. resultOfBackend        <- Backend.process resultOfCodeOpt
- -- 9. Outputfile             <- writefile "resultOfBackend" 
+ main = do putStr "Enter inputfile (path): "
+           inputfile <- getLine
+           putStr "Enter outputfile (path): "
+           outputfile <- getLine
+           putStrLn ("Compiling " ++ inputfile ++ " to " ++ outputfile)
+           do input <- readFile inputfile
+              let output (IBO x) = x
+              do writeFile outputfile (output ((Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process) (IIP input)))
