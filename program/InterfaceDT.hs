@@ -3,11 +3,11 @@
   
   -- type definitions --
   type Grid2D  = [String]
-  type LexNode = (Int, Lexem, Int)
+  type LexNode = (Int, Lexeme, Int)
   type Graph   = (String, [LexNode])
-  type AST     = (String, [(Int, [Lexem], Int)])
+  type AST     = (String, [(Int, [Lexeme], Int)])
   
-  data Lexem = Boom | EOF | Input | Output | Underflow | RType | Constant String | Push String | Pop String | Call String | Add | Divide | Multiply | Remainder | Substract | Cut | Append | Size | Nil | Cons | Breakup | Greater | Equal | Start | Finish | Junction Int deriving (Eq, Show)
+  data Lexeme = Boom | EOF | Input | Output | Underflow | RType | Constant String | Push String | Pop String | Call String | Add | Divide | Multiply | Remainder | Substract | Cut | Append | Size | Nil | Cons | Breakup | Greater | Equal | Start | Finish | Junction Int deriving (Eq, Show)
   
   
   -- interface datatypes --

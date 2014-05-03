@@ -10,59 +10,41 @@
  process :: IDT.Lexer2SynAna -> IDT.SynAna2SemAna
  process (IDT.ILS input) = (IDT.ISS output)
   where
-   output= map (\(x,y)->(x,(pathes y (pathStartNodes y)))) input --ILS [(String,[LexNode])]
-
-   
- pathes::[IDT.LexNode]->[Int]->[(Int, [Lexem], Int)]
+   output = map (\(x, y)->(x, (pathes y (startNodes y)))) input
+ 
+ -- |generates all pathes of a graph
+ pathes :: [IDT.LexNode] -> [Int] -> [(Int, [Lexeme], Int)]
  pathes xs ys = map (\x-> (findPath x xs ys)) ys
-   
- findPath:: Int -> [IDT.LexNode] -> [Int] -> (Int,[Lexem],Int)
- findPath x xs ys= (x , (reverse (fst var)) , (snd var))
-                where
-                    var= lexemList x xs ys
-                    lexemList x xs ys = help x xs ys ([],0)
-                           where
-                               help x xs ys (zs,z)
-                                   |elem fol ys || fol==0 = (lex:zs,fol)
-                                   |otherwise = help fol xs ys ((lex:zs),z)
-                                       where
-                                           xTrip = head(filter (\y->(fst' y)==x) xs)
-                                           lex   = snd' xTrip
-                                           fol   = trd xTrip
-
-
- fst'::(a,b,c)->a
- fst' (x,_,_)=x
  
- snd'::(a,b,c)->b
- snd' (_,x,_)=x
+ -- |generates one path depending on initial node
+ findPath :: Int -> [IDT.LexNode] -> [Int] -> (Int, [Lexeme], Int)
+ findPath x xs ys = genPath x (generate x xs)
+    where
+        genPath pathID leFoList = (pathID, (map fst leFoList), ((snd.last) leFoList))
+        generate v = genElem.head.(filter (\y->(fst' y)==v))
+        genElem (nodeID, lex, fol)
+            |elem fol ys || fol==0 = [(lex, fol)]
+            |otherwise             = (lex, fol):(generate fol xs)
  
- trd::(a,b,c)->c
- trd (_,_,x) = x
-
--- generates a list of nodes, which are starting nodes of pathes
- pathStartNodes:: [IDT.LexNode] -> [Int]
- pathStartNodes xs = 1:(filter (/= 0) (pathStartNodes' xs [] []))
-
--- generates a list of nodes with indegree > 1 or junction
- pathStartNodes':: [IDT.LexNode] -> [Int] -> [Int] -> [Int]
- pathStartNodes' [] seen out = out
- pathStartNodes' ((_, Junction x , y ):xs) seen out
-    |yInOut && xInOut = pathStartNodes' xs seen out
-    |xInOut && yInSeen = pathStartNodes' xs seen (y:out)
-    |xInOut = pathStartNodes' xs (y:seen) out
-    |equal || yInOut = pathStartNodes' xs seen (x:out)
-    |yInSeen = pathStartNodes' xs seen (x:(y:out))
-    |otherwise = pathStartNodes' xs (y:seen) (x:out)
-        where
-            equal   = (x==y)
-            xInOut  = elem x out
-            yInOut  = elem y out
-            yInSeen = elem y seen
- pathStartNodes' ((_, _ , y):xs) seen out
-    |elem y out = pathStartNodes' xs seen out
-    |elem y seen = pathStartNodes' xs seen (y:out)
-    |otherwise = pathStartNodes' xs (y:seen) out
-
-
-
+ -- |generates a list of all nodes, which are needed to be initial nodes of path:
+ -- 1 as functionstart; conditional jmp; indegree > 1
+ startNodes :: [IDT.LexNode] -> [Int]
+ startNodes xs = 1:[x| x <- [2..(length xs)] , (isJunct x xs) || ((length.(filter (\y-> (trd' y)==x))) xs)>1]
+    where
+        isJunct :: Int -> [IDT.LexNode] -> Bool
+        isJunct _ []     = False
+        isJunct x ((_, Junction y, _):ys)
+            |x==y        = True
+            |otherwise   = isJunct x ys
+        isJunct x (y:ys) = isJunct x ys
+ 
+ -- |fetch triple components
+ fst' :: (a, b, c) -> a
+ fst' (x, _, _) = x
+ 
+ snd' :: (a, b, c) -> b
+ snd' (_, x, _) = x
+ 
+ trd' :: (a, b, c) -> c
+ trd' (_, _, x) = x
+ 
