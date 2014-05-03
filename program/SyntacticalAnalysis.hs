@@ -29,6 +29,7 @@
  -- |generates a list of all nodes, which are needed to be initial nodes of path:
  -- 1 as functionstart; conditional jmp; indegree > 1
  startNodes :: [IDT.LexNode] -> [Int]
+ startNodes [] = []
  startNodes xs = 1:[x| x <- [2..(length xs)] , (isJunct x xs) || ((length.(filter (\y-> (trd' y)==x))) xs)>1]
     where
         isJunct :: Int -> [IDT.LexNode] -> Bool
