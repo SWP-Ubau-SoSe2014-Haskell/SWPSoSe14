@@ -3,11 +3,6 @@
   
   -- type definitions --
   type Grid2D  = [String]
-  type LexNode = (Int, Lexeme, Int)
-  type Graph   = (String, [LexNode])
-  type AST     = (String, [(Int, [Lexeme], Int)])
-  
-  data Lexeme = Boom | EOF | Input | Output | Underflow | RType | Constant String | Push String | Pop String | Call String | Add | Divide | Multiply | Remainder | Substract | Cut | Append | Size | Nil | Cons | Breakup | Greater | Equal | Start | Finish | Junction Int deriving (Eq, Show)
   
   -- |(NodeID (start: 1), Lexeme of Node, NodeID of following Node)
   type LexNode = (Int, Lexeme, Int)
@@ -19,7 +14,7 @@
   
   -- |Junction Int <=> if false goto Int; if true <=> following node
   data Lexeme = Boom | EOF | Input | Output | Underflow | RType | Constant String | Push String | Pop String | Call String | Add | Divide | Multiply | Remainder | Substract | Cut | Append | Size | Nil | Cons | Breakup | Greater | Equal | Start | Finish | Junction Int deriving (Eq, Show)
-  
+
   -- interface datatypes --
   data Input2PreProc     = IIP String   deriving (Eq, Show)
   data PreProc2Lexer     = IPL [Grid2D] deriving (Eq, Show)
