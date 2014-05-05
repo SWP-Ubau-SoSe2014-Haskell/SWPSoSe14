@@ -1,8 +1,19 @@
-﻿module SyntacticalAnalysis (
+{- |
+Module      :  SyntacticalAnalysis.hs
+Description :  .
+Copyright   :  (c) Kristin Knorr, Marcus Hoffmann
+License     :  MIT
+
+Stability   :  stable
+
+SyntacticalAnalysis receives output of Lexer and turns each rail function graph
+into a list of paths. Each path is a triple and contains a Path-ID, a list of
+lexemes and a Path-ID of the path that follows. Those lexemes are executed in order and sequentially.
+-}
+module SyntacticalAnalysis (
                             process   -- main function of the module "SyntacticalAnalysis"
-					       )
+                           )
  where
- 
  -- imports --
  import InterfaceDT as IDT
  
@@ -33,11 +44,7 @@
  startNodes xs = 1:[x| x <- [2..(length xs)] , (isJunct x xs) || ((length.(filter (\y-> (trd' y)==x))) xs)>1]
     where
         isJunct :: Int -> [IDT.LexNode] -> Bool
-        isJunct _ []     = False
-        isJunct x ((_, Junction y, _):ys)
-            |x==y        = True
-            |otherwise   = isJunct x ys
-        isJunct x (y:ys) = isJunct x ys
+        isJunct x xs = any (\y->(Junction x)==(snd' y)) xs
  
  -- |fetch triple components
  fst' :: (a, b, c) -> a
