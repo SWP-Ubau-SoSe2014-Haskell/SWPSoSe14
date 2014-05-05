@@ -3,7 +3,7 @@
 This is (or rather: will become) a compiler for the esoteric programming
 language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 
-## Contents of this repository:
+## Contents of this repository
 
 - The main documentation will be found in the code.
 - Folder `documentation`: Contains additional documentation.
