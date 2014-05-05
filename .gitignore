@@ -213,3 +213,7 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+
+# some cabal stuff
+cabal.sandbox.config
+.cabal-sandbox
