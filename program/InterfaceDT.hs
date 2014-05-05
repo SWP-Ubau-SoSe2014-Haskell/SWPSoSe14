@@ -1,9 +1,9 @@
 ﻿module InterfaceDT
  where
-  
+
   -- type definitions --
   type Grid2D  = [String]
-  
+
   -- |(NodeID (start: 1), Lexeme of Node, NodeID of following Node)
   type LexNode = (Int, Lexeme, Int)
   -- |(FunctionID, Graph of Function as adjacency list)
@@ -11,9 +11,12 @@
   -- |(FunctionID, [(PathID (start: 1), List of Lexemes to be executed sequentially, PathID of following Path)])
   type AST     = (String, [(Int, [Lexeme], Int)])
   -- |* following Nodes or Pathes could have ID==0, in this case there is no Follower
-  
+
   -- |Junction Int <=> if false goto Int; if true <=> following node
-  data Lexeme = Boom | EOF | Input | Output | Underflow | RType | Constant String | Push String | Pop String | Call String | Add | Divide | Multiply | Remainder | Substract | Cut | Append | Size | Nil | Cons | Breakup | Greater | Equal | Start | Finish | Junction Int deriving (Eq, Show)
+  data Lexeme = Boom | EOF | Input | Output | Underflow | RType |
+    Constant String | Push String | Pop String | Call String | Add | Divide |
+    Multiply | Remainder | Substract | Cut | Append | Size | Nil | Cons |
+    Breakup | Greater | Equal | Start | Finish | Junction Int deriving (Eq, Show)
 
   -- interface datatypes --
   data Input2PreProc     = IIP String   deriving (Eq, Show)
