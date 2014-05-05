@@ -1,5 +1,6 @@
-﻿module InterfaceDT
- where
+module InterfaceDT where
+
+  import qualified LLVM.General.AST as LAST
 
   -- type definitions --
   type Grid2D  = [String]
@@ -24,6 +25,6 @@
   data Lexer2SynAna      = ILS [Graph]  deriving (Eq, Show)
   data SynAna2SemAna     = ISS [AST]    deriving (Eq, Show)
   data SemAna2InterCode  = ISI [AST]    deriving (Eq, Show)
-  data InterCode2CodeOpt = IIC String   deriving (Eq, Show)  -- todo!
+  data InterCode2CodeOpt = IIC LAST.Module deriving (Eq, Show)  -- todo!
   data CodeOpt2Backend   = ICB String   deriving (Eq, Show)  -- todo!
   data Backend2Output    = IBO String   deriving (Eq, Show)  -- todo!
