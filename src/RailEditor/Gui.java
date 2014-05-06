@@ -6,9 +6,12 @@ import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.layout.FillLayout;
+import java.awt.Toolkit;
 
 public class Gui {
 
@@ -50,25 +53,33 @@ public class Gui {
 	protected void createContents() {
 		shell = new Shell();
 		shell.setSize(450, 300);
+		shell.setBounds(
+				Toolkit.getDefaultToolkit().getScreenSize().width / 2 - 450 / 2,
+				Toolkit.getDefaultToolkit().getScreenSize().height / 2 - 300 / 2,
+				450, 300);
 		shell.setText("SWT Application");
+		shell.setLayout(new FillLayout(SWT.HORIZONTAL));
 
 		styledText = new StyledText(shell, SWT.BORDER | SWT.H_SCROLL
 				| SWT.V_SCROLL | SWT.CANCEL);
 
-		styledText.setBounds(38, 23, 244, 190);
+		Menu menu = new Menu(shell, SWT.BAR);
+		shell.setMenuBar(menu);
 
-		Button btnNewButton = new Button(shell, SWT.NONE);
-		btnNewButton.addSelectionListener(new SelectionAdapter() {
+		MenuItem mntmNewSubmenu = new MenuItem(menu, SWT.CASCADE);
+		mntmNewSubmenu.setText("Data");
+
+		Menu menu_1 = new Menu(mntmNewSubmenu);
+		mntmNewSubmenu.setMenu(menu_1);
+
+		MenuItem mntmSave = new MenuItem(menu_1, SWT.NONE);
+		mntmSave.addSelectionListener(new SelectionAdapter() {
 			public void widgetSelected(SelectionEvent e) {
-				try {
-					changeColor(styledText, shell, 3, 2, 100, 200, 255);
-				} catch (Exception e1) {
-					e1.printStackTrace();
-				}
+				SaveFile s = new SaveFile(shell, SWT.DIALOG_TRIM);
+				s.open(shell,styledText.getText());
 			}
 		});
-		btnNewButton.setBounds(285, 56, 75, 25);
-		btnNewButton.setText("New Button");
+		mntmSave.setText("save");
 	}
 
 	/**
