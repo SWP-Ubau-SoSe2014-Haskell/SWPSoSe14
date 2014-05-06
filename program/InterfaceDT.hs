@@ -27,4 +27,4 @@ module InterfaceDT where
   data SemAna2InterCode  = ISI [AST]    deriving (Eq, Show)
   data InterCode2CodeOpt = IIC LAST.Module deriving (Eq, Show)  -- todo!
   data CodeOpt2Backend   = ICB String   deriving (Eq, Show)  -- todo!
-  data Backend2Output    = IBO String   deriving (Eq, Show)  -- todo!
+  data Backend2Output    = IBO String   deriving (Eq, Show)
