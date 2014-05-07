@@ -25,7 +25,7 @@ module Preprocessor (
  process :: IDT.Input2PreProc -> IDT.PreProc2Lexer
  process (IDT.IIP input) = (IDT.IPL output)
   where
-   output = (groupFunctionsToGrid2Ds . removeLines. lines) input
+   output = (groupFunctionsToGrid2Ds . removeLines . lines) input
 
  -- |Logical xor
  xor :: Bool -> Bool -> Bool
