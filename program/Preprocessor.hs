@@ -19,26 +19,28 @@ module Preprocessor (
  -- imports --
  import InterfaceDT as IDT
  
+ import Data.List
+ 
  -- functions --
  process :: IDT.Input2PreProc -> IDT.PreProc2Lexer
  process (IDT.IIP input) = (IDT.IPL output)
   where
    output = (groupFunctionsToGrid2Ds . removeLines. lines) input
 
+ -- |Logical xor
+ xor :: Bool -> Bool -> Bool
+ xor True False = True
+ xor False True = True
+ xor _ _ = False
+
+ notStartingWithDollar :: String -> Bool
+ notStartingWithDollar = (\x -> null x || head x /= '$')
  -- |Removes all leading strings from list until first string begins with a
  -- dollar sign.
  removeLines :: Grid2D -> Grid2D
- removeLines = dropWhile (\x -> null x || head x /= '$')
-		   
+ removeLines = dropWhile notStartingWithDollar
+
  -- |Puts every rail function/program into its on grid such that the dollar
  -- sign is the first character in the first line.
  groupFunctionsToGrid2Ds :: Grid2D -> [Grid2D]
- groupFunctionsToGrid2Ds grid = helperGFtG2D grid [] []
-  where
-   helperGFtG2D :: Grid2D -> Grid2D -> [Grid2D] -> [Grid2D]
-   helperGFtG2D [] [] akk2 = akk2
-   helperGFtG2D [] akk1 akk2 = akk2 ++ [akk1]
-   helperGFtG2D ([]:rest) akk1 akk2 = helperGFtG2D rest (akk1++[[]]) akk2
-   helperGFtG2D (('$':zeilenrest):rest) [] akk2 = helperGFtG2D rest ['$':zeilenrest] akk2
-   helperGFtG2D (('$':zeilenrest):rest) akk1 akk2 = helperGFtG2D rest ['$':zeilenrest] (akk2 ++ [akk1])
-   helperGFtG2D (zeile:rest) akk1 akk2 = helperGFtG2D rest (akk1++[zeile]) akk2
+ groupFunctionsToGrid2Ds = groupBy (\x y -> notStartingWithDollar x `xor` notStartingWithDollar y)
