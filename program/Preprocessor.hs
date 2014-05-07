@@ -27,10 +27,6 @@ module Preprocessor (
   where
    output = (groupFunctionsToGrid2Ds . removeLines . lines) input
 
- -- |Logical xor
- xor :: Bool -> Bool -> Bool
- xor = (\x y -> x /= y)
-
  -- |Return False iff the first character is a dollar sign.
  notStartingWithDollar :: String -> Bool
  notStartingWithDollar = (\x -> null x || head x /= '$')
@@ -43,4 +39,4 @@ module Preprocessor (
  -- |Puts every rail function/program into its on grid such that the dollar
  -- sign is the first character in the first line.
  groupFunctionsToGrid2Ds :: Grid2D -> [Grid2D]
- groupFunctionsToGrid2Ds = groupBy (\x y -> notStartingWithDollar x `xor` notStartingWithDollar y)
+ groupFunctionsToGrid2Ds = groupBy (\_ y -> notStartingWithDollar y)
