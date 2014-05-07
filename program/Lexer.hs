@@ -187,3 +187,5 @@
  crash = IP (-1) (-1) Normal SE
  valids :: String
  valids = "\\|-/abcdefgimnopqrstuvxz+*<>^@$#&:~0123456789{}[]()?"
+
+-- vim:ts=2 sw=2 et
