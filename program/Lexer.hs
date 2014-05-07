@@ -7,7 +7,7 @@
  import InterfaceDT as IDT
 
  -- added identifier for nodes to check when we have circles
- type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction)) deriving Eq
+ data PreLexNode = PLNode (Int, IDT.Lexeme, Int, (Int, Int, Direction)) deriving Eq
  data Direction = N | NE | E | SE | S | SW | W | NW deriving Eq
  data RelDirection = Left | Forward | Right
  -- instruction pointer consisting of position and an orientation
@@ -19,7 +19,7 @@
 
  -- process one function
  processfn :: IDT.Grid2D -> IDT.Graph
- processfn (x:xs)@code = (funcname x, finalize [] $ nodes code [] start)
+ processfn code@(x:xs) = (funcname x, finalize [] $ nodes code [] start)
 
  -- get the name of the given function
  funcname :: String -> String
@@ -38,7 +38,7 @@
  handle :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
  handle code list ip = helper code list ip (parse code ip)
   where
-   helper _ list ip Nothing
+   helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme) = (newlist, ip)
     where
      newnode = (length list) + 1
@@ -52,10 +52,10 @@
  -- move the instruction pointer a singe step
  step :: IDT.Grid2D -> IP -> IP
  step code ip
-   | forward `in` valids = move ip Forward
-   | left `in` valids && right `in` valids = crash
-   | left `in` valids && (mode ip) == Normal = move ip Left
-   | right `in` valids && (mode ip) == Normal = move ip Right
+   | forward `elem` valids = move ip Forward
+   | left `elem` valids && right `elem` valids = crash
+   | left `elem` valids && (mode ip) == Normal = move ip Left
+   | right `elem` valids && (mode ip) == Normal = move ip Right
    | otherwise = crash
   where
    (left, forward, right) = adjacent code ip
@@ -64,10 +64,9 @@
  stepwhile code ip fn
    | not (fn curchar) = ("", ip)
    | otherwise = (curchar:resstring, resip)
-      where
-       (resstring, resip) = stepwhile code (move ip Forward) fn
   where
    curchar = current code ip
+   (resstring, resip) = stepwhile code (move ip Forward) fn
 
  move :: IP -> RelDirection -> IP
  move ip reldir = ip{posx = newx, posy = newy, dir = absolute reldir}
@@ -95,9 +94,9 @@
  posabsdir ip N = ((posy ip) - 1, posx ip)
  posabsdir ip NE = ((posy ip) - 1, (posx ip) + 1)
  posabsdir ip E = (posy ip, (posx ip) + 1)
- posabsdir ip SE = ((posy ip) + 1), (posx ip) + 1)
- posabsdir ip S = ((posy ip) + 1), posx ip)
- posabsdir ip SW = ((posy ip) + 1), (posx ip) - 1)
+ posabsdir ip SE = ((posy ip) + 1, (posx ip) + 1)
+ posabsdir ip S = ((posy ip) + 1, posx ip)
+ posabsdir ip SW = ((posy ip) + 1, (posx ip) - 1)
  posabsdir ip W = (posy ip, (posx ip) - 1)
  posabsdir ip NW = ((posy ip) - 1, (posx ip) - 1)
 
@@ -111,9 +110,9 @@
  absolute E Left = NE
  absolute E Right = SE
  absolute SE Left = E
- absolute SE Right S
+ absolute SE Right = S
  absolute S Left = SE
- absolute S Right SW
+ absolute S Right = SW
  absolute SW Left = S
  absolute SW Right = W
  absolute W Left = SW
@@ -176,11 +175,11 @@
 
  visited :: [PreLexNode] -> IP -> Bool
  visited [] _ = False
- visited (PreLexNode (_, _, _, (x, y, lmode))):xs ip = (x == (posx ip) && y == (posy ip) && lmode == (mode ip)) || visited xs ip
+ visited (PLNode (_, _, _, (x, y, lmode)):xs) ip = (x == (posx ip) && y == (posy ip) && lmode == (mode ip)) || visited xs ip
 
  finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
  finalize [] result = result
- finalize (PreLexNode (node, lexeme, following, _)):xs = finalize xs (LexNode (node, lexeme, following)):result
+ finalize (PLNode (node, lexeme, following, _):xs) = finalize xs (LexNode (node, lexeme, following)):result
 
  start :: IP
  start = IP 0 0 Normal SE
