@@ -29,7 +29,7 @@ module Preprocessor (
 
  -- |Logical xor
  xor :: Bool -> Bool -> Bool
- xor = (\x y -> not (x == y))
+ xor = (\x y -> x /= y)
 
  -- |Return False iff the first character is a dollar sign.
  notStartingWithDollar :: String -> Bool
