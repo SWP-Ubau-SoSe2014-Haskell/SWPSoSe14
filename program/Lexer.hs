@@ -7,7 +7,7 @@
  import InterfaceDT as IDT
 
  -- added identifier for nodes to check when we have circles
- data PreLexNode = PLNode (Int, IDT.Lexeme, Int, (Int, Int, Direction)) deriving Eq
+ type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction))
  data Direction = N | NE | E | SE | S | SW | W | NW deriving Eq
  data RelDirection = Left | Forward | Right
  -- instruction pointer consisting of position and an orientation
@@ -175,11 +175,11 @@
 
  visited :: [PreLexNode] -> IP -> Bool
  visited [] _ = False
- visited (PLNode (_, _, _, (x, y, lmode)):xs) ip = (x == (posx ip) && y == (posy ip)) || visited xs ip
+ visited ((_, _, _, (x, y, lmode)):xs) ip = (x == (posx ip) && y == (posy ip)) || visited xs ip
 
  finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
  finalize [] result = result
- finalize (PLNode (node, lexeme, following, _):xs) = finalize xs (LexNode (node, lexeme, following)):result
+ finalize ((node, lexeme, following, _):xs) = finalize xs (LexNode (node, lexeme, following)):result
 
  start :: IP
  start = IP 0 0 SE
