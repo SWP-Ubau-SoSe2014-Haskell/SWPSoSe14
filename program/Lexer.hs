@@ -179,7 +179,7 @@
 
  finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
  finalize [] result = result
- finalize ((node, lexeme, following, _):xs) = finalize xs (LexNode (node, lexeme, following)):result
+ finalize ((node, lexeme, following, _):xs) result = finalize xs (LexNode (node, lexeme, following)):result
 
  start :: IP
  start = IP 0 0 SE
