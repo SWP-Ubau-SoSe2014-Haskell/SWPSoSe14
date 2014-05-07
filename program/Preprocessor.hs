@@ -29,9 +29,7 @@ module Preprocessor (
 
  -- |Logical xor
  xor :: Bool -> Bool -> Bool
- xor True False = True
- xor False True = True
- xor _ _ = False
+ xor = (\x y -> not (x == y))
 
  notStartingWithDollar :: String -> Bool
  notStartingWithDollar = (\x -> null x || head x /= '$')
