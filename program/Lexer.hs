@@ -54,8 +54,8 @@
  step code ip
    | forward `elem` valids = move ip Forward
    | left `elem` valids && right `elem` valids = crash
-   | left `elem` valids = move ip Left
-   | right `elem` valids = move ip Right
+   | left `elem` valids = move ip Lexer.Left
+   | right `elem` valids = move ip Lexer.Right
    | otherwise = crash
   where
    (left, forward, right) = adjacent code ip
@@ -78,7 +78,7 @@
 
  -- get (left secondary, primary, right secondary) symbols
  adjacent :: IDT.Grid2D -> IP -> (Char, Char, Char)
- adjacent code ip = (charat code (posdir ip Left), charat code (posdir ip Forward), charat code (posdir ip Right))
+ adjacent code ip = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
 
  -- returns char at given position, ' ' if position is invalid
  charat :: IDT.Grid2D -> (Int, Int) -> Char
@@ -103,22 +103,22 @@
  -- get the absolute direction out of a relative one
  absolute :: IP -> RelDirection -> Direction
  absolute x Forward = x
- absolute N Left = NW
- absolute N Right = NE
- absolute NE Left = N
- absolute NE Right = E
- absolute E Left = NE
- absolute E Right = SE
- absolute SE Left = E
- absolute SE Right = S
- absolute S Left = SE
- absolute S Right = SW
- absolute SW Left = S
- absolute SW Right = W
- absolute W Left = SW
- absolute W Right = NW
- absolute NW Left = W
- absolute NW Right = N
+ absolute N Lexer.Left = NW
+ absolute N Lexer.Right = NE
+ absolute NE Lexer.Left = N
+ absolute NE Lexer.Right = E
+ absolute E Lexer.Left = NE
+ absolute E Lexer.Right = SE
+ absolute SE Lexer.Left = E
+ absolute SE Lexer.Right = S
+ absolute S Lexer.Left = SE
+ absolute S Lexer.Right = SW
+ absolute SW Lexer.Left = S
+ absolute SW Lexer.Right = W
+ absolute W Lexer.Left = SW
+ absolute W Lexer.Right = NW
+ absolute NW Lexer.Left = W
+ absolute NW Lexer.Right = N
 
  -- get the lexem out of a char
  parse :: IDT.Grid2D -> IP -> (Maybe IDT.Lexeme, ip)
