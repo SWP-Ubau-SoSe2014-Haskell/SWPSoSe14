@@ -31,8 +31,10 @@ module Preprocessor (
  xor :: Bool -> Bool -> Bool
  xor = (\x y -> not (x == y))
 
+ -- |Return False iff the first character is a dollar sign.
  notStartingWithDollar :: String -> Bool
  notStartingWithDollar = (\x -> null x || head x /= '$')
+ 
  -- |Removes all leading strings from list until first string begins with a
  -- dollar sign.
  removeLines :: Grid2D -> Grid2D
