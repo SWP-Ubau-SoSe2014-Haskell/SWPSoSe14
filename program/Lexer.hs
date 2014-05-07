@@ -15,11 +15,13 @@
  
  -- functions --
  process :: IDT.PreProc2Lexer -> IDT.Lexer2SynAna
- process input = map processfn input
+ process (IDT.IPL input) = IDT.ILS $ map processfn input
 
  -- process one function
  processfn :: IDT.Grid2D -> IDT.Graph
- processfn code@(x:xs) = (funcname x, finalize [] $ nodes code [] start)
+ processfn code@(x:xs) = (funcname x, finalize nxs [])
+  where
+    (nxs, _) = nodes code [] start
 
  -- get the name of the given function
  funcname :: String -> String
@@ -28,7 +30,11 @@
  -- get the nodes for the given function
  nodes :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
  nodes code list ip
-  | current code ip == ' ' = list
+  | current code ip == ' ' = (list, ip) -- will automatically lead to a
+                                        -- crash since the list will have
+                                        -- a leading node without a follower
+                                        -- (follower == 0) because it is
+                                        -- not modified here at all.
   | otherwise = nodes code newlist newip
      where -- parse, handle, move
       newip = step code tempip
@@ -36,8 +42,9 @@
 
  -- TODO: changing movemend based on used rails
  handle :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
- handle code list ip = helper code list ip (parse code ip)
+ handle code list ip = helper code list newip lexeme
   where
+   (lexeme, newip) = parse code ip
    helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme) = (newlist, ip)
     where
@@ -47,7 +54,7 @@
  -- changing following node of previous node
  update :: [PreLexNode] -> Int -> [PreLexNode]
  update [] _ = []
- update ((node, lexeme, _, location):xs) following = (node, lexeme, following, location)
+ update ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
 
  -- move the instruction pointer a singe step
  step :: IDT.Grid2D -> IP -> IP
@@ -69,7 +76,7 @@
    (resstring, resip) = stepwhile code (move ip Forward) fn
 
  move :: IP -> RelDirection -> IP
- move ip reldir = ip{posx = newx, posy = newy, dir = absolute reldir}
+ move ip reldir = ip{posx = newx, posy = newy, dir = absolute ip reldir}
   where
    (newx, newy) = posdir ip reldir
 
@@ -89,7 +96,7 @@
 
  -- get the position of a specific heading
  posdir :: IP -> RelDirection -> (Int, Int)
- posdir ip reldir = posabsdir ip (absolute reldir)
+ posdir ip reldir = posabsdir ip (absolute ip reldir)
  posabsdir :: IP -> Direction -> (Int, Int)
  posabsdir ip N = ((posy ip) - 1, posx ip)
  posabsdir ip NE = ((posy ip) - 1, (posx ip) + 1)
@@ -102,27 +109,27 @@
 
  -- get the absolute direction out of a relative one
  absolute :: IP -> RelDirection -> Direction
- absolute x Forward = x
- absolute N Lexer.Left = NW
- absolute N Lexer.Right = NE
- absolute NE Lexer.Left = N
- absolute NE Lexer.Right = E
- absolute E Lexer.Left = NE
- absolute E Lexer.Right = SE
- absolute SE Lexer.Left = E
- absolute SE Lexer.Right = S
- absolute S Lexer.Left = SE
- absolute S Lexer.Right = SW
- absolute SW Lexer.Left = S
- absolute SW Lexer.Right = W
- absolute W Lexer.Left = SW
- absolute W Lexer.Right = NW
- absolute NW Lexer.Left = W
- absolute NW Lexer.Right = N
+ absolute x Forward = dir x
+ absolute (IP {dir=N}) Lexer.Left = NW
+ absolute (IP {dir=N}) Lexer.Right = NE
+ absolute (IP {dir=NE}) Lexer.Left = N
+ absolute (IP {dir=NE}) Lexer.Right = E
+ absolute (IP {dir=E}) Lexer.Left = NE
+ absolute (IP {dir=E}) Lexer.Right = SE
+ absolute (IP {dir=SE}) Lexer.Left = E
+ absolute (IP {dir=SE}) Lexer.Right = S
+ absolute (IP {dir=S}) Lexer.Left = SE
+ absolute (IP {dir=S}) Lexer.Right = SW
+ absolute (IP {dir=SW}) Lexer.Left = S
+ absolute (IP {dir=SW}) Lexer.Right = W
+ absolute (IP {dir=W}) Lexer.Left = SW
+ absolute (IP {dir=W}) Lexer.Right = NW
+ absolute (IP {dir=NW}) Lexer.Left = W
+ absolute (IP {dir=NW}) Lexer.Right = N
 
  -- get the lexem out of a char
- parse :: IDT.Grid2D -> IP -> (Maybe IDT.Lexeme, ip)
- parse code ip count = case (current code ip) of
+ parse :: IDT.Grid2D -> IP -> (Maybe IDT.Lexeme, IP)
+ parse code ip = case (current code ip) of
    'b' -> (Just Boom, ip)
    'e' -> (Just EOF, ip)
    'i' -> (Just Input, ip)
@@ -166,7 +173,7 @@
    '}' -> let (string, newip) = stepwhile code ip (/= '{') in (Just (Call string), newip)
    '(' -> let (string, newip) = stepwhile code ip (/= ')') in (pushpop string, newip)
    ')' -> let (string, newip) = stepwhile code ip (/= '(') in (pushpop string, newip)
-   _ -> Nothing
+   _ -> (Nothing, ip)
   where
    pushpop string
     | string == "" = Just (Push string)
@@ -179,7 +186,7 @@
 
  finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
  finalize [] result = result
- finalize ((node, lexeme, following, _):xs) result = finalize xs (node, lexeme, following):result
+ finalize ((node, lexeme, following, _):xs) result = finalize xs ((node, lexeme, following):result)
 
  start :: IP
  start = IP 0 0 SE
