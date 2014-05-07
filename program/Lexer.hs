@@ -54,8 +54,8 @@
  step code ip
    | forward `elem` valids = move ip Forward
    | left `elem` valids && right `elem` valids = crash
-   | left `elem` valids && (mode ip) == Normal = move ip Left
-   | right `elem` valids && (mode ip) == Normal = move ip Right
+   | left `elem` valids = move ip Left
+   | right `elem` valids = move ip Right
    | otherwise = crash
   where
    (left, forward, right) = adjacent code ip
@@ -175,15 +175,15 @@
 
  visited :: [PreLexNode] -> IP -> Bool
  visited [] _ = False
- visited (PLNode (_, _, _, (x, y, lmode)):xs) ip = (x == (posx ip) && y == (posy ip) && lmode == (mode ip)) || visited xs ip
+ visited (PLNode (_, _, _, (x, y, lmode)):xs) ip = (x == (posx ip) && y == (posy ip)) || visited xs ip
 
  finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
  finalize [] result = result
  finalize (PLNode (node, lexeme, following, _):xs) = finalize xs (LexNode (node, lexeme, following)):result
 
  start :: IP
- start = IP 0 0 Normal SE
- crash = IP (-1) (-1) Normal SE
+ start = IP 0 0 SE
+ crash = IP (-1) (-1) SE
  valids :: String
  valids = "\\|-/abcdefgimnopqrstuvxz+*<>^@$#&:~0123456789{}[]()?"
 
