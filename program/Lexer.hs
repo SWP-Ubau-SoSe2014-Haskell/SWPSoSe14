@@ -23,7 +23,7 @@
 
  -- get the name of the given function
  funcname :: String -> String
- funcname line = takewhile (/='\'') $ tail $ dropwhile (/='\'') line
+ funcname line = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
 
  -- get the nodes for the given function
  nodes :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
