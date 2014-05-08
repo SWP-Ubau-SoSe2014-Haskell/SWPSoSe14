@@ -91,8 +91,11 @@
  charat :: IDT.Grid2D -> (Int, Int) -> Char
  charat code _ | length code == 0 = ' '
  charat code (y, _) | y < 0 || y >= (length code) = ' '
- charat code (_, x) | x < 0 || x >= (length (head code)) = ' '
- charat code (y, x) = (code!!y)!!x
+ charat code (y, x)
+   | x < 0 || x >= (length line) = ' '
+   | otherwise = line!!x
+  where
+   line = code!!y
 
  -- get the position of a specific heading
  posdir :: IP -> RelDirection -> (Int, Int)
