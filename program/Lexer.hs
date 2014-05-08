@@ -21,7 +21,7 @@
  processfn :: IDT.Grid2D -> IDT.Graph
  processfn code@(x:xs) = (funcname x, finalize nxs [])
   where
-    (nxs, _) = nodes code [] start
+    (nxs, _) = nodes code [(1, Start, 0, (0, 0, SE))] start
 
  -- get the name of the given function
  funcname :: String -> String
@@ -30,15 +30,15 @@
  -- get the nodes for the given function
  nodes :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
  nodes code list ip
-  | current code ip == ' ' = (list, ip) -- will automatically lead to a
-                                        -- crash since the list will have
-                                        -- a leading node without a follower
-                                        -- (follower == 0) because it is
-                                        -- not modified here at all.
+  | current code tempip == ' ' = (list, tempip) -- will automatically lead to a
+                                                -- crash since the list will have
+                                                -- a leading node without a follower
+                                                -- (follower == 0) because it is
+                                                -- not modified here at all.
   | otherwise = nodes code newlist newip
-     where -- parse, handle, move
-      newip = step code tempip
-      (newlist, tempip) = handle code list ip
+     where
+      tempip = step code ip
+      (newlist, newip) = handle code list tempip
 
  -- TODO: changing movemend based on used rails
  handle :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
@@ -78,7 +78,7 @@
  move :: IP -> RelDirection -> IP
  move ip reldir = ip{posx = newx, posy = newy, dir = absolute ip reldir}
   where
-   (newx, newy) = posdir ip reldir
+   (newy, newx) = posdir ip reldir
 
  current :: IDT.Grid2D -> IP -> Char
  current code ip = charat code (posy ip, posx ip)
@@ -167,14 +167,15 @@
    '^' -> (Just (Junction 0), ip)
    '>' -> (Just (Junction 0), ip)
    '<' -> (Just (Junction 0), ip)
-   '[' -> let (string, newip) = stepwhile code ip (/= ']') in (Just (Constant string), newip)
-   ']' -> let (string, newip) = stepwhile code ip (/= '[') in (Just (Constant string), newip)
-   '{' -> let (string, newip) = stepwhile code ip (/= '}') in (Just (Call string), newip)
-   '}' -> let (string, newip) = stepwhile code ip (/= '{') in (Just (Call string), newip)
-   '(' -> let (string, newip) = stepwhile code ip (/= ')') in (pushpop string, newip)
-   ')' -> let (string, newip) = stepwhile code ip (/= '(') in (pushpop string, newip)
+   '[' -> let (string, newip) = stepwhile code tempip (/= ']') in (Just (Constant string), newip)
+   ']' -> let (string, newip) = stepwhile code tempip (/= '[') in (Just (Constant string), newip)
+   '{' -> let (string, newip) = stepwhile code tempip (/= '}') in (Just (Call string), newip)
+   '}' -> let (string, newip) = stepwhile code tempip (/= '{') in (Just (Call string), newip)
+   '(' -> let (string, newip) = stepwhile code tempip (/= ')') in (pushpop string, newip)
+   ')' -> let (string, newip) = stepwhile code tempip (/= '(') in (pushpop string, newip)
    _ -> (Nothing, ip)
   where
+   tempip = move ip Forward
    pushpop string
     | string == "" = Just (Push string)
     | string!!1 == '!' && last string == '!' = Just (Pop (tail $ init string))
@@ -192,6 +193,6 @@
  start = IP 0 0 SE
  crash = IP (-1) (-1) SE
  valids :: String
- valids = "\\|-/abcdefgimnopqrstuvxz+*<>^@$#&:~0123456789{}[]()?"
+ valids = "\\|-/abcdefgimnopqrstuvxz+*<>^@#:~0123456789{}[]()?"
 
 -- vim:ts=2 sw=2 et
