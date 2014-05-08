@@ -8,6 +8,6 @@
  
  -- functions --
  process :: IDT.InterCode2CodeOpt -> IDT.CodeOpt2Backend
- process input = output
+ process (IDT.IIC input) = IDT.ICB output
   where
-   output = undefined
+   output = input

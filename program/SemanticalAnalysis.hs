@@ -8,6 +8,6 @@
  
  -- functions --
  process :: IDT.SynAna2SemAna -> IDT.SemAna2InterCode
- process input = output
+ process (IDT.ISS input) = IDT.ISI output
   where
-   output = undefined
+   output = input
