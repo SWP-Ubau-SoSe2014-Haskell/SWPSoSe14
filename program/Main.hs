@@ -24,4 +24,4 @@ main = do putStrLn "Enter inputfile (path): "
           putStrLn ("Compiling " ++ inputfile ++ " to " ++ outputfile)
           do input <- readFile inputfile
              let output (IBO x) = x
-             do writeFile outputfile (output ((Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process) (IIP input)))
+             writeFile outputfile (output ((Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process) (IIP input)))
