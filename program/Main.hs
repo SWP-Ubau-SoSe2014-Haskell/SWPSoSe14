@@ -5,7 +5,6 @@
 
  -- imports --
  import InterfaceDT                   as IDT
- import qualified Testing             as Test
  import qualified Preprocessor        as PreProc
  import qualified Lexer
  import qualified SyntacticalAnalysis as SynAna
