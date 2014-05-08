@@ -17,9 +17,9 @@
  
  -- functions --
  main :: IO()
- main = do putStr "Enter inputfile (path): "
+ main = do putStrLn "Enter inputfile (path): "
            inputfile <- getLine
-           putStr "Enter outputfile (path): "
+           putStrLn "Enter outputfile (path): "
            outputfile <- getLine
            putStrLn ("Compiling " ++ inputfile ++ " to " ++ outputfile)
            do input <- readFile inputfile
