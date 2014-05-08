@@ -14,5 +14,4 @@
  import qualified TestCodeOpt
  import qualified TestBackend
 
- -- functions --
  testModules = runTestTT $ TestList (TestPreProc.testModule++TestLexer.testModule++TestSynAna.testModule++TestSemAna.testModule++TestInterCode.testModule++TestCodeOpt.testModule++TestBackend.testModule)
