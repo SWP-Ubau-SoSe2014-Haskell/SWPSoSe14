@@ -10,4 +10,4 @@
  process :: IDT.CodeOpt2Backend -> IDT.Backend2Output
  process input = output
   where
-   output = undefined
+   output = IDT.IBO $ show input
