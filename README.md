@@ -11,7 +11,7 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 
 ## Branching model
 
-Currently, there are several team branches and one main development branch,
+Currently, there are several (long-lived) team branches and one main development branch,
 `master`. The `master` branch should always contain something that "works" to
 some degree, i. e. it should never break.
 
@@ -20,7 +20,7 @@ All team branches are merged into the `master` branch on a regular basis.
 ### Team branches
 
 The following team branches exist. Except for `master`, all branches not mentioned
-here are to be considered feature branches.
+here are to be considered (short-lived) feature branches.
 
 - `gui`: Contains everything with a graphical user interface, most notably the debugger
     and the graphical Rail editor.
