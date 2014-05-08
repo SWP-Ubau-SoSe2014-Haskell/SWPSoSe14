@@ -69,3 +69,9 @@ executable SWPSoSe14
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
+Test-suite testcases
+  main-is: Main.hs
+  build-depends: base, HUnit, llvm-general-pure
+  hs-source-dirs: tests, program
+  default-language: Haskell2010
+  type: exitcode-stdio-1.0
