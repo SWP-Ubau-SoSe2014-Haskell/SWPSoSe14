@@ -14,11 +14,31 @@ generateModule definitions = defaultModule {
   moduleDefinitions = definitions
 }
 
+terminator :: Named Terminator
+terminator = Do Ret {
+  returnOperand = Nothing,
+  metadata' = []
+}
+
+generateBasicBlock :: LexNode -> BasicBlock
+generateBasicBlock (label, instructions, 0) =
+  BasicBlock (Name $ "l_" ++ show label) [] terminator
+generateBasicBlock (label, instructions, jumpLabel) =
+  BasicBlock (Name $ "l_" ++ show label) [] branch
+  where branch = Do Br {
+    dest = Name $ "l_" ++ show jumpLabel,
+    metadata' = []
+  }
+
+generateBasicBlocks :: [LexNode] -> [BasicBlock]
+generateBasicBlocks = map generateBasicBlock
+
 -- generate function definition from AST
 generateFunction :: AST -> Definition
 generateFunction (name, lexemes) = GlobalDefinition $ functionDefaults {
   name = Name name,
-  returnType = VoidType
+  returnType = VoidType,
+  basicBlocks = generateBasicBlocks lexemes
 }
 
 -- generate list of LLVM Definitions from list of ASTs
