@@ -15,12 +15,13 @@ where
  
  
  -- functions --
- main :: IO()
+ main :: IO ()
  main = do putStrLn "Enter inputfile (path): "
            inputfile <- getLine
            putStrLn "Enter outputfile (path): "
            outputfile <- getLine
            putStrLn ("Compiling " ++ inputfile ++ " to " ++ outputfile)
-           do input <- readFile inputfile
-              let output (IBO x) = x
-              do writeFile outputfile (output ((Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process) (IIP input)))
+           input <- readFile inputfile
+           let output (IBO x) = x
+           content <- output $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP input
+           writeFile outputfile content
