@@ -21,34 +21,62 @@ terminator = Do Ret {
   metadata' = []
 }
 
+-- function declaration for putchar
+putchar = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "putchar",
+  Global.returnType = IntegerType 32,
+  Global.parameters = ([ Parameter (IntegerType 32) (UnName 0) [] ], False)
+}
+
 generateInstruction (Constant value) =
   Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "push",
+    function = Right $ ConstantOperand $ GlobalReference $ Name "putchar",
     arguments = [],
     functionAttributes = [],
     metadata = []
   }
+
+-- depending on the Lexeme we see we need to create one or more Instructions
+-- the generateInstruction function should return a list of instructions
+-- after the mapping phase we should flatten the array with concat so we that we get
+-- a list of Instructions that we can insert in the BasicBlock
+
+-- call putchar with top of stack
+generateInstruction Output =
+  undefined
+
+-- do nothing?
+--generateInstruction Start =
+--  undefined
+
+-- return void?
+generateInstruction Finish = undefined
 
 generateInstruction _ =
   Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "blas",
+    function = Right $ ConstantOperand $ GlobalReference $ Name "putchar",
     arguments = [],
     functionAttributes = [],
     metadata = []
   }
 
+isUsefulInstruction Start = False
+isUsefulInstruction _ = True
+
+-- removes Lexemes without meaning to us
+filterInstrs = filter isUsefulInstruction
 
 generateBasicBlock :: (Int, [Lexeme], Int) -> BasicBlock
 generateBasicBlock (label, instructions, 0) =
-  BasicBlock (Name $ "l_" ++ show label) (map generateInstruction instructions) terminator
+  BasicBlock (Name $ "l_" ++ show label) (map generateInstruction $ filterInstrs instructions) terminator
 generateBasicBlock (label, instructions, jumpLabel) =
-  BasicBlock (Name $ "l_" ++ show label) (map generateInstruction instructions) branch
+  BasicBlock (Name $ "l_" ++ show label) (map generateInstruction $ filterInstrs instructions) branch
   where branch = Do Br {
     dest = Name $ "l_" ++ show jumpLabel,
     metadata' = []
@@ -71,4 +99,4 @@ generateFunctions = map generateFunction
 
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ generateFunctions input
+process (IDT.ISI input) = IDT.IIC $ generateModule $ putchar : generateFunctions input
