@@ -6,8 +6,9 @@ import InterfaceDT as IDT
 import LLVM.General.AST
 import qualified LLVM.General.AST.Global as Global
 import LLVM.General.AST.CallingConvention
-import LLVM.General.AST.Constant
+import LLVM.General.AST.Constant as Constant
 import LLVM.General.AST.Linkage
+import LLVM.General.AST.AddrSpace
 import Data.Char
 import Data.Map hiding (filter, map)
 
@@ -58,7 +59,63 @@ putchar = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([ Parameter (IntegerType 32) (UnName 0) [] ], False)
 }
 
+push = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "push",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter (IntegerType 32) (UnName 0) [] ], False)
+}
+
+pop = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "pop",
+  Global.returnType = PointerType { pointerReferent = IntegerType 8, pointerAddrSpace = AddrSpace 0 },
+  Global.parameters = ([], False)
+}
+
+peek = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "peek",
+  Global.returnType = PointerType { pointerReferent = IntegerType 8, pointerAddrSpace = AddrSpace 0 },
+  Global.parameters = ([], False)
+}
+
 generateInstruction (Constant value) =
+  [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "push",
+    arguments = [
+          ((ConstantOperand Constant.GetElementPtr {
+            Constant.inBounds = True,
+            Constant.address = Constant.GlobalReference (UnName 0), --TODO look up reference in symbol table
+            Constant.indices = [
+              Int { integerBits = 8, integerValue = 0 },
+              Int { integerBits = 8, integerValue = 0 }
+            ]
+          }), [])
+    ],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- depending on the Lexeme we see we need to create one or more Instructions
+-- the generateInstruction function should return a list of instructions
+-- after the mapping phase we should flatten the array with concat so we that we get
+-- a list of Instructions that we can insert in the BasicBlock
+
+-- call putchar with top of stack
+generateInstruction Output =
+  [
+  --pop
+  --call putchar with pop result
+  Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "pop",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  },
   Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -68,15 +125,7 @@ generateInstruction (Constant value) =
     functionAttributes = [],
     metadata = []
   }
-
--- depending on the Lexeme we see we need to create one or more Instructions
--- the generateInstruction function should return a list of instructions
--- after the mapping phase we should flatten the array with concat so we that we get
--- a list of Instructions that we can insert in the BasicBlock
-
--- call putchar with top of stack
-generateInstruction Output =
-  undefined
+  ]
 
 -- do nothing?
 --generateInstruction Start =
@@ -86,7 +135,7 @@ generateInstruction Output =
 generateInstruction Finish = undefined
 
 generateInstruction _ =
-  Do LLVM.General.AST.Call {
+  [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
@@ -94,7 +143,7 @@ generateInstruction _ =
     arguments = [],
     functionAttributes = [],
     metadata = []
-  }
+  }]
 
 isUsefulInstruction Start = False
 isUsefulInstruction _ = True
@@ -104,9 +153,9 @@ filterInstrs = filter isUsefulInstruction
 
 generateBasicBlock :: (Int, [Lexeme], Int) -> BasicBlock
 generateBasicBlock (label, instructions, 0) =
-  BasicBlock (Name $ "l_" ++ show label) (map generateInstruction $ filterInstrs instructions) terminator
+  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) terminator
 generateBasicBlock (label, instructions, jumpLabel) =
-  BasicBlock (Name $ "l_" ++ show label) (map generateInstruction $ filterInstrs instructions) branch
+  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) branch
   where branch = Do Br {
     dest = Name $ "l_" ++ show jumpLabel,
     metadata' = []
@@ -137,7 +186,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [putchar] ++ generateFunctions input
+process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [push, pop, peek, putchar] ++ generateFunctions input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     dict = fromList $ zipWith foo [0..] $ getAllCons input
