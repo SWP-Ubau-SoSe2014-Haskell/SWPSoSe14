@@ -107,8 +107,7 @@ generateInstruction (Constant value) =
 generateInstruction Output =
   [
   --pop
-  --call putchar with pop result
-  Do LLVM.General.AST.Call {
+  UnName 0 := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
