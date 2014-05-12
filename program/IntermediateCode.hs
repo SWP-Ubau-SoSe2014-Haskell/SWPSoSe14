@@ -9,6 +9,7 @@ import LLVM.General.AST.CallingConvention
 import LLVM.General.AST.Constant
 import LLVM.General.AST.Linkage
 import Data.Char
+import Data.Map hiding (filter, map)
 
 -- generate module from list of definitions
 generateModule :: [Definition] -> Module
@@ -137,4 +138,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [putchar] ++ generateFunctions input
-  where constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
+  where
+    constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
+    dict = fromList $ zipWith foo [0..] $ getAllCons input
+    foo index (Constant s) = (s, (length s, index))
