@@ -9,6 +9,7 @@ import LLVM.General.AST.CallingConvention
 import LLVM.General.AST.Constant as Constant
 import LLVM.General.AST.Linkage
 import LLVM.General.AST.AddrSpace
+import LLVM.General.AST.Operand
 import Data.Char
 import Data.Map hiding (filter, map)
 
@@ -121,7 +122,9 @@ generateInstruction Output =
     callingConvention = C,
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "putchar",
-    arguments = [],
+    arguments = [
+      (LocalReference $ UnName 0, [])
+    ],
     functionAttributes = [],
     metadata = []
   }
