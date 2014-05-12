@@ -10,6 +10,8 @@ import LLVM.General.AST.Constant as Constant
 import LLVM.General.AST.Linkage
 import LLVM.General.AST.AddrSpace
 import LLVM.General.AST.Operand
+import LLVM.General.AST.Instruction as Instruction
+import LLVM.General.AST.Float
 import Data.Char
 import Data.Map hiding (filter, map)
 
@@ -138,18 +140,10 @@ generateInstruction Output =
 --  undefined
 
 -- return void?
-generateInstruction Finish = undefined
+--generateInstruction Finish = undefined
 
-generateInstruction _ =
-  [Do LLVM.General.AST.Call {
-    isTailCall = False,
-    callingConvention = C,
-    returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "putchar",
-    arguments = [],
-    functionAttributes = [],
-    metadata = []
-  }]
+-- noop
+generateInstruction _ = [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
 
 isUsefulInstruction Start = False
 isUsefulInstruction _ = True
