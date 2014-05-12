@@ -7,6 +7,7 @@ import LLVM.General.AST
 import qualified LLVM.General.AST.Global as Global
 import LLVM.General.AST.CallingConvention
 import LLVM.General.AST.Constant
+import LLVM.General.AST.Linkage
 import Data.Char
 
 -- generate module from list of definitions
@@ -22,8 +23,8 @@ terminator = Do Ret {
   metadata' = []
 }
 
-createGlobalString :: String -> Global
-createGlobalString s = globalVariableDefaults {
+createGlobalString :: Lexeme -> Global
+createGlobalString (Constant s) = globalVariableDefaults {
   Global.type' = ArrayType {nArrayElements = fromInteger l, elementType = IntegerType {typeBits = 8}},
   Global.initializer = Just Array {
     memberType = IntegerType {typeBits = 8},
@@ -32,6 +33,22 @@ createGlobalString s = globalVariableDefaults {
   where
     l = toInteger $ length s
     trans c = Int {integerBits = 8, integerValue = toInteger $ ord c}
+
+generateConstants :: [AST] -> [Global]
+generateConstants = map createGlobalString . getAllCons
+
+getAllCons :: [AST] -> [Lexeme]
+getAllCons = concatMap generateCons
+
+generateCons :: AST -> [Lexeme]
+generateCons (name, paths) = concatMap generateC paths
+
+generateC :: (Int, [Lexeme], Int) -> [Lexeme]
+generateC (pathID, lex, nextPath) = filter checkCons lex
+checkCons (Constant c) = True
+checkCons _ = False
+
+
 
 -- function declaration for putchar
 putchar = GlobalDefinition $ Global.functionDefaults {
@@ -109,6 +126,15 @@ generateFunction (name, lexemes) = GlobalDefinition $ Global.functionDefaults {
 generateFunctions :: [AST] -> [Definition]
 generateFunctions = map generateFunction
 
+generateGlobalDefinition :: Integer -> Global -> Definition
+generateGlobalDefinition index def = GlobalDefinition def {
+  Global.name = UnName $ fromInteger index,
+  Global.isConstant = True,
+  Global.linkage = Internal,
+  Global.hasUnnamedAddr = True
+}
+
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ putchar : generateFunctions input
+process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [putchar] ++ generateFunctions input
+  where constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
