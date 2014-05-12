@@ -51,30 +51,33 @@ generateC (pathID, lex, nextPath) = filter checkCons lex
 checkCons (Constant c) = True
 checkCons _ = False
 
+bytePointerType = PointerType {
+  pointerReferent = IntegerType 8,
+  pointerAddrSpace = AddrSpace 0
+}
 
-
--- function declaration for putchar
-putchar = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "putchar",
+-- function declaration for puts
+puts = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "puts",
   Global.returnType = IntegerType 32,
-  Global.parameters = ([ Parameter (IntegerType 32) (UnName 0) [] ], False)
+  Global.parameters = ([ Parameter bytePointerType (UnName 0) [] ], False)
 }
 
 push = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "push",
   Global.returnType = VoidType,
-  Global.parameters = ([ Parameter (IntegerType 32) (UnName 0) [] ], False)
+  Global.parameters = ([ Parameter bytePointerType (UnName 0) [] ], False)
 }
 
 pop = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "pop",
-  Global.returnType = PointerType { pointerReferent = IntegerType 8, pointerAddrSpace = AddrSpace 0 },
+  Global.returnType = bytePointerType,
   Global.parameters = ([], False)
 }
 
 peek = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "peek",
-  Global.returnType = PointerType { pointerReferent = IntegerType 8, pointerAddrSpace = AddrSpace 0 },
+  Global.returnType = bytePointerType,
   Global.parameters = ([], False)
 }
 
@@ -103,7 +106,7 @@ generateInstruction (Constant value) =
 -- after the mapping phase we should flatten the array with concat so we that we get
 -- a list of Instructions that we can insert in the BasicBlock
 
--- call putchar with top of stack
+-- call puts with top of stack
 generateInstruction Output =
   [
   --pop
@@ -116,11 +119,12 @@ generateInstruction Output =
     functionAttributes = [],
     metadata = []
   },
+  --call puts with pop result
   Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "putchar",
+    function = Right $ ConstantOperand $ GlobalReference $ Name "puts",
     arguments = [
       (LocalReference $ UnName 0, [])
     ],
@@ -188,7 +192,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [push, pop, peek, putchar] ++ generateFunctions input
+process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [push, pop, peek, puts] ++ generateFunctions input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     dict = fromList $ zipWith foo [0..] $ getAllCons input
