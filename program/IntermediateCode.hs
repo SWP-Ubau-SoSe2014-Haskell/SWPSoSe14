@@ -90,14 +90,14 @@ generateInstruction (Constant value) =
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "push",
     arguments = [
-          ((ConstantOperand Constant.GetElementPtr {
+          (ConstantOperand Constant.GetElementPtr {
             Constant.inBounds = True,
             Constant.address = Constant.GlobalReference (UnName 0), --TODO look up reference in symbol table
             Constant.indices = [
               Int { integerBits = 8, integerValue = 0 },
               Int { integerBits = 8, integerValue = 0 }
             ]
-          }), [])
+          }, [])
     ],
     functionAttributes = [],
     metadata = []
