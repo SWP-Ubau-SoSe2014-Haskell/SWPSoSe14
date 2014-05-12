@@ -7,6 +7,7 @@ import LLVM.General.AST
 import qualified LLVM.General.AST.Global as Global
 import LLVM.General.AST.CallingConvention
 import LLVM.General.AST.Constant
+import Data.Char
 
 -- generate module from list of definitions
 generateModule :: [Definition] -> Module
@@ -20,6 +21,17 @@ terminator = Do Ret {
   returnOperand = Nothing,
   metadata' = []
 }
+
+createGlobalString :: String -> Global
+createGlobalString s = globalVariableDefaults {
+  Global.type' = ArrayType {nArrayElements = fromInteger l, elementType = IntegerType {typeBits = 8}},
+  Global.initializer = Just Array {
+    memberType = IntegerType {typeBits = 8},
+    memberValues = map trans s
+  }}
+  where
+    l = toInteger $ length s
+    trans c = Int {integerBits = 8, integerValue = toInteger $ ord c}
 
 -- function declaration for putchar
 putchar = GlobalDefinition $ Global.functionDefaults {
