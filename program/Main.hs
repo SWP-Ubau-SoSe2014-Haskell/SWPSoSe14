@@ -51,14 +51,67 @@ where
 
    importAST inputfile outputfile = do input <- readFile inputfile
                                        let output (IBO x) = x
-                                       content <- undefined
-                                       --content <- output $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.createASTFromString $ input
+                                       content <- output $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process $ map toGraph $ splitfunctions input
                                        writeFile outputfile content
 
    exportAST inputfile outputfile = do input <- readFile inputfile
-                                       content <- undefined
-                                       --content <- $ Lexer.createStringFromAST . Lexer.process . PreProc.process $ IIP input
+                                       content <- map fromGraph $ Lexer.process . PreProc.process $ IIP input
                                        writeFile outputfile content
    
+fromGraph :: IDT.Graph -> String
+fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):(map (Lexer.offset (-1)) $ tail $ map fromLexNode nodes)
+ where
+  fromLexNode :: IDT.LexNode -> String
+  fromLexNode (id, lexeme, follower) = (show id)++";"++(fromLexeme lexeme)++";"++(show follower)++(optional lexeme)
+  fromLexeme :: IDT.Lexeme -> String
+  fromLexeme Boom = "b"
+  fromLexeme EOF = "e"
+  fromLexeme Input = "i"
+  fromLexeme Output = "o"
+  fromLexeme Underflow = "u"
+  fromLexeme RType = "?"
+  fromLexeme (Constant string) = "["++string++"]"
+  fromLexeme (Push string) = "("++string++")"
+  fromLexeme (Pop string) = "(!"++string++"!)"
+  fromLexeme (Call string) = "{"++string++"}"
+  fromLexeme Add = "a"
+  fromLexeme Divide = "d"
+  fromLexeme Multiply = "m"
+  fromLexeme Remainder = "r"
+  fromLexeme Substract = "s"
+  fromLexeme Cut = "c"
+  fromLexeme Append = "p"
+  fromLexeme Size = "z"
+  fromLexeme Nil = "n"
+  fromLexeme Cons = ":"
+  fromLexeme Breakup = "~"
+  fromLexeme Greater = "g"
+  fromLexeme Equal = "q"
+  fromLexeme Start = "$"
+  fromLexeme Finish = "#"
+  fromLexeme (Junction _) = "v"
+  optional (Junction follow) = ","++(show follow)
+  optional _ = ""
 
---
+splitfunctions :: String -> [String]
+splitfunctions "" = [""]
+splitfunctions code = (unlines (ln:fun)):(splitfunctions other)
+ where
+  (ln:lns) = lines code
+  (fun, other) = span (\x -> (head x) /= '[')
+
+toGraph :: String -> IDT.Graph
+toGraph string = (init $ tail $ head lns, (1, Start, 2):(map (Lexer.offset 1) $ nodes $ tail lns))
+ where
+  lns = lines string
+  nodes [] = []
+  nodes (ln:lns) = (read id, fixedlex, read follower):(nodes lns)
+   where
+    (id, other) = span (/=';') ln
+    (lex, ip) = Lexer.parse [other] $ Lexer.IP 1 0 Lexer.E
+    fixedlex
+     | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
+     | otherwise = fromJust lex
+    fromJust Nothing = error ("line with no lexem found in line: "++ln)
+    fromJust (Just x) = x
+    follower = takeWhile (/=',') $ dropWhile (\x -> not (x `elem` "0123456789")) $ drop (Lexer.posx ip) other

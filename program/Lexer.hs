@@ -1,5 +1,6 @@
 ﻿module Lexer (
-              process   -- main function of the module "Lexer"
+              process,   -- main function of the module "Lexer"
+              parse, offset, IP(IP), posx, Direction(E)
              )
  where
 
@@ -51,6 +52,11 @@
      newnode = (length list) + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):(update list newnode)
 
+ -- moving ids
+ offset :: IDT.LexNode -> Int -> IDT.LexNode
+ offset (node, lexeme, 0) c = (node + c, lexeme, 0)
+ offset (node, lexeme, following) = (node + c, lexeme, following + c)
+
  -- changing following node of previous node
  update :: [PreLexNode] -> Int -> [PreLexNode]
  update [] _ = []
@@ -59,13 +65,14 @@
  -- move the instruction pointer a singe step
  step :: IDT.Grid2D -> IP -> IP
  step code ip
-   | forward `elem` valids = move ip Forward
-   | left `elem` valids && right `elem` valids = crash
-   | left `elem` valids = move ip Lexer.Left
-   | right `elem` valids = move ip Lexer.Right
+   | forward `elem` val = move ip Forward
+   | left `elem` val && right `elem` val = crash
+   | left `elem` val = move ip Lexer.Left
+   | right `elem` val = move ip Lexer.Right
    | otherwise = crash
   where
    (left, forward, right) = adjacent code ip
+   val = valids code ip
 
  stepwhile :: IDT.Grid2D -> IP -> (Char -> Bool) -> (String, IP)
  stepwhile code ip fn
@@ -176,8 +183,21 @@
    '}' -> let (string, newip) = stepwhile code tempip (/= '{') in (Just (Call string), newip)
    '(' -> let (string, newip) = stepwhile code tempip (/= ')') in (pushpop string, newip)
    ')' -> let (string, newip) = stepwhile code tempip (/= '(') in (pushpop string, newip)
-   _ -> (Nothing, ip)
+   _ -> (Nothing, turn (current code ip) ip)
   where
+   turn '|' ip
+    | (dir ip) `elem` [NW, N, NE] = (Nothing, ip{dir = N})
+    | (dir ip) `elem` [SW, S, SE] = (Nothing, ip{dir = S})
+   turn '/' ip
+    | (dir ip) `elem` [N, NE, E] = (Nothing, ip{dir = NE})
+    | (dir ip) `elem` [S, SW, W] = (Nothing, ip{dir = SW})
+   turn '-' ip
+    | (dir ip) `elem` [NE, E, SE] = (Nothing, ip{dir = E})
+    | (dir ip) `elem` [SW, S, SE] = (Nothing, ip{dir = S})
+   turn '\' ip
+    | (dir ip) `elem` [W, NW, N] = (Nothing, ip{dir = NW})
+    | (dir ip) `elem` [E, SE, S] = (Nothing, ip{dir = SE})
+   turn _ ip = (Nothing, ip)
    tempip = move ip Forward
    pushpop string
     | string == "" = Just (Push string)
@@ -194,8 +214,29 @@
 
  start :: IP
  start = IP 0 0 SE
- crash = IP (-1) (-1) SE
- valids :: String
- valids = "\\|-/abcdefgimnopqrstuvxz+*<>^@#:~0123456789{}[]()?"
+ crash = IP (-1) (-1) NW
+
+ valids :: IDT.Grid2D -> IP -> String
+ valids code ip = case cur of
+
+   '|' | dir ip==N -> 'v':p1
+       | dir ip==S -> '^':p1
+       
+   '-' | dir ip==E -> '<':p1
+       | dir ip==W -> '>':p1
+       
+   '/' | dir ip==NE -> '^':'>':p2
+       | dir ip==SW -> 'v':'<':p2
+       
+   '\\'| dir ip==SE -> 'v':'>':p2
+       | dir ip==NW -> '^':'<':p2
+   
+   _ | elem (dir ip) [N,E,S,W] -> p1
+       | elem (dir ip) [NE,SE,SW,NW] -> p2
+  where
+   cur = current code ip
+   p1 = '+':'\\':'/':always
+   p2 = 'x':'|':'-':always
+   always = "abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
 
 -- vim:ts=2 sw=2 et
