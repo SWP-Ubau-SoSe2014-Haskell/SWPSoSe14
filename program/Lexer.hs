@@ -221,36 +221,26 @@
  crash = IP (-1) (-1) NW
 
  valids :: IDT.Grid2D -> IP -> String
- valids code ip = case cur of
-
-   '|' | dir ip==N -> 'v':p1
-       | dir ip==S -> '^':p1
-       
-   '-' | dir ip==E -> '<':p1
-       | dir ip==W -> '>':p1
-       
-   '/' | dir ip==NE -> '^':'>':p2
-       | dir ip==SW -> 'v':'<':p2
-       
-   '\\'| dir ip==SE -> 'v':'>':p2
-       | dir ip==NW -> '^':'<':p2
-   
-   _ | elem (dir ip) [N,E,S,W] -> p1
-       | elem (dir ip) [NE,SE,SW,NW] -> p2
+ valids code ip = filter (/=invalid) everything
   where
+   invalid
+    | (dir ip) `elem` [E, W] = '|'
+    | (dir ip) `elem` [NE, SW] = '\\'
+    | (dir ip) `elem` [N, W] = '-'
+    | (dir ip) `elem` [NW, SE] = '/'
+    | otherwise = ' '
    cur = current code ip
-   p1 = '+':'\\':'/':always
-   p2 = 'x':'|':'-':always
+   everything = "+\\/x|-"++always
    always = "abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
 
- fromAST :: Lexer2SynAna -> String
- fromAST (ILS graph) = unlines $ map fromGraph graph
+ fromAST :: IDT.Lexer2SynAna -> String
+ fromAST (IDT.ILS graph) = unlines $ map fromGraph graph
 
- toAST :: String -> Lexer2SynAna
- toAST input = ILS (map toGraph $ splitfunctions input)
+ toAST :: String -> IDT.Lexer2SynAna
+ toAST input = IDT.ILS (map toGraph $ splitfunctions input)
 
  fromGraph :: IDT.Graph -> String
- fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"): (tail $ map fromLexNode (map (offset (-1)) nodes))
+ fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):(tail $ map fromLexNode (map (offset (-1)) nodes))
   where
    fromLexNode :: IDT.LexNode -> String
    fromLexNode (id, lexeme, follower) = (show id)++";"++(fromLexeme lexeme)++";"++(show follower)++(optional lexeme)

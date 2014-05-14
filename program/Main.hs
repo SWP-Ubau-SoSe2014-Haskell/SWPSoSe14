@@ -25,11 +25,11 @@ where
  import InterfaceDT                   as IDT
  import qualified Preprocessor        as PreProc
  import qualified Lexer
- import qualified SyntacticalAnalysis as SynAna
- import qualified SemanticalAnalysis  as SemAna
- import qualified IntermediateCode    as InterCode
- import qualified CodeOptimization    as CodeOpt
- import qualified Backend
+-- import qualified SyntacticalAnalysis as SynAna
+-- import qualified SemanticalAnalysis  as SemAna
+-- import qualified IntermediateCode    as InterCode
+-- import qualified CodeOptimization    as CodeOpt
+-- import qualified Backend
  
   
  -- functions --
@@ -55,6 +55,6 @@ where
                                        writeFile outputfile content
 
    exportAST inputfile outputfile = do input <- readFile inputfile
-                                       content <- Lexer.fromAST . Lexer.process . PreProc.process $ IIP input
+                                       let content = Lexer.fromAST . Lexer.process . PreProc.process $ IIP input
                                        writeFile outputfile content
    
