@@ -1,6 +1,6 @@
 ﻿module Lexer (
               process,   -- main function of the module "Lexer"
-              read, show
+              fromAST, toAST
              )
  where
 
@@ -53,9 +53,9 @@
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):(update list newnode)
 
  -- moving ids
- offset :: IDT.LexNode -> Int -> IDT.LexNode
- offset (node, lexeme, 0) c = (node + c, lexeme, 0)
- offset (node, lexeme, following) c = (node + c, lexeme, following + c)
+ offset :: Int -> IDT.LexNode -> IDT.LexNode
+ offset c (node, lexeme, 0) = (node + c, lexeme, 0)
+ offset c (node, lexeme, following) = (node + c, lexeme, following + c)
 
  -- changing following node of previous node
  update :: [PreLexNode] -> Int -> [PreLexNode]
@@ -95,7 +95,7 @@
  adjacent code ip = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
 
  turnaround :: IP -> IP
- turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Left} Left} Left} Left}
+ turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Lexer.Left} Lexer.Left} Lexer.Left} Lexer.Left}
 
  -- returns char at given position, ' ' if position is invalid
  charat :: IDT.Grid2D -> (Int, Int) -> Char
@@ -190,16 +190,16 @@
   where
    turn '@' ip = turnaround ip
    turn '|' ip
-    | (dir ip) `elem` [NW, N, NE] = ip{dir = N)
+    | (dir ip) `elem` [NW, N, NE] = ip{dir = N}
     | (dir ip) `elem` [SW, S, SE] = ip{dir = S}
    turn '/' ip
-    | (dir ip) `elem` [N, NE, E] = ip{dir = NE)
+    | (dir ip) `elem` [N, NE, E] = ip{dir = NE}
     | (dir ip) `elem` [S, SW, W] = ip{dir = SW}
    turn '-' ip
-    | (dir ip) `elem` [NE, E, SE] = ip{dir = E)
+    | (dir ip) `elem` [NE, E, SE] = ip{dir = E}
     | (dir ip) `elem` [SW, S, SE] = ip{dir = S}
-   turn '\' ip
-    | (dir ip) `elem` [W, NW, N] = ip{dir = NW)
+   turn '\\' ip
+    | (dir ip) `elem` [W, NW, N] = ip{dir = NW}
     | (dir ip) `elem` [E, SE, S] = ip{dir = SE}
    turn _ ip = ip
    tempip = move ip Forward
@@ -243,14 +243,14 @@
    p2 = 'x':'|':'-':always
    always = "abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
 
- show :: [IDT.Graph] -> String
- show = unlines . (map fromGraph)
+ fromAST :: Lexer2SynAna -> String
+ fromAST (ILS graph) = unlines $ map fromGraph graph
 
- read :: String -> [IDT.Graph]
- read input = map toGraph $ splitfunctions input
+ toAST :: String -> Lexer2SynAna
+ toAST input = ILS (map toGraph $ splitfunctions input)
 
  fromGraph :: IDT.Graph -> String
- fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):(map (offset (-1)) $ tail $ map fromLexNode nodes)
+ fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"): (tail $ map fromLexNode (map (offset (-1)) nodes))
   where
    fromLexNode :: IDT.LexNode -> String
    fromLexNode (id, lexeme, follower) = (show id)++";"++(fromLexeme lexeme)++";"++(show follower)++(optional lexeme)
@@ -286,10 +286,10 @@
 
  splitfunctions :: String -> [String]
  splitfunctions "" = [""]
- splitfunctions code = (unlines (ln:fun)):(splitfunctions other)
+ splitfunctions code = (unlines (ln:fun)):(splitfunctions $ unlines other)
   where
    (ln:lns) = lines code
-   (fun, other) = span (\x -> (head x) /= '[')
+   (fun, other) = span (\x -> (head x) /= '[') lns
 
  toGraph :: String -> IDT.Graph
  toGraph string = (init $ tail $ head lns, (1, Start, 2):(map (offset 1) $ nodes $ tail lns))

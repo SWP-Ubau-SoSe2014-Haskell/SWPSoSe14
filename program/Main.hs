@@ -51,10 +51,10 @@ where
 
    importAST inputfile outputfile = do input <- readFile inputfile
                                        let output (IBO x) = x
-                                       content <- output $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.read input
+                                       content <- output $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST input
                                        writeFile outputfile content
 
    exportAST inputfile outputfile = do input <- readFile inputfile
-                                       content <- Lexer.show . Lexer.process . PreProc.process $ IIP input
+                                       content <- Lexer.fromAST . Lexer.process . PreProc.process $ IIP input
                                        writeFile outputfile content
    
