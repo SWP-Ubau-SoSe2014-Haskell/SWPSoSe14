@@ -94,6 +94,9 @@
  adjacent :: IDT.Grid2D -> IP -> (Char, Char, Char)
  adjacent code ip = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
 
+ turnaround :: IP -> IP
+ turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Left} Left} Left} Left}
+
  -- returns char at given position, ' ' if position is invalid
  charat :: IDT.Grid2D -> (Int, Int) -> Char
  charat code _ | length code == 0 = ' '
@@ -185,6 +188,7 @@
    ')' -> let (string, newip) = stepwhile code tempip (/= '(') in (pushpop string, newip)
    _ -> (Nothing, turn (current code ip) ip)
   where
+   turn '@' ip = turnaround ip
    turn '|' ip
     | (dir ip) `elem` [NW, N, NE] = ip{dir = N)
     | (dir ip) `elem` [SW, S, SE] = ip{dir = S}
@@ -246,7 +250,7 @@
  read input = map toGraph $ splitfunctions input
 
  fromGraph :: IDT.Graph -> String
- fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):(map (Lexer.offset (-1)) $ tail $ map fromLexNode nodes)
+ fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):(map (offset (-1)) $ tail $ map fromLexNode nodes)
   where
    fromLexNode :: IDT.LexNode -> String
    fromLexNode (id, lexeme, follower) = (show id)++";"++(fromLexeme lexeme)++";"++(show follower)++(optional lexeme)
@@ -288,18 +292,19 @@
    (fun, other) = span (\x -> (head x) /= '[')
 
  toGraph :: String -> IDT.Graph
- toGraph string = (init $ tail $ head lns, (1, Start, 2):(map (Lexer.offset 1) $ nodes $ tail lns))
+ toGraph string = (init $ tail $ head lns, (1, Start, 2):(map (offset 1) $ nodes $ tail lns))
   where
    lns = lines string
    nodes [] = []
    nodes (ln:lns) = (read id, fixedlex, read follower):(nodes lns)
     where
      (id, other) = span (/=';') ln
-     (lex, ip) = Lexer.parse [other] $ Lexer.IP 1 0 Lexer.E
+     (lex, ip) = parse [other] $ IP 1 0 E
      fixedlex
       | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
       | otherwise = fromJust lex
      fromJust Nothing = error ("line with no lexem found in line: "++ln)
      fromJust (Just x) = x
-     follower = takeWhile (/=',') $ dropWhile (\x -> not (x `elem` "0123456789")) $ drop (Lexer.posx ip) other
+     follower = takeWhile (/=',') $ dropWhile (\x -> not (x `elem` "0123456789")) $ drop (posx ip) other
+
 -- vim:ts=2 sw=2 et
