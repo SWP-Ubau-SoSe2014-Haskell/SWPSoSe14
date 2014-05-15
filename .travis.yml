@@ -1,4 +1,4 @@
 language: haskell
 before_install: sudo apt-get update
-install: sudo apt-get install llvm-3.3 &&  cabal install --only-dependencies --enable-tests
+install: sudo apt-get install llvm-3.3 && cabal install --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
