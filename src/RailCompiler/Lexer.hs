@@ -1,4 +1,4 @@
-﻿module Lexer (
+module Lexer (
               process,   -- main function of the module "Lexer"
               fromAST, toAST
              )

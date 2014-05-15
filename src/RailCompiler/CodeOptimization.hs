@@ -1,4 +1,4 @@
-﻿module CodeOptimization (
+module CodeOptimization (
                          process   -- main function of the module "CodeOptimization"
 					    )
  where

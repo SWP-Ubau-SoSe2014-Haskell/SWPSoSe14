@@ -1,4 +1,4 @@
-﻿module SemanticalAnalysis (
+module SemanticalAnalysis (
                             process   -- main function of the module "SemanticalAnalysis"
 					       )
  where

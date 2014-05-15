@@ -1,4 +1,4 @@
-﻿{- |
+{- |
 Module      :  Main.hs
 Description :  .
 Copyright   :  (c) Christopher Pockrandt, Nicolas Lehmann

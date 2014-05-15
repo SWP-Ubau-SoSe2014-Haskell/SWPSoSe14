@@ -1,4 +1,4 @@
-﻿{- |
+{- |
 Module      :  Preprocessor.hs
 Description :  .
 Copyright   :  (c) Christopher Pockrandt, Nicolas Lehmann
