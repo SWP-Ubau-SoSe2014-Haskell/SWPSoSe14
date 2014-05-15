@@ -7,7 +7,7 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 
 - The main documentation will be found in the code.
 - Folder `documentation`: Contains additional documentation.
-- Folder `program`: Contains the Rail compiler (written in Haskell).
+- Folder `src`: Contains the Rail compiler and editor (written in Haskell).
 
 ## Branching model
 
