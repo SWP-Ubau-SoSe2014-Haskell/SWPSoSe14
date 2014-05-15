@@ -9,6 +9,18 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 - Folder `documentation`: Contains additional documentation.
 - Folder `src`: Contains the Rail compiler and editor (written in Haskell).
 
+## Dependecies/Building the Compiler
+
+- Install cabal (package cabal-install in most distributions)
+- Install llvm, versions llvm-3.3 and llvm-3.4 work.
+- Install happy (for testing with hlint)
+- run `cabal update`
+- If you don't use llvm-3.4 you manually need to install the corresponding haskell bindings, i.e.: `cabal install llvm-general-3.3.11.2`
+- Switch to project folder
+- Run `cabal install --enable-tests` to install all dependencies and build the project
+- `cabal test` to run the tests
+- Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 --compile <Source.rail> output`
+
 ## Branching model
 
 Currently, there are several (long-lived) team branches and one main development branch,
