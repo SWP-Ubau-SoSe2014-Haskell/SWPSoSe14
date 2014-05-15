@@ -64,7 +64,7 @@ executable SWPSoSe14
   build-depends: base, HUnit, llvm-general-pure, llvm-general <3.4, mtl, containers
 
   -- Directories containing source files.
-  hs-source-dirs: program
+  hs-source-dirs: src/RailCompiler
 
   -- Base language which the package is written in.
   default-language:    Haskell2010
@@ -72,6 +72,6 @@ executable SWPSoSe14
 Test-suite testcases
   main-is: Main.hs
   build-depends: base, HUnit, llvm-general-pure, llvm-general, mtl, containers
-  hs-source-dirs: tests, program
+  hs-source-dirs: tests, src/RailCompiler
   default-language: Haskell2010
   type: exitcode-stdio-1.0
