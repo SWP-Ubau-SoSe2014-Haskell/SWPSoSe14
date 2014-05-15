@@ -25,40 +25,15 @@ where
  import InterfaceDT                   as IDT
  import qualified Preprocessor        as PreProc
  import qualified Lexer
- import qualified SyntacticalAnalysis as SynAna
- import qualified SemanticalAnalysis  as SemAna
- import qualified IntermediateCode    as InterCode
- import qualified CodeOptimization    as CodeOpt
- import qualified Backend
  
   
  -- functions --
 
  -- |Entrypoint of rail2llvm-compiler.
  main :: IO ()
- main = do args <- getArgs
-           case args of
-                "--compile":inputfile:outputfile:[]   -> compile inputfile outputfile
-                "--exportAST":inputfile:outputfile:[] -> exportAST inputfile outputfile
-                "--importAST":inputfile:outputfile:[] -> importAST inputfile outputfile
-                _                                     -> help   
+ main = do exportAST "../rail-examples/hello-world.rail" "x.ast"
   where
    help = putStrLn "output help (TODO)"
-   compile inputfile outputfile = do input <- readFile inputfile
-                                     let output (IBO x) = x
-                                     content <- output $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP input
-                                     writeFile outputfile content
-
-   importAST inputfile outputfile = do input <- readFile inputfile
-                                       let output (IBO x) = x
-                                       content <- undefined
-                                       --content <- output $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.createASTFromString $ input
-                                       writeFile outputfile content
-
    exportAST inputfile outputfile = do input <- readFile inputfile
-                                       content <- undefined
-                                       --content <- $ Lexer.createStringFromAST . Lexer.process . PreProc.process $ IIP input
-                                       writeFile outputfile content
-   
-
---
+                                       let content = Lexer.fromAST . Lexer.process . PreProc.process $ IIP input
+                                       putStrLn content
