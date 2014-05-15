@@ -1,10 +1,13 @@
 ﻿module Lexer (
-              process   -- main function of the module "Lexer"
+              process,   -- main function of the module "Lexer"
+              fromAST, toAST
              )
  where
 
  -- imports --
  import InterfaceDT as IDT
+
+ import Data.List
 
  -- added identifier for nodes to check when we have circles
  type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction))
@@ -51,6 +54,11 @@
      newnode = (length list) + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):(update list newnode)
 
+ -- moving ids
+ offset :: Int -> IDT.LexNode -> IDT.LexNode
+ offset c (node, lexeme, 0) = (node + c, lexeme, 0)
+ offset c (node, lexeme, following) = (node + c, lexeme, following + c)
+
  -- changing following node of previous node
  update :: [PreLexNode] -> Int -> [PreLexNode]
  update [] _ = []
@@ -59,13 +67,14 @@
  -- move the instruction pointer a singe step
  step :: IDT.Grid2D -> IP -> IP
  step code ip
-   | forward `elem` valids = move ip Forward
-   | left `elem` valids && right `elem` valids = crash
-   | left `elem` valids = move ip Lexer.Left
-   | right `elem` valids = move ip Lexer.Right
+   | forward `elem` val = move ip Forward
+   | left `elem` val && right `elem` val = crash
+   | left `elem` val = move ip Lexer.Left
+   | right `elem` val = move ip Lexer.Right
    | otherwise = crash
   where
    (left, forward, right) = adjacent code ip
+   val = valids code ip
 
  stepwhile :: IDT.Grid2D -> IP -> (Char -> Bool) -> (String, IP)
  stepwhile code ip fn
@@ -86,6 +95,9 @@
  -- get (left secondary, primary, right secondary) symbols
  adjacent :: IDT.Grid2D -> IP -> (Char, Char, Char)
  adjacent code ip = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
+
+ turnaround :: IP -> IP
+ turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Lexer.Left} Lexer.Left} Lexer.Left} Lexer.Left}
 
  -- returns char at given position, ' ' if position is invalid
  charat :: IDT.Grid2D -> (Int, Int) -> Char
@@ -176,8 +188,22 @@
    '}' -> let (string, newip) = stepwhile code tempip (/= '{') in (Just (Call string), newip)
    '(' -> let (string, newip) = stepwhile code tempip (/= ')') in (pushpop string, newip)
    ')' -> let (string, newip) = stepwhile code tempip (/= '(') in (pushpop string, newip)
-   _ -> (Nothing, ip)
+   _ -> (Nothing, turn (current code ip) ip)
   where
+   turn '@' ip = turnaround ip
+   turn '|' ip
+    | (dir ip) `elem` [NW, N, NE] = ip{dir = N}
+    | (dir ip) `elem` [SW, S, SE] = ip{dir = S}
+   turn '/' ip
+    | (dir ip) `elem` [N, NE, E] = ip{dir = NE}
+    | (dir ip) `elem` [S, SW, W] = ip{dir = SW}
+   turn '-' ip
+    | (dir ip) `elem` [NE, E, SE] = ip{dir = E}
+    | (dir ip) `elem` [SW, S, SE] = ip{dir = S}
+   turn '\\' ip
+    | (dir ip) `elem` [W, NW, N] = ip{dir = NW}
+    | (dir ip) `elem` [E, SE, S] = ip{dir = SE}
+   turn _ ip = ip
    tempip = move ip Forward
    pushpop string
     | string == "" = Just (Push string)
@@ -194,8 +220,78 @@
 
  start :: IP
  start = IP 0 0 SE
- crash = IP (-1) (-1) SE
- valids :: String
- valids = "\\|-/abcdefgimnopqrstuvxz+*<>^@#:~0123456789{}[]()?"
+ crash = IP (-1) (-1) NW
+
+ valids :: IDT.Grid2D -> IP -> String
+ valids code ip = filter (/=invalid) everything
+  where
+   invalid
+    | (dir ip) `elem` [E, W] = '|'
+    | (dir ip) `elem` [NE, SW] = '\\'
+    | (dir ip) `elem` [N, W] = '-'
+    | (dir ip) `elem` [NW, SE] = '/'
+    | otherwise = ' '
+   cur = current code ip
+   everything = "+\\/x|-"++always
+   always = "abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
+
+ fromAST :: IDT.Lexer2SynAna -> String
+ fromAST (IDT.ILS graph) = unlines $ map fromGraph graph
+
+ toAST :: String -> IDT.Lexer2SynAna
+ toAST input = IDT.ILS (map toGraph $ splitfunctions input)
+
+ fromGraph :: IDT.Graph -> String
+ fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):(tail $ map fromLexNode (map (offset (-1)) nodes))
+  where
+   fromLexNode :: IDT.LexNode -> String
+   fromLexNode (id, lexeme, follower) = (show id)++";"++(fromLexeme lexeme)++";"++(show follower)++(optional lexeme)
+   fromLexeme :: IDT.Lexeme -> String
+   fromLexeme Boom = "b"
+   fromLexeme EOF = "e"
+   fromLexeme Input = "i"
+   fromLexeme Output = "o"
+   fromLexeme Underflow = "u"
+   fromLexeme RType = "?"
+   fromLexeme (Constant string) = "["++string++"]"
+   fromLexeme (Push string) = "("++string++")"
+   fromLexeme (Pop string) = "(!"++string++"!)"
+   fromLexeme (Call string) = "{"++string++"}"
+   fromLexeme Add = "a"
+   fromLexeme Divide = "d"
+   fromLexeme Multiply = "m"
+   fromLexeme Remainder = "r"
+   fromLexeme Substract = "s"
+   fromLexeme Cut = "c"
+   fromLexeme Append = "p"
+   fromLexeme Size = "z"
+   fromLexeme Nil = "n"
+   fromLexeme Cons = ":"
+   fromLexeme Breakup = "~"
+   fromLexeme Greater = "g"
+   fromLexeme Equal = "q"
+   fromLexeme Start = "$"
+   fromLexeme Finish = "#"
+   fromLexeme (Junction _) = "v"
+   optional (Junction follow) = ","++(show follow)
+   optional _ = ""
+
+ splitfunctions :: String -> [[String]]
+ splitfunctions = (groupBy (\_ y -> null y || head y /= '[')) . (filter (not . null)) . lines
+
+ toGraph :: [String] -> IDT.Graph
+ toGraph lns = (init $ tail $ head lns, (1, Start, 2):(map (offset 1) $ nodes $ tail lns))
+  where
+   nodes [] = []
+   nodes (ln:lns) = (read id, fixedlex, read follower):(nodes lns)
+    where
+     (id, other) = span (/=';') ln
+     (lex, ip) = parse [other] $ IP 1 0 E
+     fixedlex
+      | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
+      | otherwise = fromJust lex
+     fromJust Nothing = error ("line with no lexem found in line: "++ln)
+     fromJust (Just x) = x
+     follower = takeWhile (/=',') $ dropWhile (\x -> not (x `elem` "0123456789")) $ drop (posx ip) other
 
 -- vim:ts=2 sw=2 et
