@@ -279,7 +279,7 @@
  splitfunctions code = (unlines (ln:fun)):(splitfunctions $ unlines other)
   where
    (ln:lns) = lines code
-   (fun, other) = span (\x -> (head x) /= '[') lns
+   (fun, other) = span (\x -> (head x) /= '[') $ filter (/="") lns
 
  toGraph :: String -> IDT.Graph
  toGraph string = (init $ tail $ head lns, (1, Start, 2):(map (offset 1) $ nodes $ tail lns))
