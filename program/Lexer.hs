@@ -7,6 +7,8 @@
  -- imports --
  import InterfaceDT as IDT
 
+ import Data.List
+
  -- added identifier for nodes to check when we have circles
  type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction))
  data Direction = N | NE | E | SE | S | SW | W | NW deriving Eq
@@ -274,13 +276,12 @@
    optional (Junction follow) = ","++(show follow)
    optional _ = ""
 
- splitfunctions :: String -> [String]
- splitfunctions = (filter (not . null)) . lines
+ splitfunctions :: String -> [[String]]
+ splitfunctions = (groupBy (\_ y -> null y || head y /= '[')) . (filter (not . null)) . lines
 
- toGraph :: String -> IDT.Graph
- toGraph string = (init $ tail $ head lns, (1, Start, 2):(map (offset 1) $ nodes $ tail lns))
+ toGraph :: [String] -> IDT.Graph
+ toGraph lns = (init $ tail $ head lns, (1, Start, 2):(map (offset 1) $ nodes $ tail lns))
   where
-   lns = lines string
    nodes [] = []
    nodes (ln:lns) = (read id, fixedlex, read follower):(nodes lns)
     where
