@@ -51,8 +51,8 @@ module Lexer (
    helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme) = (newlist, ip)
     where
-     newnode = (length list) + 1
-     newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):(update list newnode)
+     newnode = length list + 1
+     newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):update list newnode
 
  -- moving ids
  offset :: Int -> IDT.LexNode -> IDT.LexNode
@@ -101,10 +101,10 @@ module Lexer (
 
  -- returns char at given position, ' ' if position is invalid
  charat :: IDT.Grid2D -> (Int, Int) -> Char
- charat code _ | length code == 0 = ' '
- charat code (y, _) | y < 0 || y >= (length code) = ' '
+ charat code _ | null code = ' '
+ charat code (y, _) | y < 0 || y >= length code = ' '
  charat code (y, x)
-   | x < 0 || x >= (length line) = ' '
+   | x < 0 || x >= length line = ' '
    | otherwise = line!!x
   where
    line = code!!y
@@ -113,14 +113,14 @@ module Lexer (
  posdir :: IP -> RelDirection -> (Int, Int)
  posdir ip reldir = posabsdir ip (absolute ip reldir)
  posabsdir :: IP -> Direction -> (Int, Int)
- posabsdir ip N = ((posy ip) - 1, posx ip)
- posabsdir ip NE = ((posy ip) - 1, (posx ip) + 1)
- posabsdir ip E = (posy ip, (posx ip) + 1)
- posabsdir ip SE = ((posy ip) + 1, (posx ip) + 1)
- posabsdir ip S = ((posy ip) + 1, posx ip)
- posabsdir ip SW = ((posy ip) + 1, (posx ip) - 1)
- posabsdir ip W = (posy ip, (posx ip) - 1)
- posabsdir ip NW = ((posy ip) - 1, (posx ip) - 1)
+ posabsdir ip N = (posy ip - 1, posx ip)
+ posabsdir ip NE = (posy ip - 1, posx ip + 1)
+ posabsdir ip E = (posy ip, posx ip + 1)
+ posabsdir ip SE = (posy ip + 1, posx ip + 1)
+ posabsdir ip S = (posy ip + 1, posx ip)
+ posabsdir ip SW = (posy ip + 1, posx ip - 1)
+ posabsdir ip W = (posy ip, posx ip - 1)
+ posabsdir ip NW = (posy ip - 1, posx ip - 1)
 
  -- get the absolute direction out of a relative one
  absolute :: IP -> RelDirection -> Direction
@@ -144,7 +144,7 @@ module Lexer (
 
  -- get the lexem out of a char
  parse :: IDT.Grid2D -> IP -> (Maybe IDT.Lexeme, IP)
- parse code ip = case (current code ip) of
+ parse code ip = case current code ip of
    'b' -> (Just Boom, ip)
    'e' -> (Just EOF, ip)
    'i' -> (Just Input, ip)
@@ -192,17 +192,17 @@ module Lexer (
   where
    turn '@' ip = turnaround ip
    turn '|' ip
-    | (dir ip) `elem` [NW, N, NE] = ip{dir = N}
-    | (dir ip) `elem` [SW, S, SE] = ip{dir = S}
+    | dir ip `elem` [NW, N, NE] = ip{dir = N}
+    | dir ip `elem` [SW, S, SE] = ip{dir = S}
    turn '/' ip
-    | (dir ip) `elem` [N, NE, E] = ip{dir = NE}
-    | (dir ip) `elem` [S, SW, W] = ip{dir = SW}
+    | dir ip `elem` [N, NE, E] = ip{dir = NE}
+    | dir ip `elem` [S, SW, W] = ip{dir = SW}
    turn '-' ip
-    | (dir ip) `elem` [NE, E, SE] = ip{dir = E}
-    | (dir ip) `elem` [SW, S, SE] = ip{dir = S}
+    | dir ip `elem` [NE, E, SE] = ip{dir = E}
+    | dir ip `elem` [SW, S, SE] = ip{dir = S}
    turn '\\' ip
-    | (dir ip) `elem` [W, NW, N] = ip{dir = NW}
-    | (dir ip) `elem` [E, SE, S] = ip{dir = SE}
+    | dir ip `elem` [W, NW, N] = ip{dir = NW}
+    | dir ip `elem` [E, SE, S] = ip{dir = SE}
    turn _ ip = ip
    tempip = move ip Forward
    pushpop string
@@ -212,7 +212,7 @@ module Lexer (
 
  visited :: [PreLexNode] -> IP -> Bool
  visited [] _ = False
- visited ((_, _, _, (x, y, lmode)):xs) ip = (x == (posx ip) && y == (posy ip)) || visited xs ip
+ visited ((_, _, _, (x, y, lmode)):xs) ip = (x == posx ip && y == posy ip) || visited xs ip
 
  finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
  finalize [] result = result
@@ -226,10 +226,10 @@ module Lexer (
  valids code ip = filter (/=invalid) everything
   where
    invalid
-    | (dir ip) `elem` [E, W] = '|'
-    | (dir ip) `elem` [NE, SW] = '\\'
-    | (dir ip) `elem` [N, W] = '-'
-    | (dir ip) `elem` [NW, SE] = '/'
+    | dir ip `elem` [E, W] = '|'
+    | dir ip `elem` [NE, SW] = '\\'
+    | dir ip `elem` [N, W] = '-'
+    | dir ip `elem` [NW, SE] = '/'
     | otherwise = ' '
    cur = current code ip
    everything = "+\\/x|-"++always
@@ -242,10 +242,10 @@ module Lexer (
  toAST input = IDT.ILS (map toGraph $ splitfunctions input)
 
  fromGraph :: IDT.Graph -> String
- fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):(tail $ map fromLexNode (map (offset (-1)) nodes))
+ fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):tail (map (fromLexNode . offset (-1)) nodes)
   where
    fromLexNode :: IDT.LexNode -> String
-   fromLexNode (id, lexeme, follower) = (show id)++";"++(fromLexeme lexeme)++";"++(show follower)++(optional lexeme)
+   fromLexNode (id, lexeme, follower) = show id ++ ";" ++ fromLexeme lexeme ++ ";" ++ show follower ++ optional lexeme
    fromLexeme :: IDT.Lexeme -> String
    fromLexeme Boom = "b"
    fromLexeme EOF = "e"
@@ -273,17 +273,17 @@ module Lexer (
    fromLexeme Start = "$"
    fromLexeme Finish = "#"
    fromLexeme (Junction _) = "v"
-   optional (Junction follow) = ","++(show follow)
+   optional (Junction follow) = "," ++ show follow
    optional _ = ""
 
  splitfunctions :: String -> [[String]]
- splitfunctions = (groupBy (\_ y -> null y || head y /= '[')) . (filter (not . null)) . lines
+ splitfunctions = groupBy (\_ y -> null y || head y /= '[') . filter (not . null) . lines
 
  toGraph :: [String] -> IDT.Graph
- toGraph lns = (init $ tail $ head lns, (1, Start, 2):(map (offset 1) $ nodes $ tail lns))
+ toGraph lns = (init $ tail $ head lns, (1, Start, 2):map (offset 1) (nodes $ tail lns))
   where
    nodes [] = []
-   nodes (ln:lns) = (read id, fixedlex, read follower):(nodes lns)
+   nodes (ln:lns) = (read id, fixedlex, read follower):nodes lns
     where
      (id, other) = span (/=';') ln
      (lex, ip) = parse [other] $ IP 1 0 E
@@ -292,6 +292,6 @@ module Lexer (
       | otherwise = fromJust lex
      fromJust Nothing = error ("line with no lexem found in line: "++ln)
      fromJust (Just x) = x
-     follower = takeWhile (/=',') $ dropWhile (\x -> not (x `elem` "0123456789")) $ drop (posx ip) other
+     follower = takeWhile (/=',') $ dropWhile (`notElem` "0123456789") $ drop (posx ip) other
 
 -- vim:ts=2 sw=2 et
