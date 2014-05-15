@@ -4,5 +4,5 @@ notifications:
         - ss14-swp-uebersetzerbau-haskell@lists.spline.inf.fu-berlin.de
 
 before_install: sudo apt-get update
-install: sudo apt-get install llvm-3.3 && cabal install --only-dependencies --enable-tests
+install: sudo apt-get install llvm-3.3 && cabal install 'llvm-general < 3.4' &&  cabal install --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
