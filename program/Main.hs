@@ -51,7 +51,7 @@ where
 
    importAST inputfile outputfile = do input <- readFile inputfile
                                        let output (IBO x) = x
-                                       content <- output $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST input
+                                       content <- output $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ input
                                        writeFile outputfile content
 
    exportAST inputfile outputfile = do input <- readFile inputfile
