@@ -32,8 +32,11 @@ module SyntacticalAnalysis (
  findPath :: Int -> [IDT.LexNode] -> [Int] -> (Int, [Lexeme], Int)
  findPath x xs ys = genPath x (generate x xs)
     where
+        genPath :: Int -> [(Lexeme, Int)] -> (Int, [Lexeme], Int)
         genPath pathID leFoList = (pathID, map fst leFoList, (snd.last) leFoList)
+        generate :: Int -> [IDT.LexNode] -> [(Lexeme, Int)]
         generate v = genElem . head . filter (\y -> fst' y == v)
+        genElem :: IDT.LexNode -> [(Lexeme, Int)]
         genElem (nodeID, lex, fol)
             |elem fol ys || fol==0 = [(lex, fol)]
             |otherwise             = (lex, fol) : generate fol xs
@@ -46,7 +49,8 @@ module SyntacticalAnalysis (
     where
         isJunct :: Int -> [IDT.LexNode] -> Bool
         isJunct x = any (\y -> Junction x == snd' y)
-	inDeg x = length . filter (\y-> trd' y==x)
+        inDeg :: Int -> [IDT.LexNode] -> Int
+        inDeg x = length . filter (\y-> trd' y==x)
  
  -- |fetch triple components
  fst' :: (a, b, c) -> a
