@@ -71,7 +71,7 @@ executable SWPSoSe14
 
 Test-suite testcases
   main-is: Main.hs
-  build-depends: base, HUnit, hlint, llvm-general-pure, llvm-general, mtl, containers
+  build-depends: base, HUnit, llvm-general-pure, llvm-general, mtl, containers
   hs-source-dirs: tests, src/RailCompiler
   default-language: Haskell2010
   type: exitcode-stdio-1.0
