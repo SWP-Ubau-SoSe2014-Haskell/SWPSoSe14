@@ -13,7 +13,6 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 
 - Install cabal (package cabal-install in most distributions)
 - Install llvm, versions llvm-3.3 and llvm-3.4 work.
-- Install happy (for testing with hlint)
 - run `cabal update`
 - If you don't use llvm-3.4 you manually need to install the corresponding haskell bindings, i.e.: `cabal install llvm-general-3.3.11.2`
 - Switch to project folder
