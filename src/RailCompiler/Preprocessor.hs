@@ -1,4 +1,4 @@
-﻿{- |
+{- |
 Module      :  Preprocessor.hs
 Description :  .
 Copyright   :  (c) Christopher Pockrandt, Nicolas Lehmann
@@ -23,13 +23,13 @@ module Preprocessor (
  
  -- functions --
  process :: IDT.Input2PreProc -> IDT.PreProc2Lexer
- process (IDT.IIP input) = (IDT.IPL output)
+ process (IDT.IIP input) = IDT.IPL output
   where
    output = (groupFunctionsToGrid2Ds . removeLines . lines) input
 
  -- |Return False iff the first character is a dollar sign.
  notStartingWithDollar :: String -> Bool
- notStartingWithDollar = (\x -> null x || head x /= '$')
+ notStartingWithDollar x = null x || head x /= '$'
  
  -- |Removes all leading strings from list until first string begins with a
  -- dollar sign.
