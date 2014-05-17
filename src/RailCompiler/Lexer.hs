@@ -22,7 +22,7 @@ module Lexer (
 
  -- process one function
  processfn :: IDT.Grid2D -> IDT.Graph
- processfn code@(x:xs) = (funcname x, finalize nxs [])
+ processfn code@(x:xs) = if head x /= '$' then (funcname x, [(1, Start, 0)]) else (funcname x, finalize nxs [])
   where
     (nxs, _) = nodes code [(1, Start, 0, (0, 0, SE))] start
 
