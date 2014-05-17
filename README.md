@@ -9,7 +9,7 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 - Folder `documentation`: Contains additional documentation.
 - Folder `src`: Contains the Rail compiler and editor (written in Haskell).
 
-## Dependecies/Building the Compiler
+## Dependencies / Building the Compiler
 
 - Install cabal (package cabal-install in most distributions)
 - Install llvm, versions llvm-3.3 and llvm-3.4 work.
