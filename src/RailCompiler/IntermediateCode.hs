@@ -1,3 +1,11 @@
+{- |
+Module      :  IntermediateCode.hs
+Description :  Intermediate code generation
+Copyright   :  (c) AUTHORS
+License     :  MIT
+Stability   :  unstable
+-}
+
 module IntermediateCode(process) where
 
 -- imports --
