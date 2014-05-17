@@ -67,14 +67,14 @@ module Lexer (
  -- move the instruction pointer a singe step
  step :: IDT.Grid2D -> IP -> IP
  step code ip
-   | forward `elem` val = move ip Forward
-   | left `elem` val && right `elem` val = crash
-   | left `elem` val = move ip Lexer.Left
-   | right `elem` val = move ip Lexer.Right
+   | forward `elem` fval = move ip Forward
+   | left `elem` lval && right `elem` rval = crash
+   | left `elem` lval = move ip Lexer.Left
+   | right `elem` rval = move ip Lexer.Right
    | otherwise = crash
   where
    (left, forward, right) = adjacent code ip
-   val = valids code ip
+   (lval, fval, rval) = valids code ip
 
  stepwhile :: IDT.Grid2D -> IP -> (Char -> Bool) -> (String, IP)
  stepwhile code ip fn
@@ -222,15 +222,21 @@ module Lexer (
  start = IP 0 0 SE
  crash = IP (-1) (-1) NW
 
- valids :: IDT.Grid2D -> IP -> String
- valids code ip = filter (/=invalid) everything
+ turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Lexer.Left} Lexer.Left} Lexer.Left} Lexer.Left}
+ valids :: IDT.Grid2D -> IP -> (String, String, String)
+ valids code ip = tripleinvert (dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
   where
-   invalid
-    | dir ip `elem` [E, W] = '|'
-    | dir ip `elem` [NE, SW] = '\\'
-    | dir ip `elem` [N, W] = '-'
-    | dir ip `elem` [NW, SE] = '/'
-    | otherwise = ' '
+   tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
+   finvalid ip = dirinvalid ip ++ crossinvalid ip -- illegal to move forward
+   dirinvalid ip -- illegal without crosses
+    | dir ip `elem` [E, W] = "|"
+    | dir ip `elem` [NE, SW] = "\\"
+    | dir ip `elem` [N, S] = "-"
+    | dir ip `elem` [NW, SE] = "/"
+    | otherwise = ""
+   crossinvalid ip -- illegal crosses
+    | dir ip `elem` [N, E, S, W] = "x"
+    | otherwise = "+"
    cur = current code ip
    everything = "+\\/x|-"++always
    always = "abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
