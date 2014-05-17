@@ -225,7 +225,6 @@ module Lexer (
  start = IP 0 0 0 SE
  crash = IP 0 (-1) (-1) NW
 
- turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Lexer.Left} Lexer.Left} Lexer.Left} Lexer.Left}
  valids :: IDT.Grid2D -> IP -> (String, String, String)
  valids code ip = tripleinvert (dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
   where
