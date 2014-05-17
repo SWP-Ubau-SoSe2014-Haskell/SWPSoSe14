@@ -51,8 +51,9 @@ module Lexer (
   where
    (lexeme, newip) = parse code ip
    helper _ list ip Nothing = (list, ip)
-   helper _ list ip (Just Finish) = (newlist, crash)
-   helper code list ip (Just lexeme) = (newlist, ip)
+   helper code list ip (Just lexeme)
+     | lexeme == Finish = (newlist, crash)
+     | otherwise = (newlist, ip)
     where
      newnode = length list + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):update list newnode
