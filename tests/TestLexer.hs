@@ -26,6 +26,6 @@
    nodes i (x:xs) = (i, x, i+1):(nodes (i+1) xs)
 
  crash :: IDT.Lexer2SynAna
- crash = IDT.ILS ("main", [(1, Start, 0)])
+ crash = IDT.ILS [("main", [(1, Start, 0)])]
  
  testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05]
