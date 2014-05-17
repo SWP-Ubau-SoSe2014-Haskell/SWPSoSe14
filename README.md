@@ -11,6 +11,11 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 - `tests` contains the hunit tests
 - `rail-examples` contains some Rail example programs
 
+## Development
+
+If you plan to contribute to the project make sure that your contribution does
+not brake any tests and hlint is happy.
+
 ## Dependencies / Building the Compiler
 
 - Install cabal (package cabal-install in most distributions)
