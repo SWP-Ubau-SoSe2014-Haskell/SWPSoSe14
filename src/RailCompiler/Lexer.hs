@@ -41,7 +41,7 @@ module Lexer (
                                                 -- not modified here at all.
   | otherwise = if endless then ([(1, Start, 1, (0, 0, SE))], crash) else nodes code newlist newip
      where
-      endless = list == [(1, Start, 0, (0, 0, SE))] && (count ip) > (sum $ map legth code)
+      endless = list == [(1, Start, 0, (0, 0, SE))] && (count ip) > (sum $ map length code)
       tempip = step code ip
       (newlist, newip) = handle code list tempip
 
