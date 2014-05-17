@@ -10,8 +10,7 @@
 
  -- functions --
  testLexer01 = "Proper turning: " ~: (res [Constant "1"]) @=? (run [" \\", "  \\   /-t-#", "   ---/--f-#"])
- testLexer02 = "Reflection: " ~: (res [Constant "1"]) @=?
- (run [" \\", "  \\   #  #  #", "   \\   f f f", "    \\   \\|/", " #t-------@-f#", "         /|\\", "        f f f", "       #  #  #"])
+ testLexer02 = "Reflection: " ~: (res [Constant "1"]) @=? (run [" \\", "  \\   #  #  #", "   \\   f f f", "    \\   \\|/", " #t-------@-f#", "         /|\\", "        f f f", "       #  #  #"])
  testLexer03 = "Rail crash: " ~: (IDT.ILS ("main", [(1, Start, 0)])) @=? (run [" /"])
  -- testLexer04 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
  -- testLexer05 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
