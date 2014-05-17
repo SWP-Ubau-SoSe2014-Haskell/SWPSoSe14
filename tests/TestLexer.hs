@@ -11,10 +11,9 @@
  -- functions --
  testLexer01 = "Proper turning: " ~: (res [Constant "1"]) @=? (run [" \\", "  \\   /-t-#", "   ---/--f-#"])
  testLexer02 = "Reflection: " ~: (res [Constant "1"]) @=? (run [" \\", "  \\   #  #  #", "   \\   f f f", "    \\   \\|/", " #t-------@-f#", "         /|\\", "        f f f", "       #  #  #"])
- testLexer03 = "Rail crash: " ~: (IDT.ILS ("main", [(1, Start, 0)])) @=? (run [" /"])
- -- testLexer04 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testLexer05 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- ...
+ testLexer03 = "Rail crash: " ~: crash @=? (run [" /"])
+ testLexer04 = "One liner: " ~: crash @=? (run [])
+ testLexer05 = "Endless loop: " ~: (IDT.ILS ("main", [(1, Start, 1)])) @=? (run [" \\", "@--@"])
 
  -- helper functions
  run :: IDT.Graph -> IDT.Lexer2SynAna
@@ -25,5 +24,8 @@
   where
    nodes i [] = [(i, Finish, 0)]
    nodes i (x:xs) = (i, x, i+1):(nodes (i+1) xs)
+
+ crash :: IDT.Lexer2SynAna
+ crash = IDT.ILS ("main", [(1, Start, 0)])
  
- testModule = [testLexer01, testLexer02, testLexer03]
+ testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05]
