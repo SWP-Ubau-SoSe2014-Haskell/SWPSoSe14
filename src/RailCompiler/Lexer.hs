@@ -10,11 +10,11 @@ module Lexer (
  import Data.List
 
  -- added identifier for nodes to check when we have circles
- type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction))
+ type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction)) deriving Eq
  data Direction = N | NE | E | SE | S | SW | W | NW deriving Eq
  data RelDirection = Left | Forward | Right
  -- instruction pointer consisting of position and an orientation
- data IP = IP { posx :: Int, posy :: Int, dir :: Direction } deriving Eq
+ data IP = IP { count :: Int, posx :: Int, posy :: Int, dir :: Direction } deriving Eq
  
  -- functions --
  process :: IDT.PreProc2Lexer -> IDT.Lexer2SynAna
@@ -39,8 +39,9 @@ module Lexer (
                                                 -- a leading node without a follower
                                                 -- (follower == 0) because it is
                                                 -- not modified here at all.
-  | otherwise = nodes code newlist newip
+  | otherwise = if endless then ([(1, Start, 1, (0, 0, SE))], crash) else nodes code newlist newip
      where
+      endless = list == [(1, Start, 0, (0, 0, SE))] && (count ip) > (sum $ map legth code)
       tempip = step code ip
       (newlist, newip) = handle code list tempip
 
@@ -86,9 +87,10 @@ module Lexer (
    (resstring, resip) = stepwhile code (move ip Forward) fn
 
  move :: IP -> RelDirection -> IP
- move ip reldir = ip{posx = newx, posy = newy, dir = absolute ip reldir}
+ move ip reldir = ip{count = newcount, posx = newx, posy = newy, dir = absolute ip reldir}
   where
    (newy, newx) = posdir ip reldir
+   newcount = (count ip) + 1
 
  current :: IDT.Grid2D -> IP -> Char
  current code ip = charat code (posy ip, posx ip)
@@ -220,8 +222,8 @@ module Lexer (
  finalize ((node, lexeme, following, _):xs) result = finalize xs ((node, lexeme, following):result)
 
  start :: IP
- start = IP 0 0 SE
- crash = IP (-1) (-1) NW
+ start = IP 0 0 0 SE
+ crash = IP 0 (-1) (-1) NW
 
  turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Lexer.Left} Lexer.Left} Lexer.Left} Lexer.Left}
  valids :: IDT.Grid2D -> IP -> (String, String, String)
@@ -293,7 +295,7 @@ module Lexer (
    nodes (ln:lns) = (read id, fixedlex, read follower):nodes lns
     where
      (id, other) = span (/=';') ln
-     (lex, ip) = parse [other] $ IP 1 0 E
+     (lex, ip) = parse [other] $ IP 0 1 0 E
      fixedlex
       | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
       | otherwise = fromJust lex
