@@ -20,7 +20,7 @@
  run grid = Lexer.process (IDT.IPL ["$ 'main'":grid])
 
  res :: [Lexeme] -> IDT.Lexer2SynAna
- res [lexeme] = IDT.ILS [("main", (1, Start, 2):(nodes 2 lexeme))]
+ res lexeme = IDT.ILS [("main", (1, Start, 2):(nodes 2 lexeme))]
   where
    nodes i [] = [(i, Finish, 0)]
    nodes i (x:xs) = (i, x, i+1):(nodes (i+1) xs)
