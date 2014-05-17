@@ -16,8 +16,8 @@
  testLexer05 = "Endless loop: " ~: (IDT.ILS ("main", [(1, Start, 1)])) @=? (run [" \\", "@--@"])
 
  -- helper functions
- run :: IDT.Graph -> IDT.Lexer2SynAna
- run graph = Lexer.process (IDT.IPL ["$ 'main'":graph])
+ run :: IDT.Grid2D -> IDT.Lexer2SynAna
+ run grid = Lexer.process (IDT.IPL ["$ 'main'":grid])
 
  res :: [Lexeme] -> IDT.Lexer2SynAna
  res [lexeme] = IDT.ILS ("main", (1, Start, 2):(nodes 2 lexeme))
