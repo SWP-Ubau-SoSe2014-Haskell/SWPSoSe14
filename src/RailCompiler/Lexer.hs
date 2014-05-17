@@ -34,7 +34,7 @@ module Lexer (
  -- get the nodes for the given function
  nodes :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
  nodes code list ip
-  | current code tempip == ' ' = (list, tempip) -- will automatically lead to a
+  | current code tempip `elem` " #" = (list, tempip) -- will automatically lead to a
                                                 -- crash since the list will have
                                                 -- a leading node without a follower
                                                 -- (follower == 0) because it is
