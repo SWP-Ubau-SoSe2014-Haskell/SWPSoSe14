@@ -10,7 +10,7 @@ module Lexer (
  import Data.List
 
  -- added identifier for nodes to check when we have circles
- type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction)) deriving Eq
+ type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction))
  data Direction = N | NE | E | SE | S | SW | W | NW deriving Eq
  data RelDirection = Left | Forward | Right
  -- instruction pointer consisting of position and an orientation
