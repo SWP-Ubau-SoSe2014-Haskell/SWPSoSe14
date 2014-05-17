@@ -41,7 +41,7 @@ module Lexer (
                                                 -- not modified here at all.
   | otherwise = if endless then ([(1, Start, 1, (0, 0, SE))], crash) else nodes code newlist newip
      where
-      endless = list == [(1, Start, 0, (0, 0, SE))] && (count ip) > (sum $ map length code)
+      endless = list == [(1, Start, 0, (0, 0, SE))] && count ip > sum (map length code)
       tempip = step code ip
       (newlist, newip) = handle code list tempip
 
@@ -90,7 +90,7 @@ module Lexer (
  move ip reldir = ip{count = newcount, posx = newx, posy = newy, dir = absolute ip reldir}
   where
    (newy, newx) = posdir ip reldir
-   newcount = (count ip) + 1
+   newcount = count ip + 1
 
  current :: IDT.Grid2D -> IP -> Char
  current code ip = charat code (posy ip, posx ip)
