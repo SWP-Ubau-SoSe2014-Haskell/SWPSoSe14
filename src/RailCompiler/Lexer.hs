@@ -46,7 +46,6 @@ module Lexer (
       tempip = step code ip
       (newlist, newip) = handle code list tempip
 
- -- TODO: changing movemend based on used rails
  handle :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
  handle code list ip = helper code list newip lexeme
   where
@@ -54,8 +53,10 @@ module Lexer (
    helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme)
      | lexeme == Finish = (newlist, crash)
+     | knownat > 0 = (update list knownat, crash)
      | otherwise = (newlist, ip)
     where
+     knownat = visited code ip
      newnode = length list + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):update list newnode
 
@@ -216,9 +217,11 @@ module Lexer (
     | string!!1 == '!' && last string == '!' = Just (Pop (tail $ init string))
 		| otherwise = Just (Push string)
 
- visited :: [PreLexNode] -> IP -> Bool
- visited [] _ = False
- visited ((_, _, _, (x, y, lmode)):xs) ip = (x == posx ip && y == posy ip) || visited xs ip
+ visited :: [PreLexNode] -> IP -> Int
+ visited [] _ = 0
+ visited ((id, _, _, (x, y, d)):xs) ip
+  | x == posx ip && y == posy ip && d == dir ip = id
+  | otherwise = visited xs ip
 
  finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
  finalize [] result = result
