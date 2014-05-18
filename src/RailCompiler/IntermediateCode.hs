@@ -1,3 +1,11 @@
+{- |
+Module      :  IntermediateCode.hs
+Description :  Intermediate code generation
+Copyright   :  (c) AUTHORS
+License     :  MIT
+Stability   :  unstable
+-}
+
 module IntermediateCode(process) where
 
 -- imports --
@@ -22,23 +30,31 @@ generateModule definitions = defaultModule {
   moduleDefinitions = definitions
 }
 
+-- generate a ret void
 terminator :: Named Terminator
 terminator = Do Ret {
   returnOperand = Nothing,
   metadata' = []
 }
 
+-- generate global byte array (constant string)
 createGlobalString :: Lexeme -> Global
 createGlobalString (Constant s) = globalVariableDefaults {
-  Global.type' = ArrayType {nArrayElements = fromInteger l, elementType = IntegerType {typeBits = 8}},
+  Global.type' = ArrayType {
+    nArrayElements = fromInteger l,
+    elementType = IntegerType {typeBits = 8}
+  },
   Global.initializer = Just Array {
     memberType = IntegerType {typeBits = 8},
     memberValues = map trans s
-  }}
+  }
+}
   where
     l = toInteger $ length s
-    trans c = Int {integerBits = 8, integerValue = toInteger $ ord c}
+    trans c = Int { integerBits = 8, integerValue = toInteger $ ord c }
 
+-- create constant strings/byte arrays for module
+-- TODO maybe rename these subfunctions?
 generateConstants :: [AST] -> [Global]
 generateConstants = map createGlobalString . getAllCons
 
@@ -53,6 +69,7 @@ generateC (pathID, lex, nextPath) = filter checkCons lex
 checkCons (Constant c) = True
 checkCons _ = False
 
+-- pointer type for i8* used e.g. as "string" pointer
 bytePointerType = PointerType {
   pointerReferent = IntegerType 8,
   pointerAddrSpace = AddrSpace 0
@@ -65,31 +82,53 @@ puts = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([ Parameter bytePointerType (UnName 0) [] ], False)
 }
 
+-- function declaration for push
 push = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "push",
   Global.returnType = VoidType,
   Global.parameters = ([ Parameter bytePointerType (UnName 0) [] ], False)
 }
 
+-- function declaration for pop
 pop = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "pop",
   Global.returnType = bytePointerType,
   Global.parameters = ([], False)
 }
 
+-- function declaration for peek
 peek = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "peek",
   Global.returnType = bytePointerType,
   Global.parameters = ([], False)
 }
 
+-- generate instruction for push of a constant
+-- access to our push function definied in stack.ll??
+-- http://llvm.org/docs/LangRef.html#call-instruction
 generateInstruction (Constant value) =
   [Do LLVM.General.AST.Call {
+    -- The optional tail and musttail markers indicate that the optimizers
+    --should perform tail call optimization.
     isTailCall = False,
+    -- The optional "cconv" marker indicates which calling convention the call
+    -- should use. If none is specified, the call defaults to using C calling
+    -- conventions.
     callingConvention = C,
+    -- The optional Parameter Attributes list for return values. Only 'zeroext',
+    -- 'signext', and 'inreg' attributes are valid here
     returnAttributes = [],
+    -- actual function to call
     function = Right $ ConstantOperand $ GlobalReference $ Name "push",
+    -- argument list whose types match the function signature argument types
+    -- and parameter attributes. All arguments must be of first class type. If
+    -- the function signature indicates the function accepts a variable number of
+    -- arguments, the extra arguments can be specified.
     arguments = [
+          -- The 'getelementptr' instruction is used to get the address of a
+          -- subelement of an aggregate data structure. It performs address 
+          -- calculation only and does not access memory.
+          -- http://llvm.org/docs/LangRef.html#getelementptr-instruction
           (ConstantOperand Constant.GetElementPtr {
             Constant.inBounds = True,
             Constant.address = Constant.GlobalReference (UnName 0), --TODO look up reference in symbol table
@@ -99,6 +138,8 @@ generateInstruction (Constant value) =
             ]
           }, [])
     ],
+    -- optional function attributes list. Only 'noreturn', 'nounwind',
+    -- 'readonly' and 'readnone' attributes are valid here.
     functionAttributes = [],
     metadata = []
   }]
@@ -112,7 +153,7 @@ generateInstruction (Constant value) =
 generateInstruction Output =
   [
   --pop
-  UnName 0 := LLVM.General.AST.Call {
+  UnName 0 := LLVM.General.AST.Call { --FIXME UnName 0 is a hack we need to keep track of local refs
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
@@ -128,7 +169,7 @@ generateInstruction Output =
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "puts",
     arguments = [
-      (LocalReference $ UnName 0, [])
+      (LocalReference $ UnName 0, []) --FIXME UnName 0 is a hack we need to keep track of local refs
     ],
     functionAttributes = [],
     metadata = []
@@ -190,4 +231,4 @@ process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [push, pop, pe
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     dict = fromList $ zipWith foo [0..] $ getAllCons input
-    foo index (Constant s) = (s, (length s, index))
+    foo index (Constant s) = (s, (length s, index)) --TODO rename foo to something meaningful e.g. createSymTable
