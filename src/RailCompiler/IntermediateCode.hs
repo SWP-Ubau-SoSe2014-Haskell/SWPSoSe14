@@ -104,7 +104,7 @@ peek = GlobalDefinition $ Global.functionDefaults {
 }
 
 -- generate instruction for push of a constant
--- access to our push function definied in stack.ll
+-- access to our push function definied in stack.ll??
 -- http://llvm.org/docs/LangRef.html#call-instruction
 generateInstruction (Constant value) =
   [Do LLVM.General.AST.Call {
