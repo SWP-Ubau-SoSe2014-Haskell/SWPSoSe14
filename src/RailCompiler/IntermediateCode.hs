@@ -125,6 +125,10 @@ generateInstruction (Constant value) =
     -- the function signature indicates the function accepts a variable number of
     -- arguments, the extra arguments can be specified.
     arguments = [
+          -- The 'getelementptr' instruction is used to get the address of a
+          -- subelement of an aggregate data structure. It performs address 
+          -- calculation only and does not access memory.
+          -- http://llvm.org/docs/LangRef.html#getelementptr-instruction
           (ConstantOperand Constant.GetElementPtr {
             Constant.inBounds = True,
             Constant.address = Constant.GlobalReference (UnName 0), --TODO look up reference in symbol table
