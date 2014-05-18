@@ -1,12 +1,13 @@
 module Lexer (
-              process,   -- main function of the module "Lexer"
+              -- * Main (pipeline) functions
+              process,
+              -- * Utility functions
               fromAST, toAST
              )
  where
 
  -- imports --
  import InterfaceDT as IDT
-
  import Data.List
 
  -- added identifier for nodes to check when we have circles
