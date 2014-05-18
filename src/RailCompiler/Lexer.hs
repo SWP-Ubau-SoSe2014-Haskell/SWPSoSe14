@@ -10,12 +10,33 @@ module Lexer (
  import InterfaceDT as IDT
  import Data.List
 
- -- added identifier for nodes to check when we have circles
+ -- |Modified 'IDT.LexNode' with an additional identifier for nodes
+ -- to check whether we have circles in the graph.
+ --
+ -- The identifier is the last element of the tuple and contains
+ -- the following sub-elements, in this order:
+ --
+ --     * When we visited this node, at which X position did we start to parse its lexeme?
+ --     * When we visited this node, at which Y position did we start to parse its lexeme?
+ --     * When we visited this node, from which direction did we come?
  type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction))
+ -- |An absolute direction.
  data Direction = N | NE | E | SE | S | SW | W | NW deriving Eq
+ -- |A relative direction.
  data RelDirection = Left | Forward | Right
- -- instruction pointer consisting of position and an orientation
- data IP = IP { count :: Int, posx :: Int, posy :: Int, dir :: Direction } deriving Eq
+ -- |Instruction pointer consisting of position and an orientation.
+ data IP =
+    IP {
+      -- |Number of processed characters since start of current function.
+      count :: Int,
+      -- |Current X position.
+      posx :: Int,
+      -- |Current Y position.
+      posy :: Int,
+      -- |Current 'Direction'.
+      dir :: Direction
+    }
+  deriving Eq
  
  -- functions --
  process :: IDT.PreProc2Lexer -> IDT.Lexer2SynAna
@@ -23,7 +44,8 @@ module Lexer (
 
  -- process one function
  processfn :: IDT.Grid2D -> IDT.Graph
- processfn [x] = (funcname x, [(1, Start, 0)]) -- oneliners are illegal
+ processfn [x] = (funcname x, [(1, Start, 0)]) -- oneliners are illegal; follower == 0 will
+                                               -- lead to a crash, which is what we want.
  processfn code@(x:xs) = if head x /= '$' then (funcname x, [(1, Start, 0)]) else (funcname x, finalize nxs [])
   where
     (nxs, _) = nodes code [(1, Start, 0, (0, 0, SE))] start
@@ -35,13 +57,16 @@ module Lexer (
  -- get the nodes for the given function
  nodes :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
  nodes code list ip
-  | current code tempip == ' ' = (list, tempip) -- will automatically lead to a
+  | current code tempip == ' ' = (list, tempip) -- If we are not finished yet, this will
+                                                -- automatically lead to a
                                                 -- crash since the list will have
                                                 -- a leading node without a follower
                                                 -- (follower == 0) because it is
                                                 -- not modified here at all.
   | otherwise = if endless then ([(1, Start, 1, (0, 0, SE))], crash) else nodes code newlist newip
      where
+      -- This checks if we have e. g. two reflectors that "bounce" the IP between them
+      -- endlessly.
       endless = list == [(1, Start, 0, (0, 0, SE))] && count ip > sum (map length code)
       tempip = step code ip
       (newlist, newip) = handle code list tempip
