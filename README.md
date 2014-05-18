@@ -5,11 +5,18 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 
 ## Contents of this repository
 
-- The main documentation will be found in the code.
-- Folder `documentation`: Contains additional documentation.
-- Folder `src`: Contains the Rail compiler and editor (written in Haskell).
+- `documentation` contains additional documentation.
+  - The main documentation will be found in the code.
+- `src` contains the Rail compiler and editor (written in Haskell).
+- `tests` contains the hunit tests
+- `rail-examples` contains some Rail example programs
 
-## Dependecies/Building the Compiler
+## Development
+
+If you plan to contribute to the project make sure that your contribution does
+not brake any tests and hlint is happy.
+
+## Dependencies / Building the Compiler
 
 - Install cabal (package cabal-install in most distributions)
 - Install llvm, versions llvm-3.3 and llvm-3.4 work.
