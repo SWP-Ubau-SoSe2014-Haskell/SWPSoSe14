@@ -81,7 +81,7 @@ module Lexer (
      | knownat > 0 = (update list knownat, crash)
      | otherwise = (newlist, ip)
     where
-     knownat = visited code ip
+     knownat = visited list ip
      newnode = length list + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):update list newnode
 
