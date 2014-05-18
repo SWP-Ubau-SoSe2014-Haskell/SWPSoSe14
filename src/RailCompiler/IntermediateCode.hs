@@ -83,12 +83,26 @@ peek = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- access to our push function definied in stack.ll
+-- http://llvm.org/docs/LangRef.html#call-instruction
 generateInstruction (Constant value) =
   [Do LLVM.General.AST.Call {
+    -- The optional tail and musttail markers indicate that the optimizers
+    --should perform tail call optimization.
     isTailCall = False,
+    -- The optional "cconv" marker indicates which calling convention the call
+    -- should use. If none is specified, the call defaults to using C calling
+    -- conventions.
     callingConvention = C,
+    -- The optional Parameter Attributes list for return values. Only 'zeroext',
+    -- 'signext', and 'inreg' attributes are valid here
     returnAttributes = [],
+    -- actual function to call
     function = Right $ ConstantOperand $ GlobalReference $ Name "push",
+    -- argument list whose types match the function signature argument types
+    -- and parameter attributes. All arguments must be of first class type. If
+    -- the function signature indicates the function accepts a variable number of
+    -- arguments, the extra arguments can be specified.
     arguments = [
           (ConstantOperand Constant.GetElementPtr {
             Constant.inBounds = True,
@@ -99,6 +113,8 @@ generateInstruction (Constant value) =
             ]
           }, [])
     ],
+    -- optional function attributes list. Only 'noreturn', 'nounwind',
+    -- 'readonly' and 'readnone' attributes are valid here.
     functionAttributes = [],
     metadata = []
   }]
