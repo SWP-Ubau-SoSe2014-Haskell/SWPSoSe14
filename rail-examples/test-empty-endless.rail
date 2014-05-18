@@ -1,5 +1,5 @@
-test-endless.rail
+test-empty-endless.rail
 
-$
+$ 'main'
  \
 @--@
