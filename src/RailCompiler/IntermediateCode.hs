@@ -6,6 +6,8 @@ License     :  MIT
 Stability   :  unstable
 -}
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module IntermediateCode(process) where
 
 -- imports --
@@ -21,7 +23,25 @@ import LLVM.General.AST.Operand
 import LLVM.General.AST.Instruction as Instruction
 import LLVM.General.AST.Float
 import Data.Char
+import Data.Word
 import Data.Map hiding (filter, map)
+
+import Control.Monad.State
+import Control.Applicative
+
+data CodegenState = CodegenState {
+  blocks :: [BasicBlock],
+  count :: Word --Count of unnamed Instructions
+}
+
+newtype Codegen a = Codegen { runCodegen :: State CodegenState a }
+  deriving (Functor, Applicative, Monad, MonadState CodegenState)
+
+emptyCodegen :: CodegenState
+emptyCodegen = CodegenState [] 0
+
+execCodegen :: Codegen a -> CodegenState
+execCodegen m = execState (runCodegen m) emptyCodegen
 
 -- generate module from list of definitions
 generateModule :: [Definition] -> Module
@@ -106,8 +126,10 @@ peek = GlobalDefinition $ Global.functionDefaults {
 -- generate instruction for push of a constant
 -- access to our push function definied in stack.ll??
 -- http://llvm.org/docs/LangRef.html#call-instruction
-generateInstruction (Constant value) =
-  [Do LLVM.General.AST.Call {
+generateInstruction (Constant value) = do
+  --state holen
+  index <- fresh
+  return [UnName index := LLVM.General.AST.Call {
     -- The optional tail and musttail markers indicate that the optimizers
     --should perform tail call optimization.
     isTailCall = False,
@@ -126,7 +148,7 @@ generateInstruction (Constant value) =
     -- arguments, the extra arguments can be specified.
     arguments = [
           -- The 'getelementptr' instruction is used to get the address of a
-          -- subelement of an aggregate data structure. It performs address 
+          -- subelement of an aggregate data structure. It performs address
           -- calculation only and does not access memory.
           -- http://llvm.org/docs/LangRef.html#getelementptr-instruction
           (ConstantOperand Constant.GetElementPtr {
@@ -150,10 +172,10 @@ generateInstruction (Constant value) =
 -- a list of Instructions that we can insert in the BasicBlock
 
 -- call puts with top of stack
-generateInstruction Output =
-  [
-  --pop
-  UnName 0 := LLVM.General.AST.Call { --FIXME UnName 0 is a hack we need to keep track of local refs
+generateInstruction Output = do
+  index <- fresh
+  index2 <- fresh
+  return [ UnName index := LLVM.General.AST.Call { --FIXME UnName 0 is a hack we need to keep track of local refs
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
@@ -161,20 +183,17 @@ generateInstruction Output =
     arguments = [],
     functionAttributes = [],
     metadata = []
-  },
-  --call puts with pop result
-  Do LLVM.General.AST.Call {
+  }, UnName index2 := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "puts",
     arguments = [
-      (LocalReference $ UnName 0, []) --FIXME UnName 0 is a hack we need to keep track of local refs
+      (LocalReference $ UnName index, []) --FIXME UnName 0 is a hack we need to keep track of local refs
     ],
     functionAttributes = [],
     metadata = []
-  }
-  ]
+  }]
 
 -- do nothing?
 --generateInstruction Start =
@@ -184,7 +203,7 @@ generateInstruction Output =
 --generateInstruction Finish = undefined
 
 -- noop
-generateInstruction _ = [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
+generateInstruction _ = return [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
 
 isUsefulInstruction Start = False
 isUsefulInstruction _ = True
@@ -192,26 +211,46 @@ isUsefulInstruction _ = True
 -- removes Lexemes without meaning to us
 filterInstrs = filter isUsefulInstruction
 
-generateBasicBlock :: (Int, [Lexeme], Int) -> BasicBlock
-generateBasicBlock (label, instructions, 0) =
-  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) terminator
-generateBasicBlock (label, instructions, jumpLabel) =
-  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) branch
+generateBasicBlock :: (Int, [Lexeme], Int) -> Codegen BasicBlock
+generateBasicBlock (label, instructions, 0) = do
+  tmp <- mapM generateInstruction $ filterInstrs instructions
+  --BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) terminator
+  return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) terminator
+generateBasicBlock (label, instructions, jumpLabel) = do
+  tmp <- mapM generateInstruction $ filterInstrs instructions
+  return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) branch
   where branch = Do Br {
     dest = Name $ "l_" ++ show jumpLabel,
     metadata' = []
   }
 
-generateBasicBlocks :: [(Int, [Lexeme], Int)] -> [BasicBlock]
-generateBasicBlocks = map generateBasicBlock
+
+generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen ()
+generateBasicBlocks lexemes = do
+  blks <- mapM generateBasicBlock lexemes
+  modify $ \s -> s {
+    blocks = blks,
+    count = 0 --TODO remove?
+  }
+  return ()
+--generateBasicBlocks lexemes = return (map generateBasicBlock lexemes)
 
 -- generate function definition from AST
 generateFunction :: AST -> Definition
 generateFunction (name, lexemes) = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name name,
   Global.returnType = VoidType,
-  Global.basicBlocks = generateBasicBlocks lexemes
-}
+  Global.basicBlocks = blks -- generateBasicBlocks lexemes --call something with CodegenState here
+} where blks = createBlocks $ execCodegen $ generateBasicBlocks lexemes
+
+createBlocks :: CodegenState -> [BasicBlock]
+createBlocks = blocks
+
+fresh :: Codegen Word
+fresh = do
+  i <- gets count
+  modify $ \s -> s { count = 1 + i }
+  return $ i + 1
 
 -- generate list of LLVM Definitions from list of ASTs
 generateFunctions :: [AST] -> [Definition]
