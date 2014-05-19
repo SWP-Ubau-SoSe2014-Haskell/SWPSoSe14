@@ -1,4 +1,4 @@
-﻿module TPreProc (
+﻿module TestPreProc (
                     testModule     -- tests the module Preprocessor
                    )
  where

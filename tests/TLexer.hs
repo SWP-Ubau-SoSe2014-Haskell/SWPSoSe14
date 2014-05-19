@@ -1,4 +1,4 @@
-﻿module TLexer (
+﻿module TestLexer (
                   testModule     -- tests the module Lexer
                  )
  where

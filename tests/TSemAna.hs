@@ -1,4 +1,4 @@
-﻿module TSemAna (
+﻿module TestSemAna (
                    testModule     -- tests the module SemanticalAnalysis
                   )
  where
