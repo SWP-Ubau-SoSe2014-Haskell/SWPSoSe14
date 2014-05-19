@@ -1,4 +1,4 @@
-﻿module TBackend (
+﻿module TestBackend (
                     testModule     -- tests the module Backend
                    )
  where

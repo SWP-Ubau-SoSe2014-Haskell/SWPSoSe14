@@ -1,4 +1,4 @@
-module TInterCode (testModule) where
+module TestInterCode (testModule) where
 
  -- imports --
 import Test.HUnit

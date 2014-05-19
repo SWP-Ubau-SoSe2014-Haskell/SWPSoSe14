@@ -1,4 +1,4 @@
-﻿module TCodeOpt (
+﻿module TestCodeOpt (
                     testModule     -- tests the module CodeOptimization
                    )
  where
