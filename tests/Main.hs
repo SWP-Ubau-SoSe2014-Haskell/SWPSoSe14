@@ -3,13 +3,13 @@ module Main(main) where
 -- imports --
 import Test.HUnit
 import InterfaceDT                   as IDT
-import qualified TestPreProc
-import qualified TestLexer
-import qualified TestSynAna
-import qualified TestSemAna
-import qualified TestInterCode
-import qualified TestCodeOpt
-import qualified TestBackend
+import qualified TPreProc
+import qualified TLexer
+import qualified TSynAna
+import qualified TSemAna
+import qualified TInterCode
+import qualified TCodeOpt
+import qualified TBackend
 
 import System.Exit
 
@@ -21,12 +21,12 @@ getExitCode _ = ExitFailure 1
 main :: IO ()
 main = do
   counts <- runTestTT $ TestList (
-    TestPreProc.testModule ++
-    TestLexer.testModule ++
-    TestSynAna.testModule ++
-    TestSemAna.testModule ++
-    TestInterCode.testModule ++
-    TestCodeOpt.testModule ++
-    TestBackend.testModule
+    TPreProc.testModule ++
+    TLexer.testModule ++
+    TSynAna.testModule ++
+    TSemAna.testModule ++
+    TInterCode.testModule ++
+    TCodeOpt.testModule ++
+    TBackend.testModule
     )
   exitWith $ getExitCode counts
