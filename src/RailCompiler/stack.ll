@@ -14,20 +14,18 @@ define void @push(i8* %str_ptr) {
   ret void
 }
 
-define i64 @add(i64 %a, i64 %b) {
+define i64 @add() {
   ; get top of stack
-  %top_1   = load i64* @sp
-  %addr_1 = getelementptr [1000 x i8*]* @stack, i8 0, i64 %top_1
+  %top_1   = call i8*()* @pop()
 
   ; get second top of stack
-  %top_2 = sub i64 %sp, 1
-  %addr_2 = getelementptr [1000 x i8*]* @stack, i8 0, i64 %top_2
+  %top_2   = call i8*()* @pop()
 
   ; add the two values
-  ; here might be some dereferencing of the addresses needed to ensure
-  ; that we not add the addresse but the values the point to?
-  %res = add i64 %addr_1, %addr_2
-  ret i64 %res
+  %res = add i64 %top_1, %top_2
+
+  ; store result on stack
+  call void @push(i8* *res)
 }
 
 define i8* @peek() {
