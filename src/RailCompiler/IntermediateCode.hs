@@ -127,7 +127,6 @@ peek = GlobalDefinition $ Global.functionDefaults {
 -- access to our push function definied in stack.ll??
 -- http://llvm.org/docs/LangRef.html#call-instruction
 generateInstruction (Constant value) = do
-  --state holen
   index <- fresh
   return [UnName index := LLVM.General.AST.Call {
     -- The optional tail and musttail markers indicate that the optimizers
@@ -175,7 +174,7 @@ generateInstruction (Constant value) = do
 generateInstruction Output = do
   index <- fresh
   index2 <- fresh
-  return [ UnName index := LLVM.General.AST.Call { --FIXME UnName 0 is a hack we need to keep track of local refs
+  return [ UnName index := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
@@ -189,7 +188,7 @@ generateInstruction Output = do
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "puts",
     arguments = [
-      (LocalReference $ UnName index, []) --FIXME UnName 0 is a hack we need to keep track of local refs
+      (LocalReference $ UnName index, [])
     ],
     functionAttributes = [],
     metadata = []
@@ -214,7 +213,6 @@ filterInstrs = filter isUsefulInstruction
 generateBasicBlock :: (Int, [Lexeme], Int) -> Codegen BasicBlock
 generateBasicBlock (label, instructions, 0) = do
   tmp <- mapM generateInstruction $ filterInstrs instructions
-  --BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) terminator
   return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) terminator
 generateBasicBlock (label, instructions, jumpLabel) = do
   tmp <- mapM generateInstruction $ filterInstrs instructions
@@ -233,7 +231,6 @@ generateBasicBlocks lexemes = do
     count = 0 --TODO remove?
   }
   return ()
---generateBasicBlocks lexemes = return (map generateBasicBlock lexemes)
 
 -- generate function definition from AST
 generateFunction :: AST -> Definition
