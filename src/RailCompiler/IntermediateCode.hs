@@ -40,8 +40,8 @@ newtype Codegen a = Codegen { runCodegen :: State CodegenState a }
 emptyCodegen :: CodegenState
 emptyCodegen = CodegenState [] 0
 
-execCodegen :: Codegen a -> CodegenState
-execCodegen m = execState (runCodegen m) emptyCodegen
+execCodegen :: Codegen a -> a
+execCodegen m = evalState (runCodegen m) emptyCodegen
 
 -- generate module from list of definitions
 generateModule :: [Definition] -> Module
@@ -223,13 +223,8 @@ generateBasicBlock (label, instructions, jumpLabel) = do
   }
 
 
-generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen ()
-generateBasicBlocks lexemes = do
-  blks <- mapM generateBasicBlock lexemes
-  modify $ \s -> s {
-    blocks = blks
-  }
-  return ()
+generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen [BasicBlock]
+generateBasicBlocks = mapM generateBasicBlock
 
 -- generate function definition from AST
 generateFunction :: AST -> Definition
@@ -237,10 +232,7 @@ generateFunction (name, lexemes) = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name name,
   Global.returnType = VoidType,
   Global.basicBlocks = blks -- generateBasicBlocks lexemes --call something with CodegenState here
-} where blks = createBlocks $ execCodegen $ generateBasicBlocks lexemes
-
-createBlocks :: CodegenState -> [BasicBlock]
-createBlocks = blocks
+} where blks = execCodegen $ generateBasicBlocks lexemes
 
 fresh :: Codegen Word
 fresh = do
