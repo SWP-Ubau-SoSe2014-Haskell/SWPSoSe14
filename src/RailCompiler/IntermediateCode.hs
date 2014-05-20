@@ -37,8 +37,18 @@ data CodegenState = CodegenState {
 newtype Codegen a = Codegen { runCodegen :: State CodegenState a }
   deriving (Functor, Applicative, Monad, MonadState CodegenState)
 
+data GlobalCodegenState = GlobalCodegenState {
+  dict :: Map String (Integer, Integer)
+}
+
+newtype GlobalCodegen a = GlobalCodegen { runGlobalCodegen :: State GlobalCodegenState a }
+  deriving (Functor, Applicative, Monad, MonadState GlobalCodegenState)
+
 emptyCodegen :: CodegenState
 emptyCodegen = CodegenState [] 0
+
+execGlobalCodegen :: GlobalCodegen a -> a
+execGlobalCodegen m = evalState (runGlobalCodegen m) $ GlobalCodegenState Data.Map.empty
 
 execCodegen :: Codegen a -> a
 execCodegen m = evalState (runCodegen m) emptyCodegen
@@ -227,8 +237,8 @@ generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen [BasicBlock]
 generateBasicBlocks = mapM generateBasicBlock
 
 -- generate function definition from AST
-generateFunction :: AST -> Definition
-generateFunction (name, lexemes) = GlobalDefinition $ Global.functionDefaults {
+generateFunction :: AST -> GlobalCodegen Definition
+generateFunction (name, lexemes) = return $ GlobalDefinition $ Global.functionDefaults {
   Global.name = Name name,
   Global.returnType = VoidType,
   Global.basicBlocks = blks
@@ -241,8 +251,8 @@ fresh = do
   return $ i + 1
 
 -- generate list of LLVM Definitions from list of ASTs
-generateFunctions :: [AST] -> [Definition]
-generateFunctions = map generateFunction
+generateFunctions :: [AST] -> GlobalCodegen [Definition]
+generateFunctions = mapM generateFunction
 
 generateGlobalDefinition :: Integer -> Global -> Definition
 generateGlobalDefinition index def = GlobalDefinition def {
@@ -254,8 +264,9 @@ generateGlobalDefinition index def = GlobalDefinition def {
 
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [push, pop, peek, puts] ++ generateFunctions input
+process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [push, pop, peek, puts] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     dict = fromList $ zipWith foo [0..] $ getAllCons input
     foo index (Constant s) = (s, (length s, index)) --TODO rename foo to something meaningful e.g. createSymTable
+    generateFunctionsFoo input = execGlobalCodegen $ generateFunctions input
