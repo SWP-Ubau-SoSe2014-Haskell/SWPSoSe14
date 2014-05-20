@@ -231,7 +231,7 @@ generateFunction :: AST -> Definition
 generateFunction (name, lexemes) = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name name,
   Global.returnType = VoidType,
-  Global.basicBlocks = blks -- generateBasicBlocks lexemes --call something with CodegenState here
+  Global.basicBlocks = blks
 } where blks = execCodegen $ generateBasicBlocks lexemes
 
 fresh :: Codegen Word
