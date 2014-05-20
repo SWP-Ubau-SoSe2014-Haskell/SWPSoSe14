@@ -227,8 +227,7 @@ generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen ()
 generateBasicBlocks lexemes = do
   blks <- mapM generateBasicBlock lexemes
   modify $ \s -> s {
-    blocks = blks,
-    count = 0 --TODO remove?
+    blocks = blks
   }
   return ()
 
