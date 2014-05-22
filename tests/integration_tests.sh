@@ -4,7 +4,7 @@
 function readtest {
   FILE=$1
   #IFS= read -rd '' content < "$FILE" 
-  i=0
+  i=1
   modeIn=true
   while IFS= read -r line; do
     if [[ $line == "#" ]]; then
@@ -22,14 +22,6 @@ function readtest {
       fi
     fi
    done < "$FILE"
-for e in "${IN[@]}"
-do
-    echo -ne "$e"
-done
-for e in "${OUT[@]}"
-do
-    echo -ne "$e"
-done
 }
 
 
@@ -61,7 +53,28 @@ do
   dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll"
   llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename"
   chmod +x "$TMPDIR/$filename"
-  output=$("$TMPDIR/$filename")
+  for i in $(eval echo "{1..${#OUT[@]}}"); do
+    output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename")
+    if [[ "$output" == "${OUT[$i]}" ]]; then
+      continue
+    else
+      echo "ERROR testing \"$filename.rail\" with input \"${IN[$i]}\"! Expected: \"${OUT[$i]}\" got \"$output\""
+    fi
+  done
 done
 
 rm -r tests/tmp
+
+### DEBUGGING:
+function debugprint {
+echo "IN"
+for e in "${IN[@]}";do
+	echo $e
+done
+echo "OUT"
+for e in "${OUT[@]}";do
+	echo $e
+done
+}
+
+#debugprint
