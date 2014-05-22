@@ -131,6 +131,56 @@ module Lexer (
    curchar = current code ip
    (resstring, resip) = stepwhile code (move ip Forward) fn
 
+ -- |Read a string constant and handle escapes like \n.
+ readconstant :: IDT.Grid2D -- ^Current function in line representation
+    -> IP -- ^Current instruction pointer
+    -> Char -- ^Opening string delimiter, e. g. '['
+    -> Char -- ^Closing string delimiter, e. g. ']'
+    -> (String, IP) -- ^The processed constant and the new instruction pointer
+ readconstant code ip startchar endchar
+    | curchar == startchar  = error "Nested opening bracket in string constant"
+    | curchar == endchar    = ("", ip)
+    | otherwise             = (newchar:resstring, resip)
+  where
+    curchar                 = current code ip
+    (newchar, newip)        = processescape
+    (resstring, resip)      = readconstant code newip startchar endchar
+
+    -- This does the actual work and converts the escape (if is an escape)
+    processescape :: (Char, IP)
+    processescape
+        | curchar /= '\\'   = (curchar, move ip Forward)
+        | esctrail /= '\\'  = error "Non-symmetric escape in string constant"
+        | otherwise         = case escsym of
+            '\\' -> ('\\', escip)
+            '['  -> ('[', escip)
+            ']'  -> (']', escip)
+            'n'  -> ('\n', escip)
+            't'  -> ('\t', escip)
+            _    -> error $ "Unhandled escape \\" ++ [escsym] ++ " in string constant"
+      where
+        [escsym, esctrail]  = lookahead code ip 2
+        -- Points to the character after the trailing backslash
+        escip               = skip code ip 3
+
+ -- |Lookahead n characters in the current direction.
+ lookahead :: IDT.Grid2D -- ^Line representation of current function
+    -> IP -- ^Current instruction pointer
+    -> Int -- ^How many characters of lookahead to produce?
+    -> [Char] -- ^n characters of lookahead
+ lookahead code ip 0 = []
+ lookahead code ip n = current code newip : lookahead code newip (n-1)
+  where
+    newip = move ip Forward
+
+ -- |Skip n characters in the current direction and return the new IP.
+ skip :: IDT.Grid2D -- ^Line representation of current function
+    -> IP -- ^Current instruction pointer
+    -> Int  -- ^How many characters to skip? If 1, this is the same
+            -- as doing "move ip Forward".
+    -> IP -- ^New instruction pointer
+ skip code ip n = foldl (\x _ -> move x Forward) ip [1..n]
+
  -- |Move the instruction pointer in a relative direction.
  move :: IP -- ^Current instruction pointer.
     -> RelDirection -- ^Relative direction to move in.
@@ -244,8 +294,8 @@ module Lexer (
    '^' -> (Just (Junction 0), ip)
    '>' -> (Just (Junction 0), ip)
    '<' -> (Just (Junction 0), ip)
-   '[' -> let (string, newip) = stepwhile code tempip (/= ']') in (Just (Constant string), newip)
-   ']' -> let (string, newip) = stepwhile code tempip (/= '[') in (Just (Constant string), newip)
+   '[' -> let (string, newip) = readconstant code tempip '[' ']' in (Just (Constant string), newip)
+   ']' -> let (string, newip) = readconstant code tempip ']' '[' in (Just (Constant string), newip)
    '{' -> let (string, newip) = stepwhile code tempip (/= '}') in (Just (Call string), newip)
    '}' -> let (string, newip) = stepwhile code tempip (/= '{') in (Just (Call string), newip)
    '(' -> let (string, newip) = stepwhile code tempip (/= ')') in (pushpop string, newip)
