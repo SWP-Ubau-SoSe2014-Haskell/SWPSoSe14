@@ -2,7 +2,9 @@ module Lexer (
               -- * Main (pipeline) functions
               process,
               -- * Utility functions
-              fromAST, toAST
+              fromAST, toAST,
+              -- * Editor functions
+              step, parse, IP(IP), posx, posy, start, crash
              )
  where
 
