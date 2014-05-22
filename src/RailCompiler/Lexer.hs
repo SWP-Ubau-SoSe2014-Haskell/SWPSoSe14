@@ -139,7 +139,7 @@ module Lexer (
     -> Char -- ^Closing string delimiter, e. g. ']'
     -> (String, IP) -- ^The processed constant and the new instruction pointer
  readconstant code ip startchar endchar
-    | curchar == startchar  = error "Nested opening bracket in string constant"
+    | curchar == startchar  = error EH.strNestedOpenBracket
     | curchar == endchar    = ("", ip)
     | otherwise             = (newchar:resstring, resip)
   where
@@ -151,14 +151,14 @@ module Lexer (
     processescape :: (Char, IP)
     processescape
         | curchar /= '\\'   = (curchar, move ip Forward)
-        | esctrail /= '\\'  = error "Non-symmetric escape in string constant"
+        | esctrail /= '\\'  = error EH.strNonSymmetricEscape
         | otherwise         = case escsym of
             '\\' -> ('\\', escip)
             '['  -> ('[', escip)
             ']'  -> (']', escip)
             'n'  -> ('\n', escip)
             't'  -> ('\t', escip)
-            _    -> error $ "Unhandled escape \\" ++ [escsym] ++ " in string constant"
+            _    -> error EH.strUnhandledEscape
       where
         [escsym, esctrail]  = lookahead code ip 2
         -- Points to the character after the trailing backslash
