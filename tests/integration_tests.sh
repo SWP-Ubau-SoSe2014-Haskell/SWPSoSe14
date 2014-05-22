@@ -3,9 +3,10 @@
 ### Function for reading in-/output files
 function readtest {
   FILE=$1
-  #IFS= read -rd '' content < "$FILE" 
   i=1
   modeIn=true
+  IN[1]=""
+  OUT[1]=""
   while IFS= read -r line; do
     if [[ $line == "#" ]]; then
       if [ "$modeIn" = true ]; then
@@ -36,19 +37,19 @@ done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 cd "$DIR/.."
 
-TESTDIR="rail-examples"
+TESTDIR="system-tests"
+EXT=".io"
 
 ### Compile and run all .rail files
 TMPDIR=tests/tmp
 mkdir $TMPDIR
-for f in $TESTDIR/hello-world.rail
-#for f in rail-examples/*.rail 
+for f in $TESTDIR/*.rail 
 do
   filename="${f##*/}"
   filename="${filename%%.*}"
-  if [ -f "$TESTDIR/$filename.test" ]
+  if [ -f "$TESTDIR/$filename$EXT" ]
     then
-      readtest "$TESTDIR/$filename.test"
+      readtest "$TESTDIR/$filename$EXT"
   fi
   dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll"
   llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename"
@@ -56,7 +57,7 @@ do
   for i in $(eval echo "{1..${#OUT[@]}}"); do
     output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename")
     if [[ "$output" == "${OUT[$i]}" ]]; then
-      continue
+      echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
     else
       echo "ERROR testing \"$filename.rail\" with input \"${IN[$i]}\"! Expected: \"${OUT[$i]}\" got \"$output\""
     fi
