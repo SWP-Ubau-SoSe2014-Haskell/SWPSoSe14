@@ -132,7 +132,8 @@ module Lexer (
    curchar = current code ip
    (resstring, resip) = stepwhile code (move ip Forward) fn
 
- -- |Read a string constant and handle escapes like \n.
+ -- |Read a string constant and handle escape sequences like \n.
+ -- Raises an error on invalid escape sequences and badly formatted constants.
  readconstant :: IDT.Grid2D -- ^Current function in line representation
     -> IP -- ^Current instruction pointer
     -> Char -- ^Opening string delimiter, e. g. '['
@@ -147,7 +148,9 @@ module Lexer (
     (newchar, newip)        = processescape
     (resstring, resip)      = readconstant code newip startchar endchar
 
-    -- This does the actual work and converts the escape (if is an escape)
+    -- This does the actual work and converts the escape sequence
+    -- (if there is no escape sequence at the current position, do
+    -- nothing and pass the current Char through).
     processescape :: (Char, IP)
     processescape
         | curchar /= '\\'   = (curchar, move ip Forward)
