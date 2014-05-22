@@ -5,6 +5,7 @@ module CodeOptimization (
  
  -- imports --
  import InterfaceDT as IDT
+ import ErrorHandling as EH
  
  -- functions --
  process :: IDT.InterCode2CodeOpt -> IDT.CodeOpt2Backend

@@ -8,6 +8,7 @@ module Lexer (
 
  -- imports --
  import InterfaceDT as IDT
+ import ErrorHandling as EH
  import Data.List
 
  -- |Modified 'IDT.LexNode' with an additional identifier for nodes

@@ -1,4 +1,4 @@
-﻿module TestSynAna (
+module TSynAna (
                    testModule     -- tests the module SyntacticalAnalysis
                   )
  where
@@ -9,10 +9,10 @@
  import qualified SyntacticalAnalysis as SynAna
 
  -- functions --
- testSynAna01 = "SyntactiaclAnalysis: " ~: (output1) @=? (SynAna.process input1)
- testSynAna02 = "SyntactiaclAnalysis: " ~: (output2) @=? (SynAna.process input2)
- testSynAna03 = "SyntactiaclAnalysis: " ~: (output3) @=? (SynAna.process input3)
- testSynAna04 = "SyntactiaclAnalysis: " ~: (output4) @=? (SynAna.process input4)
+ testSynAna01 = "SyntactiaclAnalysis: " ~: output1 @=? SynAna.process input1
+ testSynAna02 = "SyntactiaclAnalysis: " ~: output2 @=? SynAna.process input2
+ testSynAna03 = "SyntactiaclAnalysis: " ~: output3 @=? SynAna.process input3
+ testSynAna04 = "SyntactiaclAnalysis: " ~: output4 @=? SynAna.process input4
  
  input1  = ILS [("main", [(1,Start,2),(2, Constant "Hello World!", 3),(3, Output, 4),(4, Finish, 0)])]
  output1 = ISS [("main", [(1,[Start, Constant "Hello World!", Output, Finish],0)])]
