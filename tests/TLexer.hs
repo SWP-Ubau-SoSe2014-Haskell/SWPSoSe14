@@ -1,35 +1,31 @@
 ﻿module TLexer (
-               testModule     -- tests the module Lexer
-              )
+                  testModule     -- tests the module Lexer
+                 )
  where
 
  -- imports --
  import Test.HUnit
  import InterfaceDT                   as IDT
  import qualified Lexer
- 
+
  -- functions --
- -- testLexer01 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testLexer02 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testLexer03 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testLexer04 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testLexer05 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- 
- -- testToAST01 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testToAST02 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testToAST03 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testToAST04 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testToAST05 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
+ testLexer01 = "Proper turning: " ~: (res [Constant "1"]) @=? (run [" \\", "  \\   /-t-#", "   ---/--f-#"])
+ testLexer02 = "Reflection: " ~: (res [Constant "1"]) @=? (run [" \\", "  \\   #  #  #", "   \\   f f f", "    \\   \\|/", " #t-------@-f#", "         /|\\", "        f f f", "       #  #  #"])
+ testLexer03 = "Rail crash: " ~: crash @=? (run [" /"])
+ testLexer04 = "One liner: " ~: crash @=? (run [])
+ testLexer05 = "Endless loop: " ~: (IDT.ILS [("main", [(1, Start, 1)])]) @=? (run [" \\", "@--@"])
 
- -- testFromAST01 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testFromAST02 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testFromAST03 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testFromAST04 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
- -- testFromAST05 = "Lexer: " ~: (erwarteter wert) @=? (Lexer.process eingabe)
+ -- helper functions
+ run :: IDT.Grid2D -> IDT.Lexer2SynAna
+ run grid = Lexer.process (IDT.IPL ["$ 'main'":grid])
 
- -- ...
+ res :: [Lexeme] -> IDT.Lexer2SynAna
+ res lexeme = IDT.ILS [("main", (1, Start, 2):(nodes 2 lexeme))]
+  where
+   nodes i [] = [(i, Finish, 0)]
+   nodes i (x:xs) = (i, x, i+1):(nodes (i+1) xs)
+
+ crash :: IDT.Lexer2SynAna
+ crash = IDT.ILS [("main", [(1, Start, 0)])]
  
- testModule = [] --[testLexer01,testLexer02,testLexer03,testLexer04,testLexer05,
-                 --testToAST01,testToAST02,testToAST03,testToAST04,testToAST05,
-                 --testFromAST01,testFromAST02,testFromAST03,testFromAST04,testFromAST05]
-                         
+ testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05]

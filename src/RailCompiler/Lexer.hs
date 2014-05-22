@@ -1,5 +1,7 @@
 module Lexer (
-              process,   -- main function of the module "Lexer"
+              -- * Main (pipeline) functions
+              process,
+              -- * Utility functions
               fromAST, toAST
              )
  where
@@ -9,48 +11,89 @@ module Lexer (
  import ErrorHandling as EH
  import Data.List
 
- -- added identifier for nodes to check when we have circles
+ -- |Modified 'IDT.LexNode' with an additional identifier for nodes
+ -- to check whether we have circles in the graph.
+ --
+ -- The identifier is the last element of the tuple and contains
+ -- the following sub-elements, in this order:
+ --
+ --     * When we visited this node, at which X position did we start to parse its lexeme?
+ --     * When we visited this node, at which Y position did we start to parse its lexeme?
+ --     * When we visited this node, from which direction did we come?
  type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction))
+ -- |An absolute direction.
  data Direction = N | NE | E | SE | S | SW | W | NW deriving Eq
+ -- |A relative direction.
  data RelDirection = Left | Forward | Right
- -- instruction pointer consisting of position and an orientation
- data IP = IP { posx :: Int, posy :: Int, dir :: Direction } deriving Eq
+ -- |Instruction pointer consisting of position and an orientation.
+ data IP =
+    IP {
+      -- |Number of processed characters since start of current function.
+      count :: Int,
+      -- |Current X position.
+      posx :: Int,
+      -- |Current Y position.
+      posy :: Int,
+      -- |Current 'Direction'.
+      dir :: Direction
+    }
+  deriving Eq
  
  -- functions --
  process :: IDT.PreProc2Lexer -> IDT.Lexer2SynAna
  process (IDT.IPL input) = IDT.ILS $ map processfn input
 
- -- process one function
- processfn :: IDT.Grid2D -> IDT.Graph
- processfn code@(x:xs) = (funcname x, finalize nxs [])
+ -- |Process a single function.
+ processfn :: IDT.Grid2D -- ^The lines representing the function.
+    -> IDT.Graph -- ^A graph of nodes representing the function.
+ processfn [x] = (funcname x, [(1, Start, 0)]) -- oneliners are illegal; follower == 0 will
+                                               -- lead to a crash, which is what we want.
+ processfn code@(x:xs) = if head x /= '$' then (funcname x, [(1, Start, 0)]) else (funcname x, finalize nxs [])
   where
     (nxs, _) = nodes code [(1, Start, 0, (0, 0, SE))] start
 
- -- get the name of the given function
- funcname :: String -> String
+ -- |Get the name of the given function.
+ --
+ -- TODO: Note that this will crash the entire program if there is
+ -- no function name.
+ funcname :: String -- ^A line containing the function declaration,
+                    -- e. g. @$ \'main\'@.
+    -> String -- ^The function name.
  funcname line = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
 
- -- get the nodes for the given function
- nodes :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
+ -- |Get the nodes for the given function.
+ nodes :: IDT.Grid2D -- ^Lines representing the function.
+    -> [PreLexNode] -- ^Current graph representing the function.
+                    -- Initialize with @[(1, Start, 0, (0, 0, SE))]@.
+    -> IP -- ^Current instruction pointer.
+          -- Initialize with @'start'@.
+    -> ([PreLexNode], IP) -- ^Final graph for the function and the new instruction pointer.
  nodes code list ip
-  | current code tempip == ' ' = (list, tempip) -- will automatically lead to a
+  | current code tempip == ' ' = (list, tempip) -- If we are not finished yet, this will
+                                                -- automatically lead to a
                                                 -- crash since the list will have
                                                 -- a leading node without a follower
                                                 -- (follower == 0) because it is
                                                 -- not modified here at all.
-  | otherwise = nodes code newlist newip
+  | otherwise = if endless then ([(1, Start, 1, (0, 0, SE))], crash) else nodes code newlist newip
      where
+      -- This checks if we have e. g. two reflectors that "bounce" the IP between them
+      -- endlessly.
+      endless = list == [(1, Start, 0, (0, 0, SE))] && count ip > sum (map length code)
       tempip = step code ip
       (newlist, newip) = handle code list tempip
 
- -- TODO: changing movemend based on used rails
  handle :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
  handle code list ip = helper code list newip lexeme
   where
    (lexeme, newip) = parse code ip
    helper _ list ip Nothing = (list, ip)
-   helper code list ip (Just lexeme) = (newlist, ip)
+   helper code list ip (Just lexeme)
+     | lexeme == Finish = (newlist, crash)
+     | knownat > 0 = (update list knownat, crash)
+     | otherwise = (newlist, ip)
     where
+     knownat = visited list ip
      newnode = length list + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):update list newnode
 
@@ -59,22 +102,27 @@ module Lexer (
  offset c (node, lexeme, 0) = (node + c, lexeme, 0)
  offset c (node, lexeme, following) = (node + c, lexeme, following + c)
 
- -- changing following node of previous node
- update :: [PreLexNode] -> Int -> [PreLexNode]
+ -- |Change the following node of the first (i. e. "last", since the list is reversed)
+ -- node in the graph.
+ update :: [PreLexNode] -- ^The graph to operate on.
+    -> Int -- ^ID of new follower to set for the first node in the list.
+    -> [PreLexNode] -- ^Resulting graph.
  update [] _ = []
  update ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
 
- -- move the instruction pointer a singe step
- step :: IDT.Grid2D -> IP -> IP
+ -- |Move the instruction pointer a single step.
+ step :: IDT.Grid2D -- ^Current function in its line representation.
+    -> IP -- ^Current instruction pointer.
+    -> IP -- ^New instruction pointer.
  step code ip
-   | forward `elem` val = move ip Forward
-   | left `elem` val && right `elem` val = crash
-   | left `elem` val = move ip Lexer.Left
-   | right `elem` val = move ip Lexer.Right
+   | forward `elem` fval = move ip Forward
+   | left `elem` lval && right `elem` rval = crash
+   | left `elem` lval = move ip Lexer.Left
+   | right `elem` rval = move ip Lexer.Right
    | otherwise = crash
   where
    (left, forward, right) = adjacent code ip
-   val = valids code ip
+   (lval, fval, rval) = valids code ip
 
  stepwhile :: IDT.Grid2D -> IP -> (Char -> Bool) -> (String, IP)
  stepwhile code ip fn
@@ -84,23 +132,35 @@ module Lexer (
    curchar = current code ip
    (resstring, resip) = stepwhile code (move ip Forward) fn
 
- move :: IP -> RelDirection -> IP
- move ip reldir = ip{posx = newx, posy = newy, dir = absolute ip reldir}
+ -- |Move the instruction pointer in a relative direction.
+ move :: IP -- ^Current instruction pointer.
+    -> RelDirection -- ^Relative direction to move in.
+    -> IP -- ^New instruction pointer.
+ move ip reldir = ip{count = newcount, posx = newx, posy = newy, dir = absolute ip reldir}
   where
    (newy, newx) = posdir ip reldir
+   newcount = count ip + 1
 
- current :: IDT.Grid2D -> IP -> Char
+ -- |Get the 'Char' at the current position of the instruction pointer.
+ current :: IDT.Grid2D -- ^Line representation of the current function.
+     -> IP -- ^Current instruction pointer.
+     -> Char -- ^'Char' at the current IP position.
  current code ip = charat code (posy ip, posx ip)
 
- -- get (left secondary, primary, right secondary) symbols
- adjacent :: IDT.Grid2D -> IP -> (Char, Char, Char)
+ -- |Get adjacent (left secondary, primary, right secondary)
+ -- symbols for the current IP position.
+ adjacent :: IDT.Grid2D -- ^Line representation of the current function.
+     -> IP -- ^Current instruction pointer.
+     -> (Char, Char, Char) -- ^Adjacent (left secondary, primary, right secondary) symbols
  adjacent code ip = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
 
  turnaround :: IP -> IP
  turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Lexer.Left} Lexer.Left} Lexer.Left} Lexer.Left}
 
- -- returns char at given position, ' ' if position is invalid
- charat :: IDT.Grid2D -> (Int, Int) -> Char
+ -- |Returns 'Char' at given position, @\' \'@ if position is invalid.
+ charat :: IDT.Grid2D -- ^Line representation of current function.
+    -> (Int, Int) -- ^Position as (x, y) coordinate.
+    -> Char -- ^'Char' at given position.
  charat code _ | null code = ' '
  charat code (y, _) | y < 0 || y >= length code = ' '
  charat code (y, x)
@@ -109,9 +169,12 @@ module Lexer (
   where
    line = code!!y
 
- -- get the position of a specific heading
- posdir :: IP -> RelDirection -> (Int, Int)
+ -- |Get the position of a specific heading.
+ posdir :: IP -- ^Current instruction pointer.
+    -> RelDirection -- ^Current relative direction.
+    -> (Int, Int) -- ^New position that results from the given relative movement.
  posdir ip reldir = posabsdir ip (absolute ip reldir)
+
  posabsdir :: IP -> Direction -> (Int, Int)
  posabsdir ip N = (posy ip - 1, posx ip)
  posabsdir ip NE = (posy ip - 1, posx ip + 1)
@@ -210,27 +273,34 @@ module Lexer (
     | string!!1 == '!' && last string == '!' = Just (Pop (tail $ init string))
 		| otherwise = Just (Push string)
 
- visited :: [PreLexNode] -> IP -> Bool
- visited [] _ = False
- visited ((_, _, _, (x, y, lmode)):xs) ip = (x == posx ip && y == posy ip) || visited xs ip
+ visited :: [PreLexNode] -> IP -> Int
+ visited [] _ = 0
+ visited ((id, _, _, (x, y, d)):xs) ip
+  | x == posx ip && y == posy ip && d == dir ip = id
+  | otherwise = visited xs ip
 
  finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
  finalize [] result = result
  finalize ((node, lexeme, following, _):xs) result = finalize xs ((node, lexeme, following):result)
 
  start :: IP
- start = IP 0 0 SE
- crash = IP (-1) (-1) NW
+ start = IP 0 0 0 SE
+ crash = IP 0 (-1) (-1) NW
 
- valids :: IDT.Grid2D -> IP -> String
- valids code ip = filter (/=invalid) everything
+ valids :: IDT.Grid2D -> IP -> (String, String, String)
+ valids code ip = tripleinvert (dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
   where
-   invalid
-    | dir ip `elem` [E, W] = '|'
-    | dir ip `elem` [NE, SW] = '\\'
-    | dir ip `elem` [N, W] = '-'
-    | dir ip `elem` [NW, SE] = '/'
-    | otherwise = ' '
+   tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
+   finvalid ip = dirinvalid ip ++ crossinvalid ip -- illegal to move forward
+   dirinvalid ip -- illegal without crosses
+    | dir ip `elem` [E, W] = "|"
+    | dir ip `elem` [NE, SW] = "\\"
+    | dir ip `elem` [N, S] = "-"
+    | dir ip `elem` [NW, SE] = "/"
+    | otherwise = ""
+   crossinvalid ip -- illegal crosses
+    | dir ip `elem` [N, E, S, W] = "x"
+    | otherwise = "+"
    cur = current code ip
    everything = "+\\/x|-"++always
    always = "abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
@@ -286,7 +356,7 @@ module Lexer (
    nodes (ln:lns) = (read id, fixedlex, read follower):nodes lns
     where
      (id, other) = span (/=';') ln
-     (lex, ip) = parse [other] $ IP 1 0 E
+     (lex, ip) = parse [other] $ IP 0 1 0 E
      fixedlex
       | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
       | otherwise = fromJust lex

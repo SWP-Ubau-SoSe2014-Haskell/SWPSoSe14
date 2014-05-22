@@ -1,0 +1,5 @@
+test-endless.rail
+
+$ 'main'
+ \
+@--[foo]o-@
