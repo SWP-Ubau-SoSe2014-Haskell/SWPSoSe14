@@ -9,21 +9,21 @@ module TLexer (
  import qualified Lexer
 
  -- functions --
- testLexer01 = "Proper turning: " ~: (res [Constant "1"]) @=? (run [" \\", "  \\   /-t-#", "   ---/--f-#"])
- testLexer02 = "Reflection: " ~: (res [Constant "1"]) @=? (run [" \\", "  \\   #  #  #", "   \\   f f f", "    \\   \\|/", " #t-------@-f#", "         /|\\", "        f f f", "       #  #  #"])
- testLexer03 = "Rail crash: " ~: crash @=? (run [" /"])
- testLexer04 = "One liner: " ~: crash @=? (run [])
- testLexer05 = "Endless loop: " ~: (IDT.ILS [("main", [(1, Start, 1)])]) @=? (run [" \\", "@--@"])
+ testLexer01 = "Proper turning: " ~: res [Constant "1"] @=? run [" \\", "  \\   /-t-#", "   ---/--f-#"]
+ testLexer02 = "Reflection: " ~: res [Constant "1"] @=? run [" \\", "  \\   #  #  #", "   \\   f f f", "    \\   \\|/", " #t-------@-f#", "         /|\\", "        f f f", "       #  #  #"]
+ testLexer03 = "Rail crash: " ~: crash @=? run [" /"]
+ testLexer04 = "One liner: " ~: crash @=? run []
+ testLexer05 = "Endless loop: " ~: IDT.ILS [("main", [(1, Start, 1)])] @=? run [" \\", "@--@"]
 
  -- helper functions
  run :: IDT.Grid2D -> IDT.Lexer2SynAna
  run grid = Lexer.process (IDT.IPL ["$ 'main'":grid])
 
  res :: [Lexeme] -> IDT.Lexer2SynAna
- res lexeme = IDT.ILS [("main", (1, Start, 2):(nodes 2 lexeme))]
+ res lexeme = IDT.ILS [("main", (1, Start, 2):nodes 2 lexeme)]
   where
    nodes i [] = [(i, Finish, 0)]
-   nodes i (x:xs) = (i, x, i+1):(nodes (i+1) xs)
+   nodes i (x:xs) = (i, x, i+1):nodes (i+1) xs
 
  crash :: IDT.Lexer2SynAna
  crash = IDT.ILS [("main", [(1, Start, 0)])]
