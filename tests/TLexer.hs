@@ -1,6 +1,6 @@
-﻿module TLexer (
-                  testModule     -- tests the module Lexer
-                 )
+module TLexer (
+               testModule     -- tests the module Lexer
+              )
  where
 
  -- imports --
