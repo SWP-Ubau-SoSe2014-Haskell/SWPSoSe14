@@ -43,6 +43,7 @@ EXT=".io"
 ### Compile and run all .rail files
 TMPDIR=tests/tmp
 mkdir $TMPDIR
+fail=false
 for f in $TESTDIR/*.rail 
 do
   filename="${f##*/}"
@@ -59,6 +60,7 @@ do
     if [[ "$output" == "${OUT[$i]}" ]]; then
       echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
     else
+      fail=true
       echo "ERROR testing \"$filename.rail\" with input \"${IN[$i]}\"! Expected: \"${OUT[$i]}\" got \"$output\""
     fi
   done
@@ -79,3 +81,7 @@ done
 }
 
 #debugprint
+
+if [ "$fail" = true ];then
+  exit 1
+fi
