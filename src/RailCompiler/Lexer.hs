@@ -167,7 +167,7 @@ module Lexer (
  lookahead :: IDT.Grid2D -- ^Line representation of current function
     -> IP -- ^Current instruction pointer
     -> Int -- ^How many characters of lookahead to produce?
-    -> [Char] -- ^n characters of lookahead
+    -> String -- ^n characters of lookahead
  lookahead code ip 0 = []
  lookahead code ip n = current code newip : lookahead code newip (n-1)
   where
