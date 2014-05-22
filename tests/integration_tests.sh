@@ -3,8 +3,33 @@
 ### Function for reading in-/output files
 function readtest {
   FILE=$1
-  IFS= read -rd '' content < "$FILE" 
-  echo -n "$content"
+  #IFS= read -rd '' content < "$FILE" 
+  i=0
+  modeIn=true
+  while IFS= read -r line; do
+    if [[ $line == "#" ]]; then
+      if [ "$modeIn" = true ]; then
+        modeIn=false
+      else
+   	i=$(($i+1))
+        modeIn=true
+      fi
+    else
+      if [ "$modeIn" = true ];then
+        IN[$i]="${IN[$i]}""$line"
+      else
+        OUT[$i]="${OUT[$i]}""$line"
+      fi
+    fi
+   done < "$FILE"
+for e in "${IN[@]}"
+do
+    echo -ne "$e"
+done
+for e in "${OUT[@]}"
+do
+    echo -ne "$e"
+done
 }
 
 
