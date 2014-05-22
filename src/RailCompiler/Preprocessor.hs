@@ -18,7 +18,7 @@ module Preprocessor (
  
  -- imports --
  import InterfaceDT as IDT
- 
+ import ErrorHandling as EH 
  import Data.List
  
  -- functions --

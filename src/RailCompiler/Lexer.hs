@@ -6,7 +6,7 @@ module Lexer (
 
  -- imports --
  import InterfaceDT as IDT
-
+ import ErrorHandling as EH
  import Data.List
 
  -- added identifier for nodes to check when we have circles

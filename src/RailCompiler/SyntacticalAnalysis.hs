@@ -17,7 +17,8 @@ module SyntacticalAnalysis (
  where
  -- imports --
  import InterfaceDT as IDT
- 
+ import ErrorHandling as EH
+
  -- functions --
  process :: IDT.Lexer2SynAna -> IDT.SynAna2SemAna
  process (IDT.ILS input) = IDT.ISS output
