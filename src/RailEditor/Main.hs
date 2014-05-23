@@ -1,21 +1,50 @@
 import Graphics.UI.Gtk
 import Data.Maybe
---Menu Setup
+import Control.Monad.IO.Class
 
-openFile :: Window -> IO()
-openFile window = do
-		fileChooser <- fileChooserDialogNew (Just "OpenFile")(Just window) FileChooserActionOpen [("open",ResponseOk),("cancel",ResponseCancel)]
-		--TODO new response Function with pattenmatching on signals
-		on fileChooser response (\ResponseOk -> do
-										dir <- fileChooserGetFilename fileChooser
-										--putStrLn(fromJust dir)
-										content <- readFile (fromJust dir)
-										putStrLn(content)
-										return()
-								\ResponseCancel -> do
-										return())
-		dialogRun fileChooser
+
+--TODO Refactor text to an 'link' to the entry text for the ability to save files
+fileChooserEventHandler :: FileChooserDialog -> String -> ResponseId -> String -> IO()
+fileChooserEventHandler fileChooser text response mode 
+		| response == ResponseOk = do
+			case mode of
+				"OpenFile" -> do
+					dir <- fileChooserGetFilename fileChooser
+					content <- readFile (fromJust dir)
+					putStrLn(content)
+					return()
+				"SaveFile" -> do
+					dir <- fileChooserGetFilename fileChooser
+					writeFile (fromJust dir) text
+			widgetDestroy fileChooser
+			return()
+		| response == ResponseCancel = do
+				widgetDestroy fileChooser
+				return ()
+
+--TODO Refactor text to an 'link' to the entry text for the ability to save files
+runFileChooser :: String -> FileChooserDialog -> String -> IO()
+runFileChooser text fileChooser mode = do
+	on fileChooser response (\resp -> (fileChooserEventHandler  fileChooser text resp mode))
+	dialogRun fileChooser
+	return()
+
+
+--Setup a file chooser with modes OpenFile and SaveFile 
+--TODO Refactor text to an 'link' to the entry text for the ability to save files
+fileDialog :: Window -> String -> String -> IO()
+fileDialog window text mode = do
+		case mode of 
+			"OpenFile" -> do 
+					fileChooser <- fileChooserDialogNew (Just mode)(Just window)FileChooserActionOpen[("open",ResponseOk),("cancel",ResponseCancel)]
+					runFileChooser text fileChooser mode
+			"SaveFile" -> do
+				fileChooser <- fileChooserDialogNew (Just mode)(Just window) FileChooserActionSave [("save",ResponseOk),("cancel",ResponseCancel)]
+				fileChooserSetDoOverwriteConfirmation fileChooser True
+				runFileChooser text fileChooser mode
 		return ()
+
+--TODO Refactor text to an 'link' to the entry text for the ability to save files
 createMenu :: Window -> IO MenuBar
 createMenu window = do
 		menuBar <- menuBarNew-- container for menus
@@ -42,9 +71,13 @@ createMenu window = do
 		menuShellAppend menuHelp menuAboutItem
 		
 		--setting actions for the menu
-		on menuOpenItem menuItemActivate (openFile window)
+		on menuOpenItem menuItemActivate (fileDialog window "ENTRY-CONTENT-STUB" "OpenFile")
+		on menuSaveItem menuItemActivate (fileDialog window "ENTRY-CONTENT-STUB" "SaveFile")
+		on menuCloseItem menuItemActivate mainQuit
+		--TODO setting shortcuts in relation to menuBar
+		--on window keyPressEvent $ tryEvent $ do return()
+		
 		return menuBar
-
 main :: IO ()
 main = do
 		initGUI
@@ -58,7 +91,6 @@ main = do
 		
 		set window [ windowTitle := "Raileditor"
                   , containerChild := table]
-		
 		on window objectDestroy mainQuit
 		widgetShowAll window
 		mainGUI
