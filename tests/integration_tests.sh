@@ -37,7 +37,7 @@ done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 cd "$DIR/.."
 
-TESTDIR="system-tests"
+TESTDIR="integration-tests/passing-integration-tests"
 EXT=".io"
 
 ### Compile and run all .rail files
