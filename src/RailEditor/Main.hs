@@ -1,53 +1,64 @@
-module Main where
-
-import Graphics.UI.WX
-import Graphics.UI.WXCore
+import Graphics.UI.Gtk
 import Data.Maybe
-import Data.Bits
+--Menu Setup
 
-main::IO()
-main = start gui
+openFile :: Window -> IO()
+openFile window = do
+		fileChooser <- fileChooserDialogNew (Just "OpenFile")(Just window) FileChooserActionOpen [("open",ResponseOk),("cancel",ResponseCancel)]
+		--TODO new response Function with pattenmatching on signals
+		on fileChooser response (\ResponseOk -> do
+										dir <- fileChooserGetFilename fileChooser
+										--putStrLn(fromJust dir)
+										content <- readFile (fromJust dir)
+										putStrLn(content)
+										return()
+								\ResponseCancel -> do
+										return())
+		dialogRun fileChooser
+		return ()
+createMenu :: Window -> IO MenuBar
+createMenu window = do
+		menuBar <- menuBarNew-- container for menus
+		
+		menuFile <- menuNew
+		menuHelp <- menuNew
+		
+		menuFileItem <- menuItemNewWithLabel "File"
+		menuOpenItem <- menuItemNewWithLabel "open crtl+o"
+		menuSaveItem <- menuItemNewWithLabel "save ctrl+s"
+		menuCloseItem <- menuItemNewWithLabel "quit ctrl+s"
+		menuHelpItem <- menuItemNewWithLabel "Help"
+		menuAboutItem <- menuItemNewWithLabel "About"
+		--Bind the subemenu to menu
+		menuItemSetSubmenu menuFileItem menuFile 
+		menuItemSetSubmenu menuHelpItem menuHelp
+		--File and Help menu
+		menuShellAppend menuBar menuFileItem
+		menuShellAppend menuBar menuHelpItem
+		--Insert items in menus
+		menuShellAppend menuFile menuOpenItem
+		menuShellAppend menuFile menuSaveItem
+		menuShellAppend menuFile menuCloseItem
+		menuShellAppend menuHelp menuAboutItem
+		
+		--setting actions for the menu
+		on menuOpenItem menuItemActivate (openFile window)
+		return menuBar
 
-
-gui::IO()
-gui = do
-        mainFrame <- frame [text := "RailEditor"]
-        set mainFrame []
-        documentView <- textCtrlRich mainFrame []
-        set mainFrame [layout := fill (widget  documentView)]
-        set mainFrame [outerSize := (sz 640 480)]
-        set documentView [wrap := WrapNone]
-								
-        --Setup the menu 
-        mnu <- menuPane [text := "file"]
-        filePath <- varCreate Nothing
-        menuItem mnu [text := "&Open\tCtrl+O",
-                      help := "Opens an existing document",
-                      on command := openFile mainFrame  documentView
-                      ]
-        menuItem mnu [text := "&Save\tCtrl+X",
-                      help := "Saves a file in the choosen directory",
-                      on command := saveFile mainFrame  documentView
-                      ]
-        menuItem mnu [text := "&Quit\tCtrl+Q",
-                      help := "Closes the application",
-                      on command := wxcAppExit]
-        mnuHelp <- menuHelp []      
-        set mainFrame[menuBar := [mnu,mnuHelp],visible := True]
-        
-        return ()
- 
---Saves the content of an TextCtrl to a file     
-saveFile:: Frame() -> TextCtrl() -> IO()     
-saveFile mainFrame textField = do
-                                path <- fileSaveDialog mainFrame False True "save File" [("Any file",["*.*"])] "" ""
-                                textCtrlSaveFile textField (fromJust path)
-                                return()
-
---Opens a file and displays the content in textCtrl
-openFile :: Frame() -> TextCtrl() ->IO()
-openFile mainFrame textField = do
-                                 path <- fileOpenDialog mainFrame False False "openFile" [("Any file",["*.*"])] "" ""
-                                 textCtrlLoadFile textField (fromJust path)
-                                 return()
-                  
+main :: IO ()
+main = do
+		initGUI
+		
+		window <- windowNew
+		windowSetDefaultSize window 600 480
+		
+		menuBar <- createMenu window
+		table <- tableNew 4 4 True
+		tableAttach table menuBar 0 1 0 1 [] [] 0 0
+		
+		set window [ windowTitle := "Raileditor"
+                  , containerChild := table]
+		
+		on window objectDestroy mainQuit
+		widgetShowAll window
+		mainGUI
