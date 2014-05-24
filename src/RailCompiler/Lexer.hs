@@ -43,7 +43,7 @@ module Lexer (
  
  -- functions --
  process :: IDT.PreProc2Lexer -> IDT.Lexer2SynAna
- process (IDT.IPL input) = IDT.ILS $ foldl (++) [] $ map processfn input
+ process (IDT.IPL input) = IDT.ILS $ concatMap processfn input
 
  -- |Process a single function.
  processfn :: IDT.Grid2D -- ^The lines representing the function.
