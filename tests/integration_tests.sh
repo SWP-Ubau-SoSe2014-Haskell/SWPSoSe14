@@ -46,26 +46,31 @@ mkdir -p $TMPDIR
 fail=false
 for f in "$TESTDIR"/*.rail
 do
+  dontrun=false
   filename="${f##*/}"
   filename="${filename%%.*}"
   if [ -f "$TESTDIR/$filename$EXT" ]
     then
       readtest "$TESTDIR/$filename$EXT"
 	else
-	  echo "Warning: $TESTDIR/$filename$EXT is missing."
+	  fail=true
+          dontrun=true
+	  echo "ERROR testing: \"$filename$EXT\". $EXT-file is missing."
   fi
   dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll"
   llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename"
   chmod +x "$TMPDIR/$filename"
-  for i in $(eval echo "{1..${#OUT[@]}}"); do
-    output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename")
-    if [[ "$output" == "${OUT[$i]}" ]]; then
-      echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
-    else
-      fail=true
-      echo "ERROR testing \"$filename.rail\" with input \"${IN[$i]}\"! Expected: \"${OUT[$i]}\" got \"$output\""
-    fi
-  done
+  if [ "$dontrun" = false ]; then
+    for i in $(eval echo "{1..${#OUT[@]}}"); do
+      output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename")
+      if [[ "$output" == "${OUT[$i]}" ]]; then
+        echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
+      else
+        fail=true
+        echo "ERROR testing \"$filename.rail\" with input \"${IN[$i]}\"! Expected: \"${OUT[$i]}\" got \"$output\""
+      fi
+    done
+  fi
 done
 
 rm -r tests/tmp
