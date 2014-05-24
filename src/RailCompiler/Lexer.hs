@@ -43,7 +43,13 @@ module Lexer (
   deriving Eq
  
  -- functions --
- process :: IDT.PreProc2Lexer -> IDT.Lexer2SynAna
+
+ -- |Process preprocessor output into a list of function ASTs.
+ --
+ -- Raises 'error's on invalid input; see 'ErrorHandling' for a list of error messages.
+ process :: IDT.PreProc2Lexer -- ^Preprocessor output (a list of lists of strings; i. e. a list of functions
+                              -- in their line representation).
+    -> IDT.Lexer2SynAna -- ^A list of ASTs, each describing a single function.
  process (IDT.IPL input) = IDT.ILS $ concatMap processfn input
 
  -- |Process a single function.
