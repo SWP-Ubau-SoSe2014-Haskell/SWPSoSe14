@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e #Stop on any error
 ### Function for reading in-/output files
 function readtest {
   FILE=$1
@@ -62,7 +62,9 @@ do
   chmod +x "$TMPDIR/$filename"
   if [ "$dontrun" = false ]; then
     for i in $(eval echo "{1..${#OUT[@]}}"); do
+      set +e #Workaround for compiled programs not returning exit code 0
       output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename")
+      set -e
       if [[ "$output" == "${OUT[$i]}" ]]; then
         echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
       else
