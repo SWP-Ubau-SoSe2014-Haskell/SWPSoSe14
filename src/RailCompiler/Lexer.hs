@@ -356,18 +356,29 @@ module Lexer (
     | string!!1 == '!' && last string == '!' = Just (Pop (tail $ init string))
 		| otherwise = Just (Push string)
 
- visited :: [PreLexNode] -> IP -> Int
+ -- |Get ID of the node that has been already visited using the current IP
+ -- (direction and coordinates).
+ visited :: [PreLexNode] -- ^List of nodes to check.
+    -> IP -- ^Instruction pointer to use.
+    -> Int -- ^ID of visited node or 0 if none.
  visited [] _ = 0
  visited ((id, _, _, (x, y, d)):xs) ip
   | x == posx ip && y == posy ip && d == dir ip = id
   | otherwise = visited xs ip
 
- finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
+ -- |Convert a list of 'PreLexNode's into a list of 'IDT.LexNode's.
+ finalize :: [PreLexNode] -- ^'PreLexNode's to convert.
+    -> [IDT.LexNode] -- ^Accumulator. Initialize with @[]@.
+    -> [IDT.LexNode] -- ^Resulting list of 'IDT.PreLexNode's.
  finalize [] result = result
  finalize ((node, lexeme, following, _):xs) result = finalize xs ((node, lexeme, following):result)
 
+ -- |Initial value for the instruction pointer at the start of a function.
  start :: IP
  start = IP 0 0 0 SE
+
+ -- |An instruction pointer representing a "crash" (fatal error).
+ crash :: IP
  crash = IP 0 (-1) (-1) NW
 
  valids :: IDT.Grid2D -> IP -> (String, String, String)
