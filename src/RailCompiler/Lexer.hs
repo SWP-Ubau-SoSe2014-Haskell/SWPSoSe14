@@ -43,7 +43,7 @@ module Lexer (
  
  -- functions --
  process :: IDT.PreProc2Lexer -> IDT.Lexer2SynAna
- process (IDT.IPL input) = IDT.ILS $ foldl (++) [] $ map processfn input
+ process (IDT.IPL input) = IDT.ILS $ concat $ map processfn input
 
  -- |Process a single function.
  processfn :: IDT.Grid2D -- ^The lines representing the function.
@@ -51,9 +51,9 @@ module Lexer (
                    -- There may be more functions because of lambdas.
  processfn [x] = [(funcname x, [(1, Start, 0)])] -- oneliners are illegal; follower == 0 will
                                                  -- lead to a crash, which is what we want.
- processfn code@(x:xs) = if head x /= '$' then [(funcname x, [(1, Start, 0)])] else [(funcname x, finalize nxs [])]
+ processfn code@(x:xs) = if head x /= '$' then [(funcname x, [(1, Start, 0)])] else [(funcname x, finalize (head nxs) [])]
   where
-    (nxs, _) = nodes code [(1, Start, 0, (0, 0, SE))] start
+    (nxs, _) = nodes code [[(1, Start, 0, (0, 0, SE))]] start
 
  -- |Get the name of the given function.
  --
@@ -65,12 +65,12 @@ module Lexer (
  funcname line = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
 
  -- |Get the nodes for the given function.
- nodes :: IDT.Grid2D -- ^Lines representing the function.
-    -> [PreLexNode] -- ^Current graph representing the function.
-                    -- Initialize with @[(1, Start, 0, (0, 0, SE))]@.
+ nodes :: IDT.Grid2D  -- ^Lines representing the function.
+    -> [[PreLexNode]] -- ^Current graph representing the function.
+                      -- Initialize with @[[(1, Start, 0, (0, 0, SE))]]@.
     -> IP -- ^Current instruction pointer.
           -- Initialize with @'start'@.
-    -> ([PreLexNode], IP) -- ^Final graph for the function and the new instruction pointer.
+    -> ([[PreLexNode]], IP) -- ^Final graph for the function and the new instruction pointer.
  nodes code list ip
   | current code tempip == ' ' = (list, tempip) -- If we are not finished yet, this will
                                                 -- automatically lead to a
@@ -78,15 +78,15 @@ module Lexer (
                                                 -- a leading node without a follower
                                                 -- (follower == 0) because it is
                                                 -- not modified here at all.
-  | otherwise = if endless then ([(1, Start, 1, (0, 0, SE))], crash) else nodes code newlist newip
+  | otherwise = if endless then ([[(1, Start, 1, (0, 0, SE))]], crash) else nodes code newlist newip
      where
       -- This checks if we have e. g. two reflectors that "bounce" the IP between them
       -- endlessly.
-      endless = list == [(1, Start, 0, (0, 0, SE))] && count ip > sum (map length code)
+      endless = list == [[(1, Start, 0, (0, 0, SE))]] && count ip > sum (map length code)
       tempip = step code ip
       (newlist, newip) = handle code list tempip
 
- handle :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
+ handle :: IDT.Grid2D -> [[PreLexNode]] -> IP -> ([[PreLexNode]], IP)
  handle code list ip = helper code list newip lexeme
   where
    (lexeme, newip) = parse code ip
@@ -97,8 +97,9 @@ module Lexer (
      | otherwise = (newlist, ip)
     where
      knownat = visited list ip
-     newnode = length list + 1
-     newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):update list newnode
+     newnode = length (head list) + 1
+     newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)) `prepend` update list newnode
+     prepend newx (x:xs) = (newx:x):xs
 
  -- moving ids
  offset :: Int -> IDT.LexNode -> IDT.LexNode
@@ -107,11 +108,24 @@ module Lexer (
 
  -- |Change the following node of the first (i. e. "last", since the list is reversed)
  -- node in the graph.
- update :: [PreLexNode] -- ^The graph to operate on.
+ update :: [[PreLexNode]] -- ^The graph to operate on.
     -> Int -- ^ID of new follower to set for the first node in the list.
-    -> [PreLexNode] -- ^Resulting graph.
- update [] _ = []
- update ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
+    -> [[PreLexNode]] -- ^Resulting graph.
+ update list@(x:xs) following
+  | x == [] = list
+  | otherwise = (helper x following):xs
+   where
+    helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
+
+ -- does the same as update but for some special node types
+ lexupdate :: [[PreLexNode]] -> Int -> [[PreLexNode]]
+ lexupdate list@(x:xs) following
+  | x == [] = list
+  | otherwise = (helper x following):xs
+   where
+    helper ((node, Junction _, follow, location):xs) lexfollowing = (node, Junction lexfollowing, follow, location):xs
+    helper xs _ = xs
+
 
  -- |Move the instruction pointer a single step.
  step :: IDT.Grid2D -- ^Current function in its line representation.
@@ -329,11 +343,15 @@ module Lexer (
     | string!!1 == '!' && last string == '!' = Just (Pop (tail $ init string))
 		| otherwise = Just (Push string)
 
- visited :: [PreLexNode] -> IP -> Int
+ -- TODO: fix for twodimensional positions
+ visited :: [[PreLexNode]] -> IP -> Int
  visited [] _ = 0
- visited ((id, _, _, (x, y, d)):xs) ip
-  | x == posx ip && y == posy ip && d == dir ip = id
-  | otherwise = visited xs ip
+ visited (x:xs) ip = let res = helper x ip in if res > 0 then res else visited xs ip
+  where 
+   helper [] _ = 0
+   helper ((id, _, _, (x, y, d)):xs) ip
+    | x == posx ip && y == posy ip && d == dir ip = id
+    | otherwise = helper xs ip
 
  finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
  finalize [] result = result
