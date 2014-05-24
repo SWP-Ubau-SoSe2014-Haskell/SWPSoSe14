@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e #Stop on any error
 ### Function for reading in-/output files
 function readtest {
   FILE=$1
@@ -44,8 +43,7 @@ EXT=".io"
 TMPDIR=tests/tmp
 mkdir -p $TMPDIR
 fail=false
-for f in "$TESTDIR"/*.rail
-do
+for f in "$TESTDIR"/*.rail; do
   dontrun=false
   filename="${f##*/}"
   filename="${filename%%.*}"
@@ -55,16 +53,18 @@ do
 	else
 	  fail=true
           dontrun=true
-	  echo "ERROR testing: \"$filename$EXT\". $EXT-file is missing."
+	  echo "ERROR testing: \"$filename.rail\". $EXT-file is missing."
   fi
-  dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll"
-  llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename"
-  chmod +x "$TMPDIR/$filename"
+  dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll" \
+	  && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
+	  && chmod +x "$TMPDIR/$filename" || { 
+            dontrun=true
+            fail=true
+            echo "ERROR compiling/linking \"$filename.rail\"" 
+	}
   if [ "$dontrun" = false ]; then
     for i in $(eval echo "{1..${#OUT[@]}}"); do
-      set +e #Workaround for compiled programs not returning exit code 0
       output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename")
-      set -e
       if [[ "$output" == "${OUT[$i]}" ]]; then
         echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
       else
