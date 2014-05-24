@@ -5,7 +5,7 @@ module InterfaceDT where
   -- type definitions --
   type Grid2D  = [String]
 
-  -- |(NodeID (start: 1), Lexeme of Node, NodeID of following Node)
+  -- |(NodeID (start: 1), Lexeme of Node, NodeID of following Node (0 if none))
   type LexNode = (Int, Lexeme, Int)
   -- |(FunctionID, Graph of Function as adjacency list)
   type Graph   = (String, [LexNode])

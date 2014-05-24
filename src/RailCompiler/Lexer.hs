@@ -406,14 +406,42 @@ module Lexer (
    everything = "+\\/x|-"++always
    always = "abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
 
- fromAST :: IDT.Lexer2SynAna -> String
+ -- |Convert a graph/AST into a portable text representation.
+ -- See also 'fromGraph'.
+ fromAST :: IDT.Lexer2SynAna -- ^Input graph/AST/forest.
+    -> String -- ^Portable text representation of the AST:
+              --
+              -- Each function is represented by its own section. A section has a header
+              -- and content; it continues either until the next section, a blank line or
+              -- the end of the file, whichever comes first.
+              --
+              -- A section header consists of a single line containing the name of the function,
+              -- enclosed in square brackets, e. g. @[function_name]@. There cannot be any whitespace
+              -- before the opening bracket.
+              --
+              -- The section content consists of zero or more non-blank lines containing exactly
+              -- three records delimited by a semicolon @;@. Each line describes a node and contains
+              -- the following records, in this order:
+              --
+              --     * The node ID (numeric), e. g. @1@.
+              --     * The Rail lexeme, e. g. @o@ or @[constant]@ etc. Note that track lexemes like
+              --     @-@ or @+@ are not included in the graph. Multi-character lexemes like constants
+              --     may include semicolons, so you need to parse them correctly! In other words, you need
+              --     to take care of lines like @1;[some ; constant];2@.
+              --     * Node ID of the follower node, e. g. @2@. May be @0@ if there is no next node.
  fromAST (IDT.ILS graph) = unlines $ map fromGraph graph
 
- toAST :: String -> IDT.Lexer2SynAna
+ -- |Convert a portable text representation of a graph into a concrete graph representation.
+ -- See also 'toGraph'. See 'fromAST' for a specification of the portable text representation.
+ toAST :: String -- ^Portable text representation. See 'fromAST'.
+    -> IDT.Lexer2SynAna -- ^Output graph.
  toAST input = IDT.ILS (map toGraph $ splitfunctions input)
 
  -- |Convert an 'IDT.Graph' for a single function to a portable text representation.
  -- See 'fromAST' for a specification of the representation.
+ --
+ -- TODO: Currently, this apparently crashes the program on invalid input. More sensible error handling?
+ --       At least a nice error message would be nice.
  fromGraph :: IDT.Graph -- ^Input graph.
     -> String -- ^Text representation.
  fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):tail (map (fromLexNode . offset (-1)) nodes)
@@ -457,6 +485,7 @@ module Lexer (
  splitfunctions = groupBy (\_ y -> null y || head y /= '[') . filter (not . null) . lines
 
  -- |Convert a portable text representation of a single function into an 'IDT.Graph'.
+ -- Raises 'error's on invalid input (see 'ErrorHandling').
  toGraph :: [String] -- ^List of lines making up the text representation of the function.
     -> IDT.Graph -- ^Graph describing the function.
  toGraph lns = (init $ tail $ head lns, (1, Start, 2):map (offset 1) (nodes $ tail lns))
