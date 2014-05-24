@@ -504,7 +504,7 @@ module Lexer (
    fromLexeme Start = "$"
    fromLexeme Finish = "#"
    fromLexeme (Junction _) = "v"
-   optional (Junction follow) = "," ++ show follow
+   optional (Junction follow) = ',' : show follow
    optional _ = ""
 
  -- |Split a portable text representation of multiple function graphs (a forest) into separate
