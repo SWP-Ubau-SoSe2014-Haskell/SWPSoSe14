@@ -37,20 +37,22 @@ done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 cd "$DIR/.."
 
-TESTDIR="integration-tests/passing-integration-tests"
+TESTDIR="integration-tests/passing"
 EXT=".io"
 
 ### Compile and run all .rail files
 TMPDIR=tests/tmp
-mkdir $TMPDIR
+mkdir -p $TMPDIR
 fail=false
-for f in $TESTDIR/*.rail 
+for f in "$TESTDIR"/*.rail
 do
   filename="${f##*/}"
   filename="${filename%%.*}"
   if [ -f "$TESTDIR/$filename$EXT" ]
     then
       readtest "$TESTDIR/$filename$EXT"
+	else
+	  echo "Warning: $TESTDIR/$filename$EXT is missing."
   fi
   dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll"
   llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename"
