@@ -396,7 +396,7 @@ module Lexer (
    fromLexeme Start = "$"
    fromLexeme Finish = "#"
    fromLexeme (Junction _) = "v"
-   optional (Junction follow) = "," ++ show follow
+   optional (Junction follow) = ',' : show follow
    optional _ = ""
 
  splitfunctions :: String -> [[String]]
