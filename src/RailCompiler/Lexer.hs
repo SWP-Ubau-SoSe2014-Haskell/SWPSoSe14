@@ -12,6 +12,7 @@ module Lexer (
  import InterfaceDT as IDT
  import ErrorHandling as EH
  import Data.List
+ import Text.Printf
 
  -- |Modified 'IDT.LexNode' with an additional identifier for nodes
  -- to check whether we have circles in the graph.
@@ -164,7 +165,7 @@ module Lexer (
             ']'  -> (']', escip)
             'n'  -> ('\n', escip)
             't'  -> ('\t', escip)
-            _    -> error EH.strUnhandledEscape
+            _    -> error $ printf EH.strUnhandledEscape escsym
       where
         [escsym, esctrail]  = lookahead code ip 2
         -- Points to the character after the trailing backslash
