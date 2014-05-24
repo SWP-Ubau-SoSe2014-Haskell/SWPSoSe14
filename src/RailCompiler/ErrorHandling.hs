@@ -11,6 +11,9 @@ strNestedOpenBracket    = "Nested opening bracket in string constant."
 strNonSymmetricEscape   = "Non-symmetric escape sequence in string constant."
 strUnhandledEscape      = "Unhandled escape sequence `\\%c' in string constant."
 
+-- "shr" like in "shared graph representation".
+shrLineNoLexeme         = "No lexeme found in line: %s"
+
 -- SyntacticalAnalysis-Errors
 
 -- SemanticalAnalysis-Errors

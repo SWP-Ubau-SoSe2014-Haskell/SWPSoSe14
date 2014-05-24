@@ -469,7 +469,7 @@ module Lexer (
      fixedlex
       | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
       | otherwise = fromJust lex
-     fromJust Nothing = error ("line with no lexem found in line: "++ln)
+     fromJust Nothing = error $ printf EH.shrLineNoLexeme ln
      fromJust (Just x) = x
      follower = takeWhile (/=',') $ dropWhile (`notElem` "0123456789") $ drop (posx ip) other
 
