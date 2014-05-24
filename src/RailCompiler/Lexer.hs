@@ -141,7 +141,12 @@ module Lexer (
    (left, forward, right) = adjacent code ip
    (lval, fval, rval) = valids code ip
 
- stepwhile :: IDT.Grid2D -> IP -> (Char -> Bool) -> (String, IP)
+ -- |Collect characters until a condition is met while moving in the current direction.
+ stepwhile :: IDT.Grid2D -- ^Line representation of current function.
+    -> IP -- ^Current instruction pointer.
+    -> (Char -> Bool) -- ^Function: Should return True if collection should stop.
+                      -- Gets the current Char as an argument.
+    -> (String, IP) -- ^Collected characters and the new instruction pointer.
  stepwhile code ip fn
    | not (fn curchar) = ("", ip)
    | otherwise = (curchar:resstring, resip)
@@ -245,7 +250,10 @@ module Lexer (
     -> (Int, Int) -- ^New position that results from the given relative movement.
  posdir ip reldir = posabsdir ip (absolute ip reldir)
 
- posabsdir :: IP -> Direction -> (Int, Int)
+ -- |Get the position of an absolute direction.
+ posabsdir :: IP -- ^Current instruction pointer.
+    -> Direction -- ^Current absolute direction.
+    -> (Int, Int) -- ^New position that results from the given absolute movement.
  posabsdir ip N = (posy ip - 1, posx ip)
  posabsdir ip NE = (posy ip - 1, posx ip + 1)
  posabsdir ip E = (posy ip, posx ip + 1)
@@ -255,8 +263,10 @@ module Lexer (
  posabsdir ip W = (posy ip, posx ip - 1)
  posabsdir ip NW = (posy ip - 1, posx ip - 1)
 
- -- get the absolute direction out of a relative one
- absolute :: IP -> RelDirection -> Direction
+ -- |Convert a relative direction into a relative one.
+ absolute :: IP -- ^Current instruction pointer.
+    -> RelDirection -- ^Relative direction to convert.
+    -> Direction -- ^Equivalent absolute direction.
  absolute x Forward = dir x
  absolute (IP {dir=N}) Lexer.Left = NW
  absolute (IP {dir=N}) Lexer.Right = NE
