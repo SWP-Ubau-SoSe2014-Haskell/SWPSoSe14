@@ -64,7 +64,10 @@ for f in "$TESTDIR"/*.rail; do
 	}
   if [ "$dontrun" = false ]; then
     for i in $(eval echo "{1..${#OUT[@]}}"); do
-      output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename")
+      output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename";echo x)
+      output=${output%x}
+      output=$(awk -v ORS="\\\\n" 1 <<<"$output")
+      output=${output%\\n}
       if [[ "$output" == "${OUT[$i]}" ]]; then
         echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
       else
