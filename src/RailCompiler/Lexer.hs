@@ -381,7 +381,14 @@ module Lexer (
  crash :: IP
  crash = IP 0 (-1) (-1) NW
 
- valids :: IDT.Grid2D -> IP -> (String, String, String)
+ -- |Return valid chars for movement depending on the current direction.
+ valids :: IDT.Grid2D -- ^Line representation of current function.
+    -> IP -- ^Current instruction pointer.
+    -> (String, String, String) -- ^Tuple consisting of:
+                                --
+                                --     * Valid characters for movement to the (relative) left.
+                                --     * Valid characters for movement in the (relative) forward direction.
+                                --     * Valid characters for movement to the (relative) right.
  valids code ip = tripleinvert (dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
   where
    tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
@@ -405,7 +412,10 @@ module Lexer (
  toAST :: String -> IDT.Lexer2SynAna
  toAST input = IDT.ILS (map toGraph $ splitfunctions input)
 
- fromGraph :: IDT.Graph -> String
+ -- |Convert an 'IDT.Graph' for a single function to a portable text representation.
+ -- See 'fromAST' for a specification of the representation.
+ fromGraph :: IDT.Graph -- ^Input graph.
+    -> String -- ^Text representation.
  fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):tail (map (fromLexNode . offset (-1)) nodes)
   where
    fromLexNode :: IDT.LexNode -> String
@@ -440,10 +450,15 @@ module Lexer (
    optional (Junction follow) = "," ++ show follow
    optional _ = ""
 
- splitfunctions :: String -> [[String]]
+ -- |Split a portable text representation of multiple function graphs (a forest) into separate
+ -- text representations of each function graph.
+ splitfunctions :: String -- ^Portable text representation of the forest.
+    -> [[String]] -- ^List of lists, each being a list of lines making up a separate function graph.
  splitfunctions = groupBy (\_ y -> null y || head y /= '[') . filter (not . null) . lines
 
- toGraph :: [String] -> IDT.Graph
+ -- |Convert a portable text representation of a single function into an 'IDT.Graph'.
+ toGraph :: [String] -- ^List of lines making up the text representation of the function.
+    -> IDT.Graph -- ^Graph describing the function.
  toGraph lns = (init $ tail $ head lns, (1, Start, 2):map (offset 1) (nodes $ tail lns))
   where
    nodes [] = []
