@@ -87,7 +87,12 @@ module Lexer (
       tempip = step code ip
       (newlist, newip) = handle code list tempip
 
- handle :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
+ -- |Helper function for 'nodes': Handle the creation of the next 'PreLexNode'
+ -- for the current function.
+ handle :: IDT.Grid2D -- ^Line representation of input function.
+    -> [PreLexNode] -- ^Current list of nodes.
+    -> IP -- ^Current instruction pointer.
+    -> ([PreLexNode], IP) -- ^New node list and new instruction pointer.
  handle code list ip = helper code list newip lexeme
   where
    (lexeme, newip) = parse code ip
@@ -101,8 +106,16 @@ module Lexer (
      newnode = length list + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):update list newnode
 
- -- moving ids
- offset :: Int -> IDT.LexNode -> IDT.LexNode
+ -- |Shift a node by the given amount. May be positive or negative.
+ -- This is used by 'toGraph' and 'fromGraph' to shift all nodes by 1 or -1, respectively,
+ -- which is done because the portable text representation of the graph does not include
+ -- a leading "Start" node with ID 1 -- instead, the node with ID 1 is the first "real"
+ -- graph node. In other words, when exporting to the text representation, the "Start"
+ -- node is removed and all other nodes are "shifted" by -1 using this function. When
+ -- importing, a "Start" node is added and all nodes are shifted by 1.
+ offset :: Int -- ^Amount to shift node by.
+    -> IDT.LexNode -- ^Node to operate on.
+    -> IDT.LexNode -- ^Shifted node.
  offset c (node, lexeme, 0) = (node + c, lexeme, 0)
  offset c (node, lexeme, following) = (node + c, lexeme, following + c)
 
