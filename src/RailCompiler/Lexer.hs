@@ -1,3 +1,26 @@
+{- |
+Module      : Lexer
+Description : Processes preprocessor output into input for the syntactical analysis.
+Copyright   : See the AUTHORS file in the root directory of this project for a list
+              of contributors.
+License     : MIT
+
+The lexer receives the output of the preprocessor -- a list of lists of strings,
+where each list represents a single function -- and turns it into a forest of function
+graphs. The forest is represented as a list of tuples; each tuple describes a function
+graph and contains the function name as a string as well as the function's graph itself.
+
+A single function graph is a list of nodes. A node is a triple containing the following
+elements, in this order:
+
+    * Node ID as an Integer. Starts with 1 for each function.
+    * The 'IDT.Lexeme' for this node.
+    * The node ID of the follower node or 0 if there is no next node.
+
+Note that for valid input, the only node with a follower ID of 0 can be
+a node containing the 'IDT.Finish' lexeme. If any other node contains a follower
+ID of 0, this is an error (or, in Rail terms, a "crash".
+-}
 module Lexer (
               -- * Main (pipeline) functions
               process,
