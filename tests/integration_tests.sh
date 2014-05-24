@@ -67,9 +67,8 @@ for f in "$TESTDIR"/*.rail; do
       #Really ugly: bash command substitution eats trailing newlines so we need to add a terminating character and then remove it again.
       output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename";echo x)
       output=${output%x}
-      #Almost as ugly: convert all actual newlines to \n and then remove the last \n introduced by <<<
-      output=$(awk -v ORS="\\\\n" 1 <<<"$output")
-      output=${output%\\n}
+      #Convert all actual newlines to \n
+      output=$(echo -n "$output" | sed 's/$/\n/' | tr -d '\n')
       if [[ "$output" == "${OUT[$i]}" ]]; then
         echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
       else
