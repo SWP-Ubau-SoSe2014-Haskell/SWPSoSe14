@@ -285,8 +285,11 @@ module Lexer (
  absolute (IP {dir=NW}) Lexer.Left = W
  absolute (IP {dir=NW}) Lexer.Right = N
 
- -- get the lexem out of a char
- parse :: IDT.Grid2D -> IP -> (Maybe IDT.Lexeme, IP)
+ -- |Get the next lexeme at the current position.
+ parse :: IDT.Grid2D -- ^Line representation of current function.
+    -> IP -- ^Current instruction pointer.
+    -> (Maybe IDT.Lexeme, IP) -- ^Resulting lexeme (if any) and
+                              -- the new instruction pointer.
  parse code ip = case current code ip of
    'b' -> (Just Boom, ip)
    'e' -> (Just EOF, ip)
