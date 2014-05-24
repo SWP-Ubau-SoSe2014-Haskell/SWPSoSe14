@@ -64,8 +64,10 @@ for f in "$TESTDIR"/*.rail; do
 	}
   if [ "$dontrun" = false ]; then
     for i in $(eval echo "{1..${#OUT[@]}}"); do
+      #Really ugly: bash command substitution eats trailing newlines so we need to add a terminating character and then remove it again.
       output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename";echo x)
       output=${output%x}
+      #Almost as ugly: convert all actual newlines to \n and then remove the last \n introduced by <<<
       output=$(awk -v ORS="\\\\n" 1 <<<"$output")
       output=${output%\\n}
       if [[ "$output" == "${OUT[$i]}" ]]; then
