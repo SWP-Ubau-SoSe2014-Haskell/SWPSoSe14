@@ -9,8 +9,10 @@ noStartSymbolFound = "No startsymbol '$' found! You should add a '$' as the star
 -- Lexer errors
 strNestedOpenBracket    = "Nested opening bracket in string constant."
 strNonSymmetricEscape   = "Non-symmetric escape sequence in string constant."
--- TODO: Would be good to include the unhandled escape sequence.
-strUnhandledEscape      = "Unhandled escape sequence in string constant."
+strUnhandledEscape      = "Unhandled escape sequence `\\%c' in string constant."
+
+-- "shr" like in "shared graph representation".
+shrLineNoLexeme         = "No lexeme found in line: %s"
 
 -- SyntacticalAnalysis-Errors
 
