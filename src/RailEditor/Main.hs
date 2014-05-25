@@ -77,17 +77,19 @@ createMenu window = do
 	on menuSaveItem menuItemActivate (fileDialog window "ENTRY-CONTENT-STUB" "SaveFile")
 	on menuCloseItem menuItemActivate mainQuit
 	--setting shortcuts in relation to menuBar
-	--Sry for this hugh indentation but int works finally ^^
-	on window keyPressEvent $ do 
-									modi <- eventModifier
-									key <- eventKeyName
-									liftIO $ if key == "q" && modi == [Control] 
-												  then mainQuit >> return (True) 
-												  else if key == "s" && modi == [Control]
-															then fileDialog window "ENTRY-CONTENT-STUB" "SaveFile" >> return(True)
-															else if key == "o"
-																	 then fileDialog window "ENTRY-CONTENT-STUB" "OpenFile" >> return(True)
-																	 else return(False)
+	on window keyPressEvent $ 
+		do 
+		modi <- eventModifier
+		key <- eventKeyName
+		liftIO $ case modi of{
+			[Control] -> case key of{
+				"q" -> mainQuit >> return(True);
+				"s" -> fileDialog window "ENTRY-CONTENT-STUB" "SaveFile" >> return(True);
+				"o" -> fileDialog window "ENTRY-CONTENT-STUB" "OpenFile" >> return(True);
+				_ -> return(False);
+			};
+			_ -> return(False);
+		}
 	return (menuBar)
 
 main :: IO ()
