@@ -12,7 +12,7 @@ fileChooserEventHandler fileChooser text response mode
 			"OpenFile" -> do
 				dir <- fileChooserGetFilename fileChooser
 				content <- readFile (fromJust dir)
-				putStrLn(content)
+				putStrLn content
 				return()
 			"SaveFile" -> do
 				dir <- fileChooserGetFilename fileChooser
@@ -27,7 +27,7 @@ fileChooserEventHandler fileChooser text response mode
 --Passes the enventhandler for fileDialog and starts it
 runFileChooser :: String -> FileChooserDialog -> String -> IO()
 runFileChooser text fileChooser mode = do
-	on fileChooser response (\resp -> (fileChooserEventHandler  fileChooser text resp mode))
+	on fileChooser response (\resp -> fileChooserEventHandler  fileChooser text resp mode)
 	dialogRun fileChooser
 	return()
 
@@ -83,14 +83,14 @@ createMenu window = do
 		key <- eventKeyName
 		liftIO $ case modi of{
 			[Control] -> case key of{
-				"q" -> mainQuit >> return(True);
-				"s" -> fileDialog window "ENTRY-CONTENT-STUB" "SaveFile" >> return(True);
-				"o" -> fileDialog window "ENTRY-CONTENT-STUB" "OpenFile" >> return(True);
-				_ -> return(False);
+				"q" -> mainQuit >> return True;
+				"s" -> fileDialog window "ENTRY-CONTENT-STUB" "SaveFile" >> return True;
+				"o" -> fileDialog window "ENTRY-CONTENT-STUB" "OpenFile" >> return True;
+				_ -> return False;
 			};
-			_ -> return(False);
+			_ -> return False;
 		}
-	return (menuBar)
+	return menuBar
 
 main :: IO ()
 main = do
@@ -98,6 +98,7 @@ main = do
 	
 	window <- windowNew
 	windowSetDefaultSize window 600 480
+	windowSetPosition window WinPosCenter
 	
 	menuBar <- createMenu window
 	table <- tableNew 4 4 True
