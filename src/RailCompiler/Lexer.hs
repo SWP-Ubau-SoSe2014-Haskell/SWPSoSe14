@@ -160,14 +160,14 @@ module Lexer (
    where
     helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
 
- -- does the same as update but for some special node types
- lexupdate :: [[PreLexNode]] -> Int -> [[PreLexNode]]
- lexupdate list@(x:xs) following
-  | null x = list
-  | otherwise = helper x following:xs
-   where
-    helper ((node, Junction _, follow, location):xs) lexfollowing = (node, Junction lexfollowing, follow, location):xs
-    helper xs _ = xs
+ -- does something similar to update for some special node types and merges subgraphes
+ merge :: [[PreLexNode]] -> [[PreLexNode]]
+ merge list@(x1:x2:xs) = (x1 ++ helper x2 following):xs
+  where
+   (_, _, following, _) = last x1
+   helper ((node, Junction _, follow, location):xs) lexfollowing = (node, Junction lexfollowing, follow, location):xs
+   helper xs _ = xs
+ merge list = list
 
 
  -- |Move the instruction pointer a single step.
