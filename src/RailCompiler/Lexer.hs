@@ -132,7 +132,7 @@ module Lexer (
      | otherwise = (newlist, ip)
     where
      knownat = visited list ip
-     newnode = length (head list) + 1
+     newnode = sum (map length list) + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)) `prepend` update list newnode
      prepend newx (x:xs) = (newx:x):xs
 
@@ -155,16 +155,16 @@ module Lexer (
     -> Int -- ^ID of new follower to set for the first node in the list.
     -> [[PreLexNode]] -- ^Resulting graph.
  update list@(x:xs) following
-  | x == [] = list
-  | otherwise = (helper x following):xs
+  | null x = list
+  | otherwise = helper x following:xs
    where
     helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
 
  -- does the same as update but for some special node types
  lexupdate :: [[PreLexNode]] -> Int -> [[PreLexNode]]
  lexupdate list@(x:xs) following
-  | x == [] = list
-  | otherwise = (helper x following):xs
+  | null x = list
+  | otherwise = helper x following:xs
    where
     helper ((node, Junction _, follow, location):xs) lexfollowing = (node, Junction lexfollowing, follow, location):xs
     helper xs _ = xs
@@ -401,7 +401,6 @@ module Lexer (
 
  -- |Get ID of the node that has been already visited using the current IP
  -- (direction and coordinates).
- -- TODO: fix for twodimensional positions
  visited :: [[PreLexNode]] -- ^List of nodes to check.
     -> IP -- ^Instruction pointer to use.
     -> Int -- ^ID of visited node or 0 if none.
