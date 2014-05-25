@@ -160,13 +160,18 @@ module Lexer (
    where
     helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
 
- -- does something similar to update for some special node types and merges subgraphes
+ -- merges splitted graphs (e.g. Junction)
+ -- x3 is the graph until the special node appeared
+ -- x2 is the graph that will result in the special attribute
+ -- x1 is the graph that will become the follower
  merge :: [[PreLexNode]] -> [[PreLexNode]]
- merge list@(x1:x2:xs) = (x1 ++ helper x2 following):xs
+ merge list@(x1:x2:x3:xs) = (x1 ++ x2 ++ helperf (helpera x3)):xs
   where
    (_, _, following, _) = last x1
-   helper ((node, Junction _, follow, location):xs) lexfollowing = (node, Junction lexfollowing, follow, location):xs
-   helper xs _ = xs
+   (_, _, attribute, _) = last x2
+   helperf ((node, lexeme, _, location):xs) = (node, lexeme, following, location):xs
+   helpera ((node, Junction _, follow, location):xs) = (node, Junction attribute, follow, location):xs
+   helpera xs = xs
  merge list = list
 
 
