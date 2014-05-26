@@ -1,5 +1,7 @@
 @stack = global [1000 x i8*] undef ; stack containing pointer to i8 
 @sp = global i64 undef ; global stack pointer
+@true = global [2 x i8] c"1\00"
+@false = global [2 x i8] c"0\00"
 
 define void @push(i8* %str_ptr) {
   ; dereferencing @sp by loading value into memory
@@ -50,6 +52,21 @@ define i8* @pop() {
   %top_of_stack = sub i64 %sp, 1
   store i64 %top_of_stack, i64* @sp
   ret i8* %val
+}
+
+; UNTESTED
+define i64 @strlen(i8* %str) {
+entry:
+  br label %loop
+loop:
+  %i = phi i64 [1, %entry ], [ %next_i, %loop ]
+  %next_i = add i64 %i, 1
+  %addr = getelementptr i8* %str, i64 %i
+  %c = load i8* %addr
+  %cond = icmp eq i8 %c, 0
+  br i1 %cond, label %finished, label %loop
+finished:
+  ret i64 %i
 }
 
 ; UNTESTED
