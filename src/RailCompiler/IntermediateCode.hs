@@ -31,27 +31,25 @@ import Control.Applicative
 
 data CodegenState = CodegenState {
   blocks :: [BasicBlock],
-  count :: Word --Count of unnamed Instructions
+  count :: Word, --Count of unnamed Instructions
+  localDict :: Map String (Int, Integer)
 }
 
 newtype Codegen a = Codegen { runCodegen :: State CodegenState a }
   deriving (Functor, Applicative, Monad, MonadState CodegenState)
 
 data GlobalCodegenState = GlobalCodegenState {
-  dict :: Map String (Integer, Integer)
+  dict :: Map String (Int, Integer)
 }
 
 newtype GlobalCodegen a = GlobalCodegen { runGlobalCodegen :: State GlobalCodegenState a }
   deriving (Functor, Applicative, Monad, MonadState GlobalCodegenState)
 
-emptyCodegen :: CodegenState
-emptyCodegen = CodegenState [] 0
+execGlobalCodegen :: Map String (Int, Integer) -> GlobalCodegen a -> a
+execGlobalCodegen d m = evalState (runGlobalCodegen m) $ GlobalCodegenState d
 
-execGlobalCodegen :: GlobalCodegen a -> a
-execGlobalCodegen m = evalState (runGlobalCodegen m) $ GlobalCodegenState Data.Map.empty
-
-execCodegen :: Codegen a -> a
-execCodegen m = evalState (runCodegen m) emptyCodegen
+execCodegen :: Map String (Int, Integer) -> Codegen a -> a
+execCodegen d m = evalState (runCodegen m) $ CodegenState [] 0 d
 
 -- generate module from list of definitions
 generateModule :: [Definition] -> Module
@@ -138,6 +136,7 @@ peek = GlobalDefinition $ Global.functionDefaults {
 -- http://llvm.org/docs/LangRef.html#call-instruction
 generateInstruction (Constant value) = do
   index <- fresh
+  dict <- gets localDict
   return [UnName index := LLVM.General.AST.Call {
     -- The optional tail and musttail markers indicate that the optimizers
     --should perform tail call optimization.
@@ -162,7 +161,7 @@ generateInstruction (Constant value) = do
           -- http://llvm.org/docs/LangRef.html#getelementptr-instruction
           (ConstantOperand Constant.GetElementPtr {
             Constant.inBounds = True,
-            Constant.address = Constant.GlobalReference (UnName 0), --TODO look up reference in symbol table
+            Constant.address = Constant.GlobalReference (UnName $ fromInteger $ snd $ dict ! value),
             Constant.indices = [
               Int { integerBits = 8, integerValue = 0 },
               Int { integerBits = 8, integerValue = 0 }
@@ -238,11 +237,13 @@ generateBasicBlocks = mapM generateBasicBlock
 
 -- generate function definition from AST
 generateFunction :: AST -> GlobalCodegen Definition
-generateFunction (name, lexemes) = return $ GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name name,
-  Global.returnType = VoidType,
-  Global.basicBlocks = blks
-} where blks = execCodegen $ generateBasicBlocks lexemes
+generateFunction (name, lexemes) = do
+  dict <- gets dict
+  return $ GlobalDefinition $ Global.functionDefaults {
+    Global.name = Name name,
+    Global.returnType = VoidType,
+    Global.basicBlocks = execCodegen dict $ generateBasicBlocks lexemes
+  }
 
 fresh :: Codegen Word
 fresh = do
@@ -267,6 +268,6 @@ process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [push, pop, peek, puts] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
-    dict = fromList $ zipWith foo [0..] $ getAllCons input
+    d = fromList $ zipWith foo [0..] $ getAllCons input
     foo index (Constant s) = (s, (length s, index)) --TODO rename foo to something meaningful e.g. createSymTable
-    generateFunctionsFoo input = execGlobalCodegen $ generateFunctions input
+    generateFunctionsFoo input = execGlobalCodegen d $ generateFunctions input
