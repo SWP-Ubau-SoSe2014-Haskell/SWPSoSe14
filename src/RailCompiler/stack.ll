@@ -3,8 +3,14 @@
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
 
-declare i64 @strtol(i8 zeroext)
-declare i8* @ltostr(i64 zeroext)
+declare i64 @strtol(i8* zeroext)
+declare i64 @snprintf(i8*, ...)
+declare i64 @printf(i8*, ...)
+
+@to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
+@pushing = private unnamed_addr constant [12 x i8] c"Pushing %s\0A\00"
+@popped  = private unnamed_addr constant [11 x i8] c"Popped %s\0A\00"
+
 
 define void @push(i8* %str_ptr) {
   ; dereferencing @sp by loading value into memory
@@ -30,30 +36,34 @@ define void @push(i8* %str_ptr) {
 ; pops element from stack and converts in integer
 ; returns the element, in case of error undefined
 define i64 @pop_int(){
-
   ; pop
   %top = call i8* @pop()
-  %val = load i8* %top
 
   ; convert to int, check for error
-  %top_int = call i64 @strtol(i8 %val)
-  
+  %top_int = call i64 @strtol(i8* %top)
+
   ; return
   ret i64 %top_int
 }
 
 define void @push_int(i64 %top_int)
-{
-  ; convert to string
-  %top_str = call i8* @ltostr(i64 %top_int)
+{  
+  ; allocate memory to store string in
+  %buffer = alloca [2 x i8]  
+  %buffer_addr = getelementptr [2 x i8]* %buffer, i8 0, i64 0
+  %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
+  ; convert to string
+  call i64(i8*, ...)* @snprintf(
+          i8* %buffer_addr, i64 2, i8* %to_str_ptr, i64 %top_int)
+ 
   ; push on stack 
-  call void(i8*)* @push(i8* %top_str)
+  call void(i8*)* @push(i8* %buffer_addr)
 
   ret void
 }
 
-define void @add() {
+define void @add_int() {
   ; get top of stack
   %top_1   = call i64()* @pop_int()
 
@@ -67,6 +77,31 @@ define void @add() {
   call void(i64)* @push_int(i64 %res)
 
   ret void
+}
+
+@number0 = private unnamed_addr constant [2 x i8] c"5\00"
+@number1  = private unnamed_addr constant [2 x i8] c"3\00"
+
+define i32 @main() {
+ ; push two numbers on the stack
+ %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0   
+ %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0   
+
+ %pushingptr = getelementptr [12 x i8]* @pushing, i64 0, i64 0
+ call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
+ call void(i8*)* @push(i8* %number0)
+
+ call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
+ call void(i8*)* @push(i8* %number1)
+
+ call void @add_int() 
+
+ %poppedptr = getelementptr [11 x i8]* @popped, i64 0, i64 0
+ %sum  = call i8*()* @pop()
+ call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
+
+
+ ret i32 0
 }
 
 define i8* @peek() {
