@@ -55,12 +55,16 @@ for f in "$TESTDIR"/*.rail; do
           dontrun=true
 	  echo "ERROR testing: \"$filename.rail\". $EXT-file is missing."
   fi
-  dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll" \
-	  && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
+  errormsg=$(dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll" 2>&1) \
+  	  && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
 	  && chmod +x "$TMPDIR/$filename" || { 
             dontrun=true
-            fail=true
-            echo "ERROR compiling/linking \"$filename.rail\"" 
+	    if [[ "$errormsg" == "${OUT[1]}" ]]; then
+	      echo "Passed expected fail \"$filename.rail\"."
+	    else
+              fail=true
+	      echo "ERROR compiling/linking \"$filename.rail\" with error: \"$errormsg\""
+            fi
 	}
   if [ "$dontrun" = false ]; then
     for i in $(eval echo "{1..${#OUT[@]}}"); do
