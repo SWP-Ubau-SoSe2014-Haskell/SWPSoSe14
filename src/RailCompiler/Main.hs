@@ -52,7 +52,7 @@ options = [
 showHelp _ = do
   putStrLn "rail2llvm--haskell-compiler (development version)"
   putStr "https://github.com/SWP-Ubau-SoSe2014-Haskell/SWPSoSe14\n\n"
-  putStrLn "Usage: For basic information, try the `--help' option."
+  putStr $ usageInfo "Usage: main [OPTION...]" options  
   exitWith ExitSuccess
 
 setInput  arg opt = return opt { optInput     = readFile arg }
