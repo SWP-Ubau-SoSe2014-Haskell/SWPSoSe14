@@ -36,6 +36,5 @@ testInterCode04 = "IntermediateCode: " ~:
 testInterCode05 = "IntermediateCode: " ~:
   InterCode.process inputTestCase01 @=? InterCode.process input5
 
-testModule = TestList[ testInterCode01, testInterCode02, testInterCode03, testInterCode04, testInterCode05 ]
-
-run = runTestTT $ testModule
+testModule = []
+--testModule = [ testInterCode01, testInterCode02, testInterCode03, testInterCode04, testInterCode05 ]
