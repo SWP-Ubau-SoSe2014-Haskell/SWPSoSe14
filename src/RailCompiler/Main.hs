@@ -45,8 +45,8 @@ options = [
     Option "i" ["input"    ] (ReqArg setInput  "FILE" ) "input file (don't set to use stdin')",
     Option "o" ["output"   ] (ReqArg setOutput "FILE" ) "output file (don't set to use stdout')",
     Option "c" ["compile"  ] (NoArg  setCompile       ) "compile 'rail' to 'llvm'",
-    Option [] ["exportAST"] (OptArg setExpAST "FILE" ) "export frontend AST (don't offer a File to use stdout)\nautosets -c \n(dont set with --importAST)",
-    Option [] ["importAST"] (NoArg setImpAST         ) "import frontend AST and compile to llvm\nautosets -c \n(set input via -i; (dont set with --exportAST)"--"\n\nset -c with --exportAST and get both: the AST and the llvm code"    
+    Option [ ] ["exportAST"] (OptArg setExpAST "FILE" ) "export frontend AST (don't offer a File to use stdout) \n(dont set with --importAST)",
+    Option [ ] ["importAST"] (NoArg setImpAST         ) "import frontend AST and compile to llvm\nautosets -c \n(set input via -i; (dont set with --exportAST)\n\nset -c with --exportAST and get both: the AST and the llvm code"    
   ]
 
 showHelp _ = do
@@ -57,7 +57,7 @@ showHelp _ = do
 
 setInput  arg opt = return opt { optInput     = readFile arg }
 setOutput arg opt = return opt { optOutput    = writeFile arg }
-setExpAST arg opt = return opt { optASTOutput = writeFile (fromMaybe "stdout" arg), expAST = True, compile = True }
+setExpAST arg opt = return opt { optASTOutput = writeFile (fromMaybe "stdout" arg), expAST = True}
 setImpAST     opt = return opt { impAST       = True, compile = True }
 setCompile    opt = return opt { compile      = True }
 
@@ -71,19 +71,20 @@ main = do
   else do 
       opts <- foldl (>>=) (return defaultOptions) actions
       let Options { optInput = input, optOutput = output,  optASTOutput = outputAST, compile = cmpl, impAST = imp, expAST = exp} = opts
-               --input >>= output
+      inputWithoutIO <- input
       if imp && exp 
           then do error "No export of the imported AST (Usage: For basic information, try the `--help' option.)'"
                   exitSuccess
       else if cmpl 
           then do
                let transform (IBO x) = x
-               inputWithoutIO <- input
+               --inputWithoutIO <- input
                if imp 
                    then transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO) >>= output
                else if exp
-                   then do 
-                        --transform (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= outputAST
+                   then do
+                        --TODO:fix (putStr (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)) >>= outputAST
                         transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
                else transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output 
+      --else if exp then TODO:copy fixed line 86 to here
       else error "Error. Set atleast -c or --importAST or --exportAST."
