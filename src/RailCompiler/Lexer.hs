@@ -1,8 +1,33 @@
+{- |
+Module      : Lexer
+Description : Processes preprocessor output into input for the syntactical analysis.
+Copyright   : See the AUTHORS file in the root directory of this project for a list
+              of contributors.
+License     : MIT
+
+The lexer receives the output of the preprocessor -- a list of lists of strings,
+where each list represents a single function -- and turns it into a forest of function
+graphs. The forest is represented as a list of tuples; each tuple describes a function
+graph and contains the function name as a string as well as the function's graph itself.
+
+A single function graph is a list of nodes. A node is a triple containing the following
+elements, in this order:
+
+    * Node ID as an Integer. Starts with 1 for each function.
+    * The 'IDT.Lexeme' for this node.
+    * The node ID of the follower node or 0 if there is no next node.
+
+Note that for valid input, the only node with a follower ID of 0 can be
+a node containing the 'IDT.Finish' lexeme. If any other node contains a follower
+ID of 0, this is an error (or, in Rail terms, a "crash".
+-}
 module Lexer (
               -- * Main (pipeline) functions
               process,
               -- * Utility functions
-              fromAST, toAST
+              fromAST, toAST,
+              -- * Editor functions
+              step, parse, IP(IP), posx, posy, start, crash
              )
  where
 
@@ -10,6 +35,7 @@ module Lexer (
  import InterfaceDT as IDT
  import ErrorHandling as EH
  import Data.List
+ import Text.Printf
 
  -- |Modified 'IDT.LexNode' with an additional identifier for nodes
  -- to check whether we have circles in the graph.
@@ -40,15 +66,22 @@ module Lexer (
   deriving Eq
  
  -- functions --
- process :: IDT.PreProc2Lexer -> IDT.Lexer2SynAna
- process (IDT.IPL input) = IDT.ILS $ map processfn input
+
+ -- |Process preprocessor output into a list of function ASTs.
+ --
+ -- Raises 'error's on invalid input; see 'ErrorHandling' for a list of error messages.
+ process :: IDT.PreProc2Lexer -- ^Preprocessor output (a list of lists of strings; i. e. a list of functions
+                              -- in their line representation).
+    -> IDT.Lexer2SynAna -- ^A list of ASTs, each describing a single function.
+ process (IDT.IPL input) = IDT.ILS $ concatMap processfn input
 
  -- |Process a single function.
  processfn :: IDT.Grid2D -- ^The lines representing the function.
-    -> IDT.Graph -- ^A graph of nodes representing the function.
- processfn [x] = (funcname x, [(1, Start, 0)]) -- oneliners are illegal; follower == 0 will
-                                               -- lead to a crash, which is what we want.
- processfn code@(x:xs) = if head x /= '$' then (funcname x, [(1, Start, 0)]) else (funcname x, finalize nxs [])
+    -> [IDT.Graph] -- ^A graph of nodes representing the function.
+                   -- There may be more functions because of lambdas.
+ processfn [x] = [(funcname x, [(1, Start, 0)])] -- oneliners are illegal; follower == 0 will
+                                                 -- lead to a crash, which is what we want.
+ processfn code@(x:xs) = if head x /= '$' then [(funcname x, [(1, Start, 0)])] else [(funcname x, finalize nxs [])]
   where
     (nxs, _) = nodes code [(1, Start, 0, (0, 0, SE))] start
 
@@ -83,7 +116,12 @@ module Lexer (
       tempip = step code ip
       (newlist, newip) = handle code list tempip
 
- handle :: IDT.Grid2D -> [PreLexNode] -> IP -> ([PreLexNode], IP)
+ -- |Helper function for 'nodes': Handle the creation of the next 'PreLexNode'
+ -- for the current function.
+ handle :: IDT.Grid2D -- ^Line representation of input function.
+    -> [PreLexNode] -- ^Current list of nodes.
+    -> IP -- ^Current instruction pointer.
+    -> ([PreLexNode], IP) -- ^New node list and new instruction pointer.
  handle code list ip = helper code list newip lexeme
   where
    (lexeme, newip) = parse code ip
@@ -97,8 +135,16 @@ module Lexer (
      newnode = length list + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)):update list newnode
 
- -- moving ids
- offset :: Int -> IDT.LexNode -> IDT.LexNode
+ -- |Shift a node by the given amount. May be positive or negative.
+ -- This is used by 'toGraph' and 'fromGraph' to shift all nodes by 1 or -1, respectively,
+ -- which is done because the portable text representation of the graph does not include
+ -- a leading "Start" node with ID 1 -- instead, the node with ID 1 is the first "real"
+ -- graph node. In other words, when exporting to the text representation, the "Start"
+ -- node is removed and all other nodes are "shifted" by -1 using this function. When
+ -- importing, a "Start" node is added and all nodes are shifted by 1.
+ offset :: Int -- ^Amount to shift node by.
+    -> IDT.LexNode -- ^Node to operate on.
+    -> IDT.LexNode -- ^Shifted node.
  offset c (node, lexeme, 0) = (node + c, lexeme, 0)
  offset c (node, lexeme, following) = (node + c, lexeme, following + c)
 
@@ -124,7 +170,12 @@ module Lexer (
    (left, forward, right) = adjacent code ip
    (lval, fval, rval) = valids code ip
 
- stepwhile :: IDT.Grid2D -> IP -> (Char -> Bool) -> (String, IP)
+ -- |Collect characters until a condition is met while moving in the current direction.
+ stepwhile :: IDT.Grid2D -- ^Line representation of current function.
+    -> IP -- ^Current instruction pointer.
+    -> (Char -> Bool) -- ^Function: Should return True if collection should stop.
+                      -- Gets the current Char as an argument.
+    -> (String, IP) -- ^Collected characters and the new instruction pointer.
  stepwhile code ip fn
    | not (fn curchar) = ("", ip)
    | otherwise = (curchar:resstring, resip)
@@ -161,7 +212,7 @@ module Lexer (
             ']'  -> (']', escip)
             'n'  -> ('\n', escip)
             't'  -> ('\t', escip)
-            _    -> error EH.strUnhandledEscape
+            _    -> error $ printf EH.strUnhandledEscape escsym
       where
         [escsym, esctrail]  = lookahead code ip 2
         -- Points to the character after the trailing backslash
@@ -228,7 +279,10 @@ module Lexer (
     -> (Int, Int) -- ^New position that results from the given relative movement.
  posdir ip reldir = posabsdir ip (absolute ip reldir)
 
- posabsdir :: IP -> Direction -> (Int, Int)
+ -- |Get the position of an absolute direction.
+ posabsdir :: IP -- ^Current instruction pointer.
+    -> Direction -- ^Current absolute direction.
+    -> (Int, Int) -- ^New position that results from the given absolute movement.
  posabsdir ip N = (posy ip - 1, posx ip)
  posabsdir ip NE = (posy ip - 1, posx ip + 1)
  posabsdir ip E = (posy ip, posx ip + 1)
@@ -238,8 +292,10 @@ module Lexer (
  posabsdir ip W = (posy ip, posx ip - 1)
  posabsdir ip NW = (posy ip - 1, posx ip - 1)
 
- -- get the absolute direction out of a relative one
- absolute :: IP -> RelDirection -> Direction
+ -- |Convert a relative direction into a relative one.
+ absolute :: IP -- ^Current instruction pointer.
+    -> RelDirection -- ^Relative direction to convert.
+    -> Direction -- ^Equivalent absolute direction.
  absolute x Forward = dir x
  absolute (IP {dir=N}) Lexer.Left = NW
  absolute (IP {dir=N}) Lexer.Right = NE
@@ -258,8 +314,11 @@ module Lexer (
  absolute (IP {dir=NW}) Lexer.Left = W
  absolute (IP {dir=NW}) Lexer.Right = N
 
- -- get the lexem out of a char
- parse :: IDT.Grid2D -> IP -> (Maybe IDT.Lexeme, IP)
+ -- |Get the next lexeme at the current position.
+ parse :: IDT.Grid2D -- ^Line representation of current function.
+    -> IP -- ^Current instruction pointer.
+    -> (Maybe IDT.Lexeme, IP) -- ^Resulting lexeme (if any) and
+                              -- the new instruction pointer.
  parse code ip = case current code ip of
    'b' -> (Just Boom, ip)
    'e' -> (Just EOF, ip)
@@ -326,21 +385,39 @@ module Lexer (
     | string!!1 == '!' && last string == '!' = Just (Pop (tail $ init string))
 		| otherwise = Just (Push string)
 
- visited :: [PreLexNode] -> IP -> Int
+ -- |Get ID of the node that has been already visited using the current IP
+ -- (direction and coordinates).
+ visited :: [PreLexNode] -- ^List of nodes to check.
+    -> IP -- ^Instruction pointer to use.
+    -> Int -- ^ID of visited node or 0 if none.
  visited [] _ = 0
  visited ((id, _, _, (x, y, d)):xs) ip
   | x == posx ip && y == posy ip && d == dir ip = id
   | otherwise = visited xs ip
 
- finalize :: [PreLexNode] -> [IDT.LexNode] -> [IDT.LexNode]
+ -- |Convert a list of 'PreLexNode's into a list of 'IDT.LexNode's.
+ finalize :: [PreLexNode] -- ^'PreLexNode's to convert.
+    -> [IDT.LexNode] -- ^Accumulator. Initialize with @[]@.
+    -> [IDT.LexNode] -- ^Resulting list of 'IDT.PreLexNode's.
  finalize [] result = result
  finalize ((node, lexeme, following, _):xs) result = finalize xs ((node, lexeme, following):result)
 
+ -- |Initial value for the instruction pointer at the start of a function.
  start :: IP
  start = IP 0 0 0 SE
+
+ -- |An instruction pointer representing a "crash" (fatal error).
+ crash :: IP
  crash = IP 0 (-1) (-1) NW
 
- valids :: IDT.Grid2D -> IP -> (String, String, String)
+ -- |Return valid chars for movement depending on the current direction.
+ valids :: IDT.Grid2D -- ^Line representation of current function.
+    -> IP -- ^Current instruction pointer.
+    -> (String, String, String) -- ^Tuple consisting of:
+                                --
+                                --     * Valid characters for movement to the (relative) left.
+                                --     * Valid characters for movement in the (relative) forward direction.
+                                --     * Valid characters for movement to the (relative) right.
  valids code ip = tripleinvert (dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
   where
    tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
@@ -358,13 +435,44 @@ module Lexer (
    everything = "+\\/x|-"++always
    always = "abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
 
- fromAST :: IDT.Lexer2SynAna -> String
+ -- |Convert a graph/AST into a portable text representation.
+ -- See also 'fromGraph'.
+ fromAST :: IDT.Lexer2SynAna -- ^Input graph/AST/forest.
+    -> String -- ^Portable text representation of the AST:
+              --
+              -- Each function is represented by its own section. A section has a header
+              -- and content; it continues either until the next section, a blank line or
+              -- the end of the file, whichever comes first.
+              --
+              -- A section header consists of a single line containing the name of the function,
+              -- enclosed in square brackets, e. g. @[function_name]@. There cannot be any whitespace
+              -- before the opening bracket.
+              --
+              -- The section content consists of zero or more non-blank lines containing exactly
+              -- three records delimited by a semicolon @;@. Each line describes a node and contains
+              -- the following records, in this order:
+              --
+              --     * The node ID (numeric), e. g. @1@.
+              --     * The Rail lexeme, e. g. @o@ or @[constant]@ etc. Note that track lexemes like
+              --     @-@ or @+@ are not included in the graph. Multi-character lexemes like constants
+              --     may include semicolons, so you need to parse them correctly! In other words, you need
+              --     to take care of lines like @1;[some ; constant];2@.
+              --     * Node ID of the follower node, e. g. @2@. May be @0@ if there is no next node.
  fromAST (IDT.ILS graph) = unlines $ map fromGraph graph
 
- toAST :: String -> IDT.Lexer2SynAna
+ -- |Convert a portable text representation of a graph into a concrete graph representation.
+ -- See also 'toGraph'. See 'fromAST' for a specification of the portable text representation.
+ toAST :: String -- ^Portable text representation. See 'fromAST'.
+    -> IDT.Lexer2SynAna -- ^Output graph.
  toAST input = IDT.ILS (map toGraph $ splitfunctions input)
 
- fromGraph :: IDT.Graph -> String
+ -- |Convert an 'IDT.Graph' for a single function to a portable text representation.
+ -- See 'fromAST' for a specification of the representation.
+ --
+ -- TODO: Currently, this apparently crashes the program on invalid input. More sensible error handling?
+ --       At least a nice error message would be nice.
+ fromGraph :: IDT.Graph -- ^Input graph.
+    -> String -- ^Text representation.
  fromGraph (funcname, nodes) = unlines $ ("["++funcname++"]"):tail (map (fromLexNode . offset (-1)) nodes)
   where
    fromLexNode :: IDT.LexNode -> String
@@ -399,10 +507,16 @@ module Lexer (
    optional (Junction follow) = ',' : show follow
    optional _ = ""
 
- splitfunctions :: String -> [[String]]
+ -- |Split a portable text representation of multiple function graphs (a forest) into separate
+ -- text representations of each function graph.
+ splitfunctions :: String -- ^Portable text representation of the forest.
+    -> [[String]] -- ^List of lists, each being a list of lines making up a separate function graph.
  splitfunctions = groupBy (\_ y -> null y || head y /= '[') . filter (not . null) . lines
 
- toGraph :: [String] -> IDT.Graph
+ -- |Convert a portable text representation of a single function into an 'IDT.Graph'.
+ -- Raises 'error's on invalid input (see 'ErrorHandling').
+ toGraph :: [String] -- ^List of lines making up the text representation of the function.
+    -> IDT.Graph -- ^Graph describing the function.
  toGraph lns = (init $ tail $ head lns, (1, Start, 2):map (offset 1) (nodes $ tail lns))
   where
    nodes [] = []
@@ -413,7 +527,7 @@ module Lexer (
      fixedlex
       | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
       | otherwise = fromJust lex
-     fromJust Nothing = error ("line with no lexem found in line: "++ln)
+     fromJust Nothing = error $ printf EH.shrLineNoLexeme ln
      fromJust (Just x) = x
      follower = takeWhile (/=',') $ dropWhile (`notElem` "0123456789") $ drop (posx ip) other
 

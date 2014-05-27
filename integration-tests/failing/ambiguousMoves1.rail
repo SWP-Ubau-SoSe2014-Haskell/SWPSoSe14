@@ -1,4 +1,4 @@
 $ 'main'
- \          /----[Works!\n\]-o#
-  \--------/----[Doesn't work!\n\]-o#
+ \          /----[Works!\n\\n\]-o#
+  \--------/----[Doesn't work!\n\\n\]-o#
 
