@@ -66,24 +66,28 @@ main = do
   args <- getArgs
   let ( actions, nonOpts, msgs ) = getOpt RequireOrder options args
   if msgs /= [] 
-      then do error $ concat msgs ++ usageInfo "Usage: main [OPTION...]" options  
-      else if nonOpts /= [] 
-          then do error $ "unrecognized arguments: " ++ unwords nonOpts ++ "\nUsage: For basic information, try the `--help' option."
-  else do
-         opts <- foldl (>>=) (return defaultOptions) actions
-         let Options { optInput = input, optOutput = output,  optASTOutput = outputAST, compile = cmpl, impAST = imp, expAST = exp} = opts
+  then do error $ concat msgs ++ usageInfo "Usage: main [OPTION...]" options  
+  else if nonOpts /= [] 
+       then do error $ "unrecognized arguments: " ++ unwords nonOpts ++ "\nUsage: For basic information, try the `--help' option."
+       else do opts <- foldl (>>=) (return defaultOptions) actions
+               let Options { optInput = input, optOutput = output,  optASTOutput = outputAST, compile = cmpl, impAST = imp, expAST = exp} = opts
+               if imp && exp 
+               then do error "No export of the imported AST (Usage: For basic information, try the `--help' option.)'"
+                       exitWith ExitSuccess
+               else if cmpl
+                    then do if imp
+                            then do let transform (IBO x) = x
+                                    inputWithoutIO <- input
+                                    output <- transform $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO
+                                    return(output)
+                                    if exp 
+                                    then do inputWithoutIO <- input
+                                            let output = Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO
+                                            return(output)
+                                    else do inputWithoutIO <- input
+                                            let transform (IBO x) = x
+                                            output <- transform $ Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO
+                                            return(output)
+                            else do error "Unexspected error"
+                    else error "Unexspected error"
 
-         if imp && exp 
-             then do 
-                 error "No export of the imported AST (Usage: For basic information, try the `--help' option.)'"
-                 exitWith ExitSuccess
-         
-         --else if cmpl then do
-         --               if imp then do --(compile AST from input to llvm) >>= output
-         --               if exp then do 
-                                     --(compile rail from input to AST) >>= outputAST
-                                     --(compile from AST to llvm) >>= output
-         --               else do --(compile rail from input to llvm) >>= output 
-
-         else do 
-             error "Unexspected error"
