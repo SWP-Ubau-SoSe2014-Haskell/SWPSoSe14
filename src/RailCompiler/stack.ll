@@ -1,6 +1,9 @@
 @stack = global [1000 x i8*] undef ; stack containing pointer to i8 
 @sp = global i64 undef ; global stack pointer
 
+declare i64 @strtol(i8 zeroext)
+declare i8* @ltostr(i64 zeroext)
+
 define void @push(i8* %str_ptr) {
   ; dereferencing @sp by loading value into memory
   %sp   = load i64* @sp
@@ -22,18 +25,46 @@ define void @push(i8* %str_ptr) {
   ret void
 }
 
-define i64 @add() {
+; pops element from stack and converts in integer
+; returns the element, in case of error undefined
+define i64 @pop_int(){
+
+  ; pop
+  %top = call i8* @pop()
+  %val = load i8* %top
+
+  ; convert to int, check for error
+  %top_int = call i64 @strtol(i8 %val)
+  
+  ; return
+  ret i64 %top_int
+}
+
+define void @push_int(i64 %top_int)
+{
+  ; convert to string
+  %top_str = call i8* @ltostr(i64 %top_int)
+
+  ; push on stack 
+  call void(i8*)* @push(i8* %top_str)
+
+  ret void
+}
+
+define void @add() {
   ; get top of stack
-  %top_1   = call i8*()* @pop()
+  %top_1   = call i64()* @pop_int()
 
   ; get second top of stack
-  %top_2   = call i8*()* @pop()
+  %top_2   = call i64()* @pop_int()
 
   ; add the two values
   %res = add i64 %top_1, %top_2
 
   ; store result on stack
-  call void@push(i8* %res)
+  call void(i64)* @push_int(i64 %res)
+
+  ret void
 }
 
 define i8* @peek() {
@@ -51,3 +82,4 @@ define i8* @pop() {
   store i64 %top_of_stack, i64* @sp
   ret i8* %val
 }
+
