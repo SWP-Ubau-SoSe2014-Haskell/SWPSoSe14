@@ -3,7 +3,7 @@
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
 
-declare i64 @strtol(i8* zeroext)
+declare i64 @atoi(i8* zeroext)
 declare i64 @snprintf(i8*, ...)
 declare i64 @printf(i8*, ...)
 
@@ -41,14 +41,8 @@ define i64 @pop_int(){
   ; pop
   %top = call i8* @pop()
 
-  %before_casting = getelementptr [17 x i8]* @before_casting, i64 0, i64 0
-  call i64(i8*, ...)* @printf(i8* %before_casting)
-
   ; convert to int, check for error
-  %top_int = call i64 @strtol(i8* %top)
-
-  %after_casting = getelementptr [18 x i8]* @after_casting, i64 0, i64 0
-  call i64(i8*, ...)* @printf(i8* %after_casting, i64 %top_int)
+  %top_int = call i64 @atoi(i8* %top)
 
   ; return
   ret i64 %top_int
@@ -62,9 +56,10 @@ define void @push_int(i64 %top_int)
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
   ; convert to string
+  ;FIXME currently at most 1000 bytes are copied via snprintf 
   call i64(i8*, ...)* @snprintf(
-          i8* %buffer_addr, i64 2, i8* %to_str_ptr, i64 %top_int)
- 
+          i8* %buffer_addr, i64 1000, i8* %to_str_ptr, i64 %top_int)
+  
   ; push on stack 
   call void(i8*)* @push(i8* %buffer_addr)
 
@@ -87,8 +82,8 @@ define void @add_int() {
   ret void
 }
 
-@number0 = private unnamed_addr constant [2 x i8] c"5\00"
-@number1  = private unnamed_addr constant [2 x i8] c"3\00"
+@number0 = private unnamed_addr constant [2 x i8] c"0\00"
+@number1  = private unnamed_addr constant [2 x i8] c"9\00"
 
 define i32 @main() {
  ; push two numbers on the stack
