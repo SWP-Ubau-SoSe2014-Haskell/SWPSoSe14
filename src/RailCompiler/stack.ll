@@ -11,6 +11,8 @@ declare i64 @printf(i8*, ...)
 @pushing = private unnamed_addr constant [12 x i8] c"Pushing %s\0A\00"
 @popped  = private unnamed_addr constant [11 x i8] c"Popped %s\0A\00"
 
+@before_casting  = private unnamed_addr constant [17 x i8] c"Before casting \0A\00"
+@after_casting  = private unnamed_addr constant [18 x i8] c"After casting %i\0A\00"
 
 define void @push(i8* %str_ptr) {
   ; dereferencing @sp by loading value into memory
@@ -39,8 +41,14 @@ define i64 @pop_int(){
   ; pop
   %top = call i8* @pop()
 
+  %before_casting = getelementptr [17 x i8]* @before_casting, i64 0, i64 0
+  call i64(i8*, ...)* @printf(i8* %before_casting)
+
   ; convert to int, check for error
   %top_int = call i64 @strtol(i8* %top)
+
+  %after_casting = getelementptr [18 x i8]* @after_casting, i64 0, i64 0
+  call i64(i8*, ...)* @printf(i8* %after_casting, i64 %top_int)
 
   ; return
   ret i64 %top_int
