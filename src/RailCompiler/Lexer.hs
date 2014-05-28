@@ -128,13 +128,17 @@ module Lexer (
    helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme)
      | lexeme == Finish = (newlist, crash)
+     | lexeme == Junction 0 = (merge final, crash)
      | knownat > 0 = (update list knownat, crash)
-     | otherwise = (newlist, ip)
+     | otherwise = (newlist, ip{count = 0})
     where
      knownat = visited list ip
      newnode = sum (map length list) + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)) `prepend` update list newnode
      prepend newx (x:xs) = (newx:x):xs
+     final = fst $ nodes code ([]:temp) trueip
+     temp = fst $ nodes code ([]:list) falseip
+     (falseip, trueip) = junctionturns code ip
 
  -- |Shift a node by the given amount. May be positive or negative.
  -- This is used by 'toGraph' and 'fromGraph' to shift all nodes by 1 or -1, respectively,
@@ -276,6 +280,27 @@ module Lexer (
      -> IP -- ^Current instruction pointer.
      -> (Char, Char, Char) -- ^Adjacent (left secondary, primary, right secondary) symbols
  adjacent code ip = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
+
+ -- returns instruction pointers turned for (False, True)
+ junctionturns :: IDT.Grid2D -> IP -> (IP, IP)
+ junctionturns code ip
+  | current code ip == '<' = case dir ip of
+     E -> (ip{dir = NE}, ip{dir = SE})
+     SW -> (ip{dir = NE}, ip{dir = W})
+     NW -> (ip{dir = W}, ip{dir = NE})
+  | current code ip == '>' = case dir ip of
+     W -> (ip{dir = SW}, ip{dir = NW})
+     SE -> (ip{dir = E}, ip{dir = SW})
+     NE -> (ip{dir = NW}, ip{dir = E})
+  | current code ip == '^' = case dir ip of
+     S -> (ip{dir = SE}, ip{dir = SW})
+     NE -> (ip{dir = N}, ip{dir = SE})
+     NW -> (ip{dir = SW}, ip{dir = N})
+  | current code ip == 'v' = case dir ip of
+     N -> (ip{dir = NW}, ip{dir = NE})
+     SE -> (ip{dir = NW}, ip{dir = S})
+     SW -> (ip{dir = S}, ip{dir = NE})
+  | otherwise = (ip, ip)
 
  turnaround :: IP -> IP
  turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Lexer.Left} Lexer.Left} Lexer.Left} Lexer.Left}
