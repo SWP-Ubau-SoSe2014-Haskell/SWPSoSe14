@@ -128,7 +128,7 @@ module Lexer (
    helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme)
      | lexeme == Finish = (newlist, crash)
-     | lexeme == Junction 0 = (merge final, crash)
+     | isjunction lexeme = (merge final, crash)
      | knownat > 0 = (update list knownat, crash)
      | otherwise = (newlist, ip{count = 0})
     where
@@ -136,8 +136,10 @@ module Lexer (
      newnode = sum (map length list) + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)) `prepend` update list newnode
      prepend newx (x:xs) = (newx:x):xs
+     isjunction (Junction _) = True
+     isjunction _ = False
      final = fst $ nodes code ([]:temp) trueip
-     temp = fst $ nodes code ([]:list) falseip
+     temp = fst $ nodes code ([]:newlist) falseip
      (falseip, trueip) = junctionturns code ip
 
  -- |Shift a node by the given amount. May be positive or negative.
@@ -171,8 +173,8 @@ module Lexer (
  merge :: [[PreLexNode]] -> [[PreLexNode]]
  merge list@(x1:x2:x3:xs) = (x1 ++ x2 ++ helperf (helpera x3)):xs
   where
-   (_, _, following, _) = last x1
-   (_, _, attribute, _) = last x2
+   (following, _, _, _) = last x1
+   (attribute, _, _, _) = last x2
    helperf ((node, lexeme, _, location):xs) = (node, lexeme, following, location):xs
    helpera ((node, Junction _, follow, location):xs) = (node, Junction attribute, follow, location):xs
    helpera xs = xs
@@ -480,7 +482,7 @@ module Lexer (
     | otherwise = "+"
    cur = current code ip
    everything = "+\\/x|-"++always
-   always = "abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
+   always = "^v<>abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
 
  -- |Convert a graph/AST into a portable text representation.
  -- See also 'fromGraph'.

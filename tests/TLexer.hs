@@ -14,6 +14,7 @@ module TLexer (
  testLexer03 = "Rail crash: " ~: crash @=? run [" /"]
  testLexer04 = "One liner: " ~: crash @=? run []
  testLexer05 = "Endless loop: " ~: IDT.ILS [("main", [(1, Start, 1)])] @=? run [" \\", "@--@"]
+ testLexer06 = "Junction test: " ~: IDT.ILS [("main", [(1, Start, 2), (2, Junction 3, 5), (3, Constant "1", 4), (4, Finish, 0), (5, Constant "0", 6), (6, Finish, 0)])] @=? run [" \\  -1#", "  -<", "    -0#"]
 
  -- helper functions
  run :: IDT.Grid2D -> IDT.Lexer2SynAna
@@ -28,4 +29,4 @@ module TLexer (
  crash :: IDT.Lexer2SynAna
  crash = IDT.ILS [("main", [(1, Start, 0)])]
  
- testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05]
+ testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05, testLexer06]
