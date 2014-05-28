@@ -27,7 +27,7 @@ module Lexer (
               -- * Utility functions
               fromAST, toAST,
               -- * Editor functions
-              step, parse, IP(IP), posx, posy, start, crash
+              step, parse, IP(IP), posx, posy, start, crash, junctionturns
              )
  where
 
