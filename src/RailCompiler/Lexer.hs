@@ -173,6 +173,7 @@ module Lexer (
  merge :: [[PreLexNode]] -> [[PreLexNode]]
  merge list@(x1:x2:x3:xs) = (x1 ++ x2 ++ helperf (helpera x3)):xs
   where
+--   (following, _, _, _) = if null x1 then nextf (x2 ++ x3) else last x1
    (following, _, _, _) = if null x1 then nextf (x2 ++ x3) else last x1
    (attribute, _, _, _) = if null x2 then nexta x3 else last x2
    nextf [] = (0, Finish, 0, (-1, -1, NW))
@@ -181,7 +182,8 @@ module Lexer (
    nexta [] = (0, Finish, 0, (-1, -1, NW))
    nexta ((_, Junction attribute, _, _):xs) = (attribute, Finish, 0, (-1, -1, NW))
    nexta (_:xs) = nexta xs
-   helperf ((node, lexeme, _, location):xs) = (node, lexeme, following, location):xs
+-- TO DO: this actually cannot differentiate between a crash after a junction and merging
+   helperf ((node, lexeme, _, location):xs) = (node, lexeme, if following == 0 then attribute else following, location):xs
    helpera ((node, Junction _, follow, location):xs) = (node, Junction attribute, follow, location):xs
    helpera xs = xs
  merge list = list
