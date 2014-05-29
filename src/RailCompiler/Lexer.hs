@@ -438,7 +438,7 @@ module Lexer (
    tempip = move ip Forward
    pushpop string
     | string == "" = Just (Push string)
-    | string!!1 == '!' && last string == '!' = Just (Pop (tail $ init string))
+    | head string == '!' && last string == '!' = Just (Pop (tail $ init string))
 		| otherwise = Just (Push string)
 
  -- |Get ID of the node that has been already visited using the current IP
