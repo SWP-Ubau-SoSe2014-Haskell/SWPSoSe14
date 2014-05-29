@@ -281,7 +281,9 @@ module Lexer (
  adjacent :: IDT.Grid2D -- ^Line representation of the current function.
      -> IP -- ^Current instruction pointer.
      -> (Char, Char, Char) -- ^Adjacent (left secondary, primary, right secondary) symbols
- adjacent code ip = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
+ adjacent code ip
+  | current code ip `elem` "x+*" = (' ', charat code (posdir ip Forward), ' ')
+  | otherwise = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
 
  -- returns instruction pointers turned for (False, True)
  junctionturns :: IDT.Grid2D -> IP -> (IP, IP)
