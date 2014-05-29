@@ -3,7 +3,7 @@
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
 
-declare i64 @atoi(i8* zeroext)
+declare i64 @atol(i8* zeroext)
 declare i64 @snprintf(i8*, ...)
 declare i64 @printf(i8*, ...)
 
@@ -42,8 +42,10 @@ define i64 @pop_int(){
   %top = call i8* @pop()
 
   ; convert to int, check for error
-  %top_int = call i64 @atoi(i8* %top)
+  %top_int = call i64 @atol(i8* %top)
 
+
+ 
   ; return
   ret i64 %top_int
 }
@@ -82,8 +84,23 @@ define void @add_int() {
   ret void
 }
 
-@number0 = private unnamed_addr constant [2 x i8] c"0\00"
-@number1  = private unnamed_addr constant [2 x i8] c"9\00"
+define void @sub_int() {
+  ; get top of stack
+  %top_1   = call i64()* @pop_int()
+
+  ; get second top of stack
+  %top_2   = call i64()* @pop_int()
+
+  ; sub the two values
+  %res = sub i64 %top_1, %top_2
+
+  ; store result on stack
+  call void(i64)* @push_int(i64 %res)
+
+  ret void
+}
+@number0 = private unnamed_addr constant [2 x i8] c"5\00"
+@number1  = private unnamed_addr constant [2 x i8] c"2\00"
 
 define i32 @main() {
  ; push two numbers on the stack
@@ -97,7 +114,7 @@ define i32 @main() {
  call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
  call void(i8*)* @push(i8* %number1)
 
- call void @add_int() 
+ call void @sub_int() 
 
  %poppedptr = getelementptr [11 x i8]* @popped, i64 0, i64 0
  %sum  = call i8*()* @pop()
