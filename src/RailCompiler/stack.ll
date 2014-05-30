@@ -1,4 +1,4 @@
-@stack = global [1000 x i8*] undef ; stack containing pointer to i8 
+@stack = global [1000 x i8*] undef ; stack containing pointer to i8
 @sp = global i64 undef ; global stack pointer
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
@@ -31,7 +31,7 @@ define void @push(i8* %str_ptr) {
   ; increase stack pointer to point to new free, top of stack
   %newsp = add i64 %sp, 1
   store i64 %newsp, i64* @sp
-  
+
   ret void
 }
 
@@ -45,24 +45,24 @@ define i64 @pop_int(){
   %top_int = call i64 @atol(i8* %top)
 
 
- 
+
   ; return
   ret i64 %top_int
 }
 
 define void @push_int(i64 %top_int)
-{  
+{
   ; allocate memory to store string in
-  %buffer = alloca [2 x i8]  
+  %buffer = alloca [2 x i8]
   %buffer_addr = getelementptr [2 x i8]* %buffer, i8 0, i64 0
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
   ; convert to string
-  ;FIXME currently at most 1000 bytes are copied via snprintf 
+  ;FIXME currently at most 1000 bytes are copied via snprintf
   call i64(i8*, ...)* @snprintf(
           i8* %buffer_addr, i64 1000, i8* %to_str_ptr, i64 %top_int)
-  
-  ; push on stack 
+
+  ; push on stack
   call void(i8*)* @push(i8* %buffer_addr)
 
   ret void
@@ -104,8 +104,8 @@ define void @sub_int() {
 
 define i32 @main() {
  ; push two numbers on the stack
- %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0   
- %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0   
+ %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0
+ %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0
 
  %pushingptr = getelementptr [12 x i8]* @pushing, i64 0, i64 0
  call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
@@ -114,7 +114,7 @@ define i32 @main() {
  call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
  call void(i8*)* @push(i8* %number1)
 
- call void @sub_int() 
+ call void @sub_int()
 
  %poppedptr = getelementptr [11 x i8]* @popped, i64 0, i64 0
  %sum  = call i8*()* @pop()
@@ -165,16 +165,16 @@ loop:
   %addr2 = getelementptr i8* %str2, i64 %i
   %c1 = load i8* %addr1
   %c2 = load i8* %addr2
-  %cond = icmp eq i8 %c1, %c2 
+  %cond = icmp eq i8 %c1, %c2
   br i1 %cond, label %cont, label %fail
 cont:
   %next_i = add i64 %i, 1
-  %cond2 = icmp eq i8 %c1, 0 
+  %cond2 = icmp eq i8 %c1, 0
   br i1 %cond2, label %success, label %loop
 success:
   %t = getelementptr [2 x i8]* @true, i64 0, i64 0
   ret i8* %t
-fail:	
+fail:
   %f = getelementptr [2 x i8]* @true, i64 0, i64 0
   ret i8* %f
 }
