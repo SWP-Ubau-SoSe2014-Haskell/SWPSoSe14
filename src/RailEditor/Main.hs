@@ -1,6 +1,7 @@
 import Graphics.UI.Gtk
 import Data.Maybe
 import Control.Monad.IO.Class
+import Entrycoding
 --This is the main form for the raileditor insert all functionality here.
 
 --TODO Refactor text to an 'link' to the entry text for the ability to save files
@@ -97,15 +98,20 @@ main = do
 	initGUI
 	
 	window <- windowNew
-	windowSetDefaultSize window 600 480
+	windowSetDefaultSize window 840 550
 	windowSetPosition window WinPosCenter
 	
+	layout <- layoutNew Nothing Nothing
 	menuBar <- createMenu window
-	table <- tableNew 4 4 True
+	table <- tableNew 0 0 False
+	text <- tableNew 70 25 True
+	mapTable entryInsert text
 	tableAttach table menuBar 0 1 0 1 [] [] 0 0
+	tableAttach table text 0 1 0 1 [Fill] [Fill] 0 0
+	layoutPut layout table 0 0
 
 	set window [ windowTitle := "Raileditor"
-               , containerChild := table]
+               , containerChild := layout]
 	on window objectDestroy mainQuit
 	widgetShowAll window
 	mainGUI
