@@ -17,9 +17,10 @@ module TLexer (
  testLexer06 = "Junction test: " ~: IDT.ILS [("main", [(1, Start, 2), (2, Junction 3, 5), (3, Constant "1", 4), (4, Finish, 0), (5, Constant "0", 6), (6, Finish, 0)])] @=? run [" \\  -1#", "  -<", "    -0#"]
  testLexer07 = "Simple Junction test: " ~: crash @=? run [" *-#"]
  testLexer08 = "Two Junctions: " ~: IDT.ILS [("main", [(1, Start, 2), (2, Junction 3, 5), (3, Junction 4, 5), (4, Finish, 0), (5, Constant "0", 6), (6, Finish, 0)])] @=? run [" \\  --\\   -#", "  -<   --<", "    -------0#"]
--- TO DO: this produces weird results without the 1
  testLexer09 = "Merging Junctions: " ~: IDT.ILS [("main", [(1, Start, 2), (2, Junction 3, 3), (3, Constant "1", 4), (4, Finish, 0)])] @=? run [" \\  -\\ ", "  -<  -1#", "    -/"]
- testLexer10 = "Push and Pop: " ~: res [Constant "1", Pop "x", Push "x"] @=? run [" \\", "  --1(!x!)(x)#"]
+-- TO DO: make this work
+ testLexer10 = "Merging Junctions2: " ~: IDT.ILS [("main", [(1, Start, 2), (2, Junction 3, 3), (3, Finish, 0)])] @=? run [" \\  -\\ ", "  -<  -#", "    -/"]
+ testLexer11 = "Push and Pop: " ~: res [Constant "1", Pop "x", Push "x"] @=? run [" \\", "  --1(!x!)(x)#"]
 
  -- helper functions
  run :: IDT.Grid2D -> IDT.Lexer2SynAna
@@ -34,4 +35,4 @@ module TLexer (
  crash :: IDT.Lexer2SynAna
  crash = IDT.ILS [("main", [(1, Start, 0)])]
  
- testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05, testLexer06, testLexer07, testLexer08, testLexer09, testLexer10]
+ testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05, testLexer06, testLexer07, testLexer08, testLexer09, testLexer11]

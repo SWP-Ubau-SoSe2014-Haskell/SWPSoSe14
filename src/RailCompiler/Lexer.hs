@@ -128,8 +128,8 @@ module Lexer (
    helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme)
      | lexeme == Finish = (newlist, crash)
-     | isjunction lexeme = (merge final, crash)
      | knownat > 0 = (update list knownat, crash)
+     | isjunction lexeme = (merge final, crash)
      | otherwise = (newlist, ip{count = 0})
     where
      knownat = visited list ip
@@ -183,7 +183,8 @@ module Lexer (
    nexta ((_, Junction attribute, _, _):xs) = (attribute, Finish, 0, (-1, -1, NW))
    nexta (_:xs) = nexta xs
 -- TO DO: this actually cannot differentiate between a crash after a junction and merging
-   helperf ((node, lexeme, _, location):xs) = (node, lexeme, if following == 0 then attribute else following, location):xs
+   helperf ((node, lexeme, 0, location):xs) = (node, lexeme, if following == 0 then attribute else following, location):xs
+   helperf xs = xs
    helpera ((node, Junction _, follow, location):xs) = (node, Junction attribute, follow, location):xs
    helpera xs = xs
  merge list = list
