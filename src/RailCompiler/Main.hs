@@ -62,29 +62,29 @@ setImpAST     opt = return opt { impAST       = True, compile = True }
 setCompile    opt = return opt { compile      = True }
 
 
-main = do
-  args <- getArgs
-  let ( actions, nonOpts, msgs ) = getOpt RequireOrder options args
-  if msgs /= [] then error $ concat msgs ++ usageInfo "Usage: main [OPTION...]" options  
-  else if nonOpts /= [] 
-      then error $ "unrecognized arguments: " ++ unwords nonOpts ++ "\nUsage: For basic information, try the `--help' option."
-  else do 
-      opts <- foldl (>>=) (return defaultOptions) actions
-      let Options { optInput = input, optOutput = output,  optASTOutput = outputAST, compile = cmpl, impAST = imp, expAST = exp} = opts
-      inputWithoutIO <- input
-      if imp && exp 
-          then do error "No export of the imported AST (Usage: For basic information, try the `--help' option.)'"
-                  exitSuccess
-      else if cmpl 
-          then do
-               let transform (IBO x) = x
-               --inputWithoutIO <- input
-               if imp 
-                   then transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO) >>= output
-               else if exp
-                   then do
-                        --TODO:fix (putStr (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)) >>= outputAST
-                        transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
-               else transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output 
-      --else if exp then TODO:copy fixed line 86 to here
-      else error "Error. Set atleast -c or --importAST or --exportAST."
+main = do 
+           args <- getArgs
+           let (actions,nonOpts,msgs) = getOpt RequireOrder options args
+           if msgs /= []
+           then error $ concat msgs ++ usageInfo "Usage: main [OPTION...]" options
+           else if nonOpts /= [] 
+                then error $ "unrecognized arguments: " ++ unwords nonOpts ++ "\nUsage: For basic information, try the `--help' option."
+                else do
+                      opts <- foldl (>>=) (return defaultOptions) actions
+                      let Options { optInput = input, optOutput = output,  optASTOutput = outputAST, compile = cmpl, impAST = imp, expAST = exp} = opts
+                      inputWithoutIO <- input
+                      if imp && exp 
+                      then do 
+                            error "No export of the imported AST (Usage: For basic information, try the `--help' option.)'"
+                            exitSuccess
+
+                      else if cmpl 
+                           then do
+                                 let transform (IBO x) = x
+                                 if imp
+                                 then transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO) >>= output
+                                 else if exp
+                                      then do
+                                            output (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
+                                      else transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output 
+                           else error "Error. Set atleast -c or --importAST or --exportAST."                       
