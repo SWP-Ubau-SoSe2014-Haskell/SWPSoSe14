@@ -180,3 +180,5 @@ define i32 @main_debug() {
 
  ret i32 0
 }
+
+; vim:sw=2 ts=2 et
