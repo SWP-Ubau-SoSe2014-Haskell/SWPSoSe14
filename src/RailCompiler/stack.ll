@@ -176,9 +176,6 @@ loop:
   %c1 = load i8* %addr1
   %c2 = load i8* %addr2
 
-  ; compare character
-  %cond = icmp eq i8 %c1, %c2 
-
   ; if equal, jump to next character otherwise jump to 'fail' 
   %cond = icmp eq i8 %c1, %c2
   br i1 %cond, label %cont, label %fail
