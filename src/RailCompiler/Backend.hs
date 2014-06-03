@@ -5,6 +5,7 @@ where
 
 -- imports --
 import InterfaceDT as IDT
+import ErrorHandling as EH
 
 import LLVM.General.AST
 import qualified LLVM.General.AST as AST

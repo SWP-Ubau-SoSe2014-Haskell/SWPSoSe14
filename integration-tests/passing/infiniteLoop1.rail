@@ -1,0 +1,7 @@
+$ 'main' (this is not an infinite loop but might be lexed as one)
+ \
+  \----------\
+      #      |
+      |      |
+      \------/
+

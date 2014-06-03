@@ -10,6 +10,7 @@ module IntermediateCode(process) where
 
 -- imports --
 import InterfaceDT as IDT
+import ErrorHandling as EH
 
 import LLVM.General.AST
 import qualified LLVM.General.AST.Global as Global
@@ -30,10 +31,13 @@ generateModule definitions = defaultModule {
   moduleDefinitions = definitions
 }
 
--- generate a ret void
-terminator :: Named Terminator
-terminator = Do Ret {
-  returnOperand = Nothing,
+-- |Generate a ret statement, returning a 32-bit Integer to the caller.
+-- While we use 64-bit integers everywhere else, our "main" function
+-- needs to return an "int" which usually is 32-bits even on 64-bit systems.
+terminator :: Integer -- ^The 32-bit Integer to return.
+    -> Named Terminator -- ^The return statement.
+terminator ret = Do Ret {
+  returnOperand = Just $ ConstantOperand $ Int 32 ret,
   metadata' = []
 }
 
@@ -194,7 +198,7 @@ filterInstrs = filter isUsefulInstruction
 
 generateBasicBlock :: (Int, [Lexeme], Int) -> BasicBlock
 generateBasicBlock (label, instructions, 0) =
-  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) terminator
+  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) $ terminator 0
 generateBasicBlock (label, instructions, jumpLabel) =
   BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) branch
   where branch = Do Br {
@@ -209,7 +213,7 @@ generateBasicBlocks = map generateBasicBlock
 generateFunction :: AST -> Definition
 generateFunction (name, lexemes) = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name name,
-  Global.returnType = VoidType,
+  Global.returnType = IntegerType 32,
   Global.basicBlocks = generateBasicBlocks lexemes
 }
 
