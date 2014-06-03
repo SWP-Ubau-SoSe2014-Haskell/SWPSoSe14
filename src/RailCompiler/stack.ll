@@ -4,7 +4,7 @@
 @false = global [2 x i8] c"0\00"
 
 declare i64 @atol(i8*)
-declare i64 @snprintf(i8*, ...)
+declare i64 @snprintf(i8*, i16, ...)
 declare i64 @printf(i8*, ...)
 declare i8* @malloc(i16) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 
@@ -58,9 +58,9 @@ define void @push_int(i64 %top_int)
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
   ; convert to string
-  ;FIXME currently at most 1000 bytes are copied via snprintf
+  ;FIXME currently at most 2 bytes are copied via snprintf
   call i64(i8*, ...)* @snprintf(
-          i8* %buffer_addr, i64 1000, i8* %to_str_ptr, i64 %top_int)
+          i8* %buffer_addr, i64 2, i8* %to_str_ptr, i64 %top_int)
 
   ; push on stack
   call void(i8*)* @push(i8* %buffer_addr)
