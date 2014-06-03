@@ -65,13 +65,12 @@ define i64 @pop_int(){
 define void @push_int(i64 %top_int)
 {
   ; allocate memory to store string in
-  %buffer_addr = call i8* @malloc(i16 2)
+  %buffer_addr = call i8* @malloc(i16 128)
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
   ; convert to string
-  ;FIXME currently at most 2 bytes are copied via snprintf
   call i64(i8*, i16, ...)* @snprintf(
-          i8* %buffer_addr, i16 2, i8* %to_str_ptr, i64 %top_int)
+          i8* %buffer_addr, i16 128, i8* %to_str_ptr, i64 %top_int)
 
   ; push on stack
   call void(i8*)* @push(i8* %buffer_addr)
