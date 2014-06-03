@@ -1,5 +1,5 @@
 @stack = global [1000 x i8*] undef ; stack containing pointer to i8
-@sp = global i64 undef ; global stack pointer
+@sp = global i64 0 ; global stack pointer
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
 
