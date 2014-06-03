@@ -3,7 +3,7 @@
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
 
-declare i64 @atol(i8* zeroext)
+declare i64 @atol(i8*)
 declare i64 @snprintf(i8*, ...)
 declare i64 @printf(i8*, ...)
 
