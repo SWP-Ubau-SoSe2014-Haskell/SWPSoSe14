@@ -9,8 +9,8 @@ declare i64 @printf(i8*, ...)
 declare i8* @malloc(i16) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 
 @to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
-@pushing = private unnamed_addr constant [12 x i8] c"Pushing %s\0A\00"
-@popped  = private unnamed_addr constant [11 x i8] c"Popped %s\0A\00"
+@pushing = private unnamed_addr constant [14 x i8] c"Pushing [%s]\0A\00"
+@popped  = private unnamed_addr constant [13 x i8] c"Popped [%s]\0a\00"
 
 @before_casting  = private unnamed_addr constant [17 x i8] c"Before casting \0A\00"
 @after_casting  = private unnamed_addr constant [18 x i8] c"After casting %i\0A\00"
@@ -170,23 +170,30 @@ fail:
 @number1  = private unnamed_addr constant [2 x i8] c"2\00"
 
 define i32 @main_debug() {
+ %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
+ %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
+
  ; push two numbers on the stack
  %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0
  %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0
 
- %pushingptr = getelementptr [12 x i8]* @pushing, i64 0, i64 0
  call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
  call void(i8*)* @push(i8* %number0)
 
  call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
  call void(i8*)* @push(i8* %number1)
 
- call void @sub_int()
+ call void @underflow_check()
+ %size0 = call i8*()* @pop()
+ call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
 
- %poppedptr = getelementptr [11 x i8]* @popped, i64 0, i64 0
+ call void @sub_int()
  %sum  = call i8*()* @pop()
  call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
 
+ call void @underflow_check()
+ %size1 = call i8*()* @pop()
+ call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
 
  ret i32 0
 }
