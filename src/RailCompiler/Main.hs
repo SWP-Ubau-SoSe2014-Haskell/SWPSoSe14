@@ -84,7 +84,6 @@ main = do
                                  if imp
                                  then transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO) >>= output
                                  else if exp
-                                      then do
-                                            output (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
+                                      then output (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
                                       else transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output 
                            else error "Error. Set atleast -c or --importAST or --exportAST."                       
