@@ -65,7 +65,7 @@ define i64 @pop_int(){
 define void @push_int(i64 %top_int)
 {
   ; allocate memory to store string in
-  %buffer_addr = call i8* @malloc(i64 2)
+  %buffer_addr = call i8* @malloc(i16 2)
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
   ; convert to string
