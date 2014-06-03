@@ -1,4 +1,4 @@
-﻿module TestSynAna (
+﻿module TSynAna (
                    testModule     -- tests the module SyntacticalAnalysis
                   )
  where
