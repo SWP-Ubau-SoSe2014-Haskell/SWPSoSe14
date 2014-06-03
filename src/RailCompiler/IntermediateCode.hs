@@ -86,11 +86,11 @@ underflowCheck = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
--- function declaration for puts
-puts = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "puts",
-  Global.returnType = IntegerType 32,
-  Global.parameters = ([ Parameter bytePointerType (UnName 0) [] ], False)
+-- |Function declaration for 'print'.
+print = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "print",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
 }
 
 -- function declaration for push
@@ -172,32 +172,17 @@ generateInstruction (Constant value) =
 -- after the mapping phase we should flatten the array with concat so we that we get
 -- a list of Instructions that we can insert in the BasicBlock
 
--- call puts with top of stack
+-- |Generate instruction for printing strings to stdout.
 generateInstruction Output =
-  [
-  --pop
-  UnName 0 := LLVM.General.AST.Call { --FIXME UnName 0 is a hack we need to keep track of local refs
+  [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "pop",
+    function = Right $ ConstantOperand $ GlobalReference $ Name "print",
     arguments = [],
     functionAttributes = [],
     metadata = []
-  },
-  --call puts with pop result
-  Do LLVM.General.AST.Call {
-    isTailCall = False,
-    callingConvention = C,
-    returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "puts",
-    arguments = [
-      (LocalReference $ UnName 0, []) --FIXME UnName 0 is a hack we need to keep track of local refs
-    ],
-    functionAttributes = [],
-    metadata = []
-  }
-  ]
+  }]
 
 -- do nothing?
 --generateInstruction Start =
@@ -251,7 +236,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflowCheck, push, pop, peek, puts] ++
+    [underflowCheck, IntermediateCode.print, push, pop, peek] ++
     generateFunctions input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input

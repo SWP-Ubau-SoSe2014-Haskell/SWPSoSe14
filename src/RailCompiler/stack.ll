@@ -3,6 +3,11 @@
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
 
+
+; Constants
+@printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
+
+
 declare i64 @atol(i8*)
 declare i64 @snprintf(i8*, i16, ...)
 declare i64 @printf(i8*, ...)
@@ -23,6 +28,16 @@ define i64 @stack_get_size() {
 define void @underflow_check() {
   %stack_size = call i64 @stack_get_size()
   call void @push_int(i64 %stack_size)
+  ret void
+}
+
+define void @print() {
+  ; TODO: Crash if there isn't anything printable on the stack.
+
+  %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
+  %val = call i8* @pop()
+  call i64(i8*, ...)* @printf(i8* %fmt, i8* %val)
+
   ret void
 }
 
