@@ -15,6 +15,17 @@ declare i8* @malloc(i16) ; void *malloc(size_t) and size_t is 16 bits long (SIZE
 @before_casting  = private unnamed_addr constant [17 x i8] c"Before casting \0A\00"
 @after_casting  = private unnamed_addr constant [18 x i8] c"After casting %i\0A\00"
 
+define i64 @stack_get_size() {
+  %sp = load i64* @sp
+  ret i64 %sp
+}
+
+define void @underflow_check() {
+  %stack_size = call i64 @stack_get_size()
+  call void @push_int(i64 %stack_size)
+  ret void
+}
+
 define void @push(i8* %str_ptr) {
   ; dereferencing @sp by loading value into memory
   %sp   = load i64* @sp
