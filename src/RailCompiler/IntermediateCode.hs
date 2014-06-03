@@ -80,7 +80,7 @@ bytePointerType = PointerType {
 }
 
 -- |Function declaration for 'underflow_check'.
-underflow_check = GlobalDefinition $ Global.functionDefaults {
+underflowCheck = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "underflow_check",
   Global.returnType = VoidType,
   Global.parameters = ([], False)
@@ -251,7 +251,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflow_check, push, pop, peek, puts] ++
+    [underflowCheck, push, pop, peek, puts] ++
     generateFunctions input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
