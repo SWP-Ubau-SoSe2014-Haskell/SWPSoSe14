@@ -70,8 +70,8 @@ define void @push_int(i64 %top_int)
 
   ; convert to string
   ;FIXME currently at most 2 bytes are copied via snprintf
-  call i64(i8*, ...)* @snprintf(
-          i8* %buffer_addr, i64 2, i8* %to_str_ptr, i64 %top_int)
+  call i64(i8*, i16, ...)* @snprintf(
+          i8* %buffer_addr, i16 2, i8* %to_str_ptr, i64 %top_int)
 
   ; push on stack
   call void(i8*)* @push(i8* %buffer_addr)
