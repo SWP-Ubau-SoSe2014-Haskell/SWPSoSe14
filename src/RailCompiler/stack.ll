@@ -8,17 +8,23 @@
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 
 
+; External declarations
 declare i64 @atol(i8*)
 declare i64 @snprintf(i8*, i16, ...)
 declare i64 @printf(i8*, ...)
 declare i8* @malloc(i16) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 
+
+; Debugging stuff
 @to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @pushing = private unnamed_addr constant [14 x i8] c"Pushing [%s]\0A\00"
 @popped  = private unnamed_addr constant [13 x i8] c"Popped [%s]\0a\00"
 
 @before_casting  = private unnamed_addr constant [17 x i8] c"Before casting \0A\00"
 @after_casting  = private unnamed_addr constant [18 x i8] c"After casting %i\0A\00"
+
+
+; Function definitions
 
 define i64 @stack_get_size() {
   %sp = load i64* @sp
