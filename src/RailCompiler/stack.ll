@@ -99,30 +99,6 @@ define void @sub_int() {
 
   ret void
 }
-@number0 = private unnamed_addr constant [2 x i8] c"5\00"
-@number1  = private unnamed_addr constant [2 x i8] c"2\00"
-
-define i32 @main() {
- ; push two numbers on the stack
- %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0
- %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0
-
- %pushingptr = getelementptr [12 x i8]* @pushing, i64 0, i64 0
- call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
- call void(i8*)* @push(i8* %number0)
-
- call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
- call void(i8*)* @push(i8* %number1)
-
- call void @sub_int()
-
- %poppedptr = getelementptr [11 x i8]* @popped, i64 0, i64 0
- %sum  = call i8*()* @pop()
- call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
-
-
- ret i32 0
-}
 
 define i8* @peek() {
   %sp   = load i64* @sp
@@ -179,3 +155,28 @@ fail:
   ret i8* %f
 }
 
+
+@number0 = private unnamed_addr constant [2 x i8] c"5\00"
+@number1  = private unnamed_addr constant [2 x i8] c"2\00"
+
+define i32 @main_debug() {
+ ; push two numbers on the stack
+ %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0
+ %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0
+
+ %pushingptr = getelementptr [12 x i8]* @pushing, i64 0, i64 0
+ call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
+ call void(i8*)* @push(i8* %number0)
+
+ call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
+ call void(i8*)* @push(i8* %number1)
+
+ call void @sub_int()
+
+ %poppedptr = getelementptr [11 x i8]* @popped, i64 0, i64 0
+ %sum  = call i8*()* @pop()
+ call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
+
+
+ ret i32 0
+}
