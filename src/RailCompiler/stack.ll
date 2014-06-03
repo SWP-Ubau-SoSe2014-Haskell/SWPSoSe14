@@ -6,6 +6,7 @@
 declare i64 @atol(i8*)
 declare i64 @snprintf(i8*, ...)
 declare i64 @printf(i8*, ...)
+declare i8* @malloc(i16) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 
 @to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @pushing = private unnamed_addr constant [12 x i8] c"Pushing %s\0A\00"
@@ -53,8 +54,7 @@ define i64 @pop_int(){
 define void @push_int(i64 %top_int)
 {
   ; allocate memory to store string in
-  %buffer = alloca [2 x i8]
-  %buffer_addr = getelementptr [2 x i8]* %buffer, i8 0, i64 0
+  %buffer_addr = call i8* @malloc(i64 2)
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
   ; convert to string
