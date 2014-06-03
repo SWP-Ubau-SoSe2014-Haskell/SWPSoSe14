@@ -79,6 +79,13 @@ bytePointerType = PointerType {
   pointerAddrSpace = AddrSpace 0
 }
 
+-- |Function declaration for 'underflow_check'.
+underflow_check = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "underflow_check",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 -- function declaration for puts
 puts = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "puts",
@@ -106,6 +113,18 @@ peek = GlobalDefinition $ Global.functionDefaults {
   Global.returnType = bytePointerType,
   Global.parameters = ([], False)
 }
+
+-- |Generate an instruction for the 'u'nderflow check command.
+generateInstruction Underflow =
+  [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "underflow_check",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
 -- generate instruction for push of a constant
 -- access to our push function definied in stack.ll??
@@ -231,7 +250,9 @@ generateGlobalDefinition index def = GlobalDefinition def {
 
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [push, pop, peek, puts] ++ generateFunctions input
+process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
+    [underflow_check, push, pop, peek, puts] ++
+    generateFunctions input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     dict = fromList $ zipWith foo [0..] $ getAllCons input
