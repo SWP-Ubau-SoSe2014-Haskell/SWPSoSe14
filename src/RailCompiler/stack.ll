@@ -3,9 +3,12 @@
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
 
-declare i64 @atol(i8* zeroext)
+declare i64 @atol(i8*)
+declare i64 @strtol(i8*, i8** )
 declare i64 @snprintf(i8*, ...)
 declare i64 @printf(i8*, ...)
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly,
+                                                                  i64, i32, i1)
 
 @to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @pushing = private unnamed_addr constant [12 x i8] c"Pushing %s\0A\00"
@@ -43,8 +46,6 @@ define i64 @pop_int(){
 
   ; convert to int, check for error
   %top_int = call i64 @atol(i8* %top)
-
-
  
   ; return
   ret i64 %top_int
@@ -107,6 +108,10 @@ define i32 @main() {
  %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0   
  %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0   
 
+ %t = call i64 @get_numeric_type(i8* %number0)
+ %after_casting_ptr = getelementptr [18 x i8]* @after_casting, i64 0, i64 0
+ call i64(i8*, ...)* @printf(i8* %after_casting_ptr,i64 %t)
+
  %pushingptr = getelementptr [12 x i8]* @pushing, i64 0, i64 0
  call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
  call void(i8*)* @push(i8* %number0)
@@ -160,13 +165,22 @@ define i8* @streq(i8* %str1, i8* %str2) {
 entry:
   br label %loop
 loop:
+  ; the phi instruction says that coming from the 'entry' label i is 1
+  ; otherwise (coming from 'cont') i will be 'next_i'
   %i = phi i64 [ 1, %entry ], [ %next_i, %cont ]
+
+  ; the the actual character
   %addr1 = getelementptr i8* %str1, i64 %i
   %addr2 = getelementptr i8* %str2, i64 %i
   %c1 = load i8* %addr1
   %c2 = load i8* %addr2
+
+  ; compare character
   %cond = icmp eq i8 %c1, %c2 
+
+  ; if equal, jump to next character otherwise jump to 'fail' 
   br i1 %cond, label %cont, label %fail
+
 cont:
   %next_i = add i64 %i, 1
   %cond2 = icmp eq i8 %c1, 0 
@@ -177,5 +191,21 @@ success:
 fail:	
   %f = getelementptr [2 x i8]* @true, i64 0, i64 0
   ret i8* %f
+}
+
+; checks whether a given string is a float or an integer
+; returns 0 if string is neither integer nor float
+; returns 1 if string is an integer
+; returns 2 if string is an float
+define i64 @get_numeric_type(i8* %szNumbers) #0 {
+  %1 = alloca i8*, align 8
+  %pEnd = alloca i8*, align 8
+  %li1 = alloca i64, align 8
+  store i8* %szNumbers, i8** %1, align 8
+  %2 = load i8** %1, align 8
+  %3 = call i64 @strtol(i8* %2, i8** %pEnd) #2
+  store i64 %3, i64* %li1, align 8
+  %4 = load i64* %li1, align 8
+  ret i64 %4
 }
 
