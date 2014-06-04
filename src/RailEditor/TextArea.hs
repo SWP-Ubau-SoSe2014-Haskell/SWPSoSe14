@@ -83,4 +83,36 @@ entryInsert area@(TextArea layout current hMap size) x y = do
     return ()
             where isSimpleChar x = elem x $ Prelude.map (\x -> [x])  (['a'..'z']++['A'..'Z']++" $\\/|-+x*")
 
+clearEntryByCoord :: TextArea -> (Int,Int) -> IO()
+clearEntryByCoord (TextArea _ _ hMap _) (x,y) = do
+    hashMap <- readIORef hMap
+    let mayEntry = Map.lookup (x,y) hashMap
+    if isJust mayEntry
+    then do
+        let entry = fromJust mayEntry
+        set entry [entryText := ""]
+    else return ()
 
+clearCurrentEntry :: TextArea -> IO()
+clearCurrentEntry (TextArea _ current hMap _) = do
+    currentCoord <- readIORef current
+    hashMap <- readIORef hMap
+    let currentEntry = fromJust $ Map.lookup currentCoord hashMap
+    set currentEntry [entryText := ""]
+
+changeColorOfEntryByCoord :: TextArea -> (Int,Int) -> Color -> IO()
+changeColorOfEntryByCoord (TextArea _ _ hMap _) (x,y) color = do
+    hashMap <- readIORef hMap
+    let mayEntry = Map.lookup (x,y) hashMap
+    if isJust mayEntry
+    then do
+        let entry = fromJust mayEntry
+        widgetModifyText entry StateNormal color
+    else return ()
+
+changeColorOfCurrentEntry :: TextArea -> Color -> IO()
+changeColorOfCurrentEntry (TextArea _ current hMap _) color = do
+    currentCoord <- readIORef current
+    hashMap <- readIORef hMap
+    let currentEntry = fromJust $ Map.lookup currentCoord hashMap
+    widgetModifyText currentEntry StateNormal color
