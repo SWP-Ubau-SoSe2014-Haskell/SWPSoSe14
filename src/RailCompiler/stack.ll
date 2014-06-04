@@ -118,6 +118,8 @@ define i64 @pop_int(){
 define void @push_int(i64 %top_int)
 {
   ; allocate memory to store string in
+  ; TODO: Make sure this is free()'d at _some_ point during
+  ;       program execution.
   %buffer_addr = call i8* @malloc(i16 128)
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
