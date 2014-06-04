@@ -6,13 +6,15 @@
 
 ; Constants
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
+@err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
 
 
 ; External declarations
-declare i64 @atol(i8*)
-declare i64 @snprintf(i8*, i16, ...)
-declare i64 @printf(i8*, ...)
-declare i8* @malloc(i16) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
+declare signext i32 @atol(i8*)
+declare signext i32 @snprintf(i8*, i16 zeroext, ...)
+declare signext i32 @printf(i8*, ...)
+declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
+declare void @exit(i32 signext)
 
 
 ; Debugging stuff
@@ -26,23 +28,54 @@ declare i8* @malloc(i16) ; void *malloc(size_t) and size_t is 16 bits long (SIZE
 
 ; Function definitions
 
+; Get number of element on the stack
 define i64 @stack_get_size() {
   %sp = load i64* @sp
   ret i64 %sp
 }
 
+; Push the stack size onto the stack
 define void @underflow_check() {
   %stack_size = call i64 @stack_get_size()
   call void @push_int(i64 %stack_size)
   ret void
 }
 
+; Exit the program if stack is empty
+define void @underflow_assert() {
+  %stack_size = call i64 @stack_get_size()
+  %stack_empty = icmp eq i64 %stack_size, 0
+  br i1 %stack_empty, label %uas_crash, label %uas_okay
+
+uas_crash:
+  %err = getelementptr [18 x i8]* @err_stack_underflow, i8 0, i8 0
+  call void @push(i8* %err)
+  call void @crash()
+
+  ret void
+
+uas_okay:
+  ret void
+}
+
+; Pop stack and print result string
 define void @print() {
-  ; TODO: Crash if there isn't anything printable on the stack.
+  ; TODO: Check if the top stack element is a string and crash if it is not.
+  call void @underflow_assert()
 
   %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
   %val = call i8* @pop()
-  call i64(i8*, ...)* @printf(i8* %fmt, i8* %val)
+  call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
+
+  ret void
+}
+
+; Pop stack, print result string and exit the program.
+define void @crash() {
+  call void @underflow_assert()
+
+  call void @print()
+  call void @exit(i32 1)
 
   ret void
 }
@@ -75,12 +108,11 @@ define i64 @pop_int(){
   %top = call i8* @pop()
 
   ; convert to int, check for error
-  %top_int = call i64 @atol(i8* %top)
-
-
+  %top_int0 = call i32 @atol(i8* %top)
+  %top_int1 = sext i32 %top_int0 to i64
 
   ; return
-  ret i64 %top_int
+  ret i64 %top_int1
 }
 
 define void @push_int(i64 %top_int)
@@ -90,7 +122,7 @@ define void @push_int(i64 %top_int)
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
   ; convert to string
-  call i64(i8*, i16, ...)* @snprintf(
+  call i32(i8*, i16, ...)* @snprintf(
           i8* %buffer_addr, i16 128, i8* %to_str_ptr, i64 %top_int)
 
   ; push on stack
@@ -190,7 +222,7 @@ fail:
 @number0 = private unnamed_addr constant [2 x i8] c"5\00"
 @number1  = private unnamed_addr constant [2 x i8] c"2\00"
 
-define i32 @main_debug() {
+define i32 @main_() {
  %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
  %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
 
@@ -198,23 +230,23 @@ define i32 @main_debug() {
  %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0
  %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0
 
- call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
+ call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
  call void(i8*)* @push(i8* %number0)
 
- call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
+ call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
  call void(i8*)* @push(i8* %number1)
 
  call void @underflow_check()
  %size0 = call i8*()* @pop()
- call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
 
  call void @sub_int()
  %sum  = call i8*()* @pop()
- call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
 
  call void @underflow_check()
  %size1 = call i8*()* @pop()
- call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
 
  ret i32 0
 }

@@ -93,6 +93,13 @@ print = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- |Function declaration for 'crash'.
+crash = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "crash",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 -- function declaration for push
 push = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "push",
@@ -184,6 +191,18 @@ generateInstruction Output =
     metadata = []
   }]
 
+-- |Generate instruction for the Boom lexeme (crashes program).
+generateInstruction Boom =
+  [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "crash",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 -- do nothing?
 --generateInstruction Start =
 --  undefined
@@ -236,7 +255,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflowCheck, IntermediateCode.print, push, pop, peek] ++
+    [underflowCheck, IntermediateCode.print, crash, push, pop, peek] ++
     generateFunctions input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
