@@ -28,11 +28,13 @@ declare void @exit(i32 signext)
 
 ; Function definitions
 
+; Get number of element on the stack
 define i64 @stack_get_size() {
   %sp = load i64* @sp
   ret i64 %sp
 }
 
+; Push the stack size onto the stack
 define void @underflow_check() {
   %stack_size = call i64 @stack_get_size()
   call void @push_int(i64 %stack_size)
@@ -56,6 +58,7 @@ uas_okay:
   ret void
 }
 
+; Pop stack and print result string
 define void @print() {
   ; TODO: Check if the top stack element is a string and crash if it is not.
   call void @underflow_assert()
@@ -67,6 +70,7 @@ define void @print() {
   ret void
 }
 
+; Pop stack, print result string and exit the program.
 define void @crash() {
   call void @underflow_assert()
 
