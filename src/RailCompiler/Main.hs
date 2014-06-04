@@ -66,33 +66,27 @@ setImpAST     opt = return opt { impAST       = True, compile = True }
 setCompile    opt = return opt { compile      = True }
 
 
-main = do 
-           args <- getArgs
-           let (actions,nonOpts,msgs) = getOpt RequireOrder options args
-           if msgs /= []
-           then error $ concat msgs ++ usageInfo "Usage: main [OPTION...]" options
-           else if nonOpts /= [] 
-                then error $ "unrecognized arguments: " ++ unwords nonOpts ++ "\nUsage: For basic information, try the `--help' option."
-                else do
-                      opts <- foldl (>>=) (return defaultOptions) actions
-                      let Options { optInput = input, optOutput = output,  optASTOutput = outputAST, compile = cmpl, impAST = imp, expAST = exp} = opts
-                      inputWithoutIO <- input
-                      if imp && exp 
-                      then do 
-                            error "No export of the imported AST (Usage: For basic information, try the `--help' option.)'"
+main = do args <- getArgs
+          let (actions,nonOpts,msgs) = getOpt RequireOrder options args
+          if msgs /= []
+          then error $ concat msgs ++ usageInfo "Usage: main [OPTION...]" options
+          else if nonOpts /= [] 
+            then error $ "unrecognized arguments: " ++ unwords nonOpts ++ "\nUsage: For basic information, try the `--help' option."
+            else do opts <- foldl (>>=) (return defaultOptions) actions
+                    let Options { optInput = input, optOutput = output,  optASTOutput = outputAST, compile = cmpl, impAST = imp, expAST = exp} = opts
+                    inputWithoutIO <- input
+                    if imp && exp 
+                    then do error "No export of the imported AST (Usage: For basic information, try the `--help' option.)'"
                             exitSuccess
-
-                      else if cmpl 
-                           then do
-                                 let transform (IBO x) = x
+                    else if cmpl 
+                         then do let transform (IBO x) = x
                                  if imp
                                  then transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO) >>= output
                                  else if exp
-                                      then do
-                                          outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
-                                          transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output 
+                                      then do outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
+                                              transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output 
                                       else transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
-                      else if exp
-                           then outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
+                    else if exp
+                         then outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
  
-                           else error "Error. Set atleast -c or --importAST or --exportAST."                       
+                         else error "Error. Set atleast -c or --importAST or --exportAST."
