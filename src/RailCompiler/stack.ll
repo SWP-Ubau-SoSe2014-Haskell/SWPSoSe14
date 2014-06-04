@@ -6,6 +6,7 @@
 
 ; Constants
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
+@err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
 
 
 ; External declarations
@@ -13,6 +14,7 @@ declare signext i32 @atol(i8*)
 declare signext i32 @snprintf(i8*, i16 zeroext, ...)
 declare signext i32 @printf(i8*, ...)
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
+declare void @exit(i32 signext)
 
 
 ; Debugging stuff
@@ -43,6 +45,23 @@ define void @print() {
   %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
   %val = call i8* @pop()
   call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
+
+  ret void
+}
+
+define void @crash() {
+  %stack_size = call i64 @stack_get_size()
+  %stack_empty = icmp eq i64 %stack_size, 0
+  br i1 %stack_empty, label %crash_emptystack, label %crash_print
+
+crash_emptystack:
+  %err = getelementptr [18 x i8]* @err_stack_underflow, i8 0, i8 0
+  call void @push(i8* %err)
+  br label %crash_print
+
+crash_print:
+  call void @print()
+  call void @exit(i32 1)
 
   ret void
 }
@@ -189,7 +208,7 @@ fail:
 @number0 = private unnamed_addr constant [2 x i8] c"5\00"
 @number1  = private unnamed_addr constant [2 x i8] c"2\00"
 
-define i32 @main_debug() {
+define i32 @main_() {
  %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
  %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
 
