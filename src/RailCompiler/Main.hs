@@ -57,7 +57,11 @@ showHelp _ = do
 
 setInput  arg opt = return opt { optInput     = readFile arg }
 setOutput arg opt = return opt { optOutput    = writeFile arg }
-setExpAST arg opt = return opt { optASTOutput = writeFile (fromMaybe "stdout" arg), expAST = True}
+setExpAST arg opt = return opt { optASTOutput = getOut arg, expAST = True}
+
+getOut (Just arg) = writeFile arg
+getOut Nothing = putStr
+
 setImpAST     opt = return opt { impAST       = True, compile = True }
 setCompile    opt = return opt { compile      = True }
 
@@ -84,6 +88,11 @@ main = do
                                  if imp
                                  then transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO) >>= output
                                  else if exp
-                                      then output (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
-                                      else transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output 
+                                      then do
+                                          outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
+                                          transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output 
+                                      else transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
+                      else if exp
+                           then outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
+ 
                            else error "Error. Set atleast -c or --importAST or --exportAST."                       
