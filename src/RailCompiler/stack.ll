@@ -57,7 +57,8 @@ uas_okay:
 }
 
 define void @print() {
-  ; TODO: Crash if there isn't anything printable on the stack.
+  ; TODO: Check if the top stack element is a string and crash if it is not.
+  call void @underflow_assert()
 
   %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
   %val = call i8* @pop()
