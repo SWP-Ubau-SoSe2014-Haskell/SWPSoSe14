@@ -5,7 +5,7 @@ notifications:
 
 before_install: sudo apt-get update
 install: 
-        - sudo apt-get install llvm-3.3 hlint && cabal install 'llvm-general < 3.4' && cabal install --only-dependencies --enable-tests
+        - sudo apt-get install llvm-3.3 && cabal install 'llvm-general < 3.4 hlint' && cabal install --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
 script: 
         - cabal configure --enable-tests && cabal build && cabal test && tests/integration_tests.sh
