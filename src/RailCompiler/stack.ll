@@ -39,6 +39,23 @@ define void @underflow_check() {
   ret void
 }
 
+; Exit the program if stack is empty
+define void @underflow_assert() {
+  %stack_size = call i64 @stack_get_size()
+  %stack_empty = icmp eq i64 %stack_size, 0
+  br i1 %stack_empty, label %uas_crash, label %uas_okay
+
+uas_crash:
+  %err = getelementptr [18 x i8]* @err_stack_underflow, i8 0, i8 0
+  call void @push(i8* %err)
+  call void @crash()
+
+  ret void
+
+uas_okay:
+  ret void
+}
+
 define void @print() {
   ; TODO: Crash if there isn't anything printable on the stack.
 
@@ -50,16 +67,8 @@ define void @print() {
 }
 
 define void @crash() {
-  %stack_size = call i64 @stack_get_size()
-  %stack_empty = icmp eq i64 %stack_size, 0
-  br i1 %stack_empty, label %crash_emptystack, label %crash_print
+  call void @underflow_assert()
 
-crash_emptystack:
-  %err = getelementptr [18 x i8]* @err_stack_underflow, i8 0, i8 0
-  call void @push(i8* %err)
-  br label %crash_print
-
-crash_print:
   call void @print()
   call void @exit(i32 1)
 
