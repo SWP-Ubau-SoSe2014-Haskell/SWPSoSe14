@@ -55,7 +55,7 @@ for f in "$TESTDIR"/*.rail; do
           dontrun=true
 	  echo "ERROR testing: \"$filename.rail\". $EXT-file is missing."
   fi
-  errormsg=$(dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll" 2>&1) \
+  errormsg=$(dist/build/SWPSoSe14/SWPSoSe14 -c -i "$f" -o "$TMPDIR/$filename.ll" 2>&1) \
   	  && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
 	  && chmod +x "$TMPDIR/$filename" || { 
             dontrun=true
