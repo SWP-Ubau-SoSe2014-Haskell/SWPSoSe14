@@ -9,10 +9,10 @@
 
 
 ; External declarations
-declare i64 @atol(i8*)
-declare i64 @snprintf(i8*, i16, ...)
-declare i64 @printf(i8*, ...)
-declare i8* @malloc(i16) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
+declare signext i32 @atol(i8*)
+declare signext i32 @snprintf(i8*, i16 zeroext, ...)
+declare signext i32 @printf(i8*, ...)
+declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 
 
 ; Debugging stuff
@@ -42,7 +42,7 @@ define void @print() {
 
   %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
   %val = call i8* @pop()
-  call i64(i8*, ...)* @printf(i8* %fmt, i8* %val)
+  call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
 
   ret void
 }
@@ -75,12 +75,11 @@ define i64 @pop_int(){
   %top = call i8* @pop()
 
   ; convert to int, check for error
-  %top_int = call i64 @atol(i8* %top)
-
-
+  %top_int0 = call i32 @atol(i8* %top)
+  %top_int1 = sext i32 %top_int0 to i64
 
   ; return
-  ret i64 %top_int
+  ret i64 %top_int1
 }
 
 define void @push_int(i64 %top_int)
@@ -90,7 +89,7 @@ define void @push_int(i64 %top_int)
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
   ; convert to string
-  call i64(i8*, i16, ...)* @snprintf(
+  call i32(i8*, i16, ...)* @snprintf(
           i8* %buffer_addr, i16 128, i8* %to_str_ptr, i64 %top_int)
 
   ; push on stack
@@ -198,23 +197,23 @@ define i32 @main_debug() {
  %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0
  %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0
 
- call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
+ call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number0)
  call void(i8*)* @push(i8* %number0)
 
- call i64(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
+ call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number1)
  call void(i8*)* @push(i8* %number1)
 
  call void @underflow_check()
  %size0 = call i8*()* @pop()
- call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
 
  call void @sub_int()
  %sum  = call i8*()* @pop()
- call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
 
  call void @underflow_check()
  %size1 = call i8*()* @pop()
- call i64(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
 
  ret i32 0
 }
