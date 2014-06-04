@@ -49,8 +49,8 @@ define void @underflow_assert() {
 
 uas_crash:
   %err = getelementptr [18 x i8]* @err_stack_underflow, i8 0, i8 0
-  call void @push(i8* %err)
-  call void @crash()
+  call i32(i8*, ...)* @printf(i8* %err)
+  call void @exit(i32 1)
 
   ret void
 
