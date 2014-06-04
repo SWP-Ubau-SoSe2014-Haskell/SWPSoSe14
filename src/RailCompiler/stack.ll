@@ -72,8 +72,8 @@ define void @print() {
 
 ; Pop stack, print result string and exit the program.
 define void @crash() {
-  call void @underflow_assert()
-
+  ; print() will check if there is anything to pop()
+  ; and if there is not, it will crash the program.
   call void @print()
   call void @exit(i32 1)
 
