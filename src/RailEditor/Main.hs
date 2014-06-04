@@ -22,6 +22,8 @@ main = do
     layoutPut layout table 0 0
     textArea <- textAreaNew layout 10 10
     set window [containerChild := layout ]
+    changeColorOfCurrentEntry textArea (Color 65000 0 0)
+    changeColorOfEntryByCoord textArea (2,2) (Color 65000 0 0)
     onDestroy window mainQuit
     widgetShowAll window
     mainGUI
