@@ -6,6 +6,8 @@ License     :  MIT
 Stability   :  unstable
 -}
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module IntermediateCode(process) where
 
 -- imports --
@@ -22,7 +24,33 @@ import LLVM.General.AST.Operand
 import LLVM.General.AST.Instruction as Instruction
 import LLVM.General.AST.Float
 import Data.Char
+import Data.Word
 import Data.Map hiding (filter, map)
+
+import Control.Monad.State
+import Control.Applicative
+
+data CodegenState = CodegenState {
+  blocks :: [BasicBlock],
+  count :: Word, --Count of unnamed Instructions
+  localDict :: Map String (Int, Integer)
+}
+
+newtype Codegen a = Codegen { runCodegen :: State CodegenState a }
+  deriving (Functor, Applicative, Monad, MonadState CodegenState)
+
+data GlobalCodegenState = GlobalCodegenState {
+  dict :: Map String (Int, Integer)
+}
+
+newtype GlobalCodegen a = GlobalCodegen { runGlobalCodegen :: State GlobalCodegenState a }
+  deriving (Functor, Applicative, Monad, MonadState GlobalCodegenState)
+
+execGlobalCodegen :: Map String (Int, Integer) -> GlobalCodegen a -> a
+execGlobalCodegen d m = evalState (runGlobalCodegen m) $ GlobalCodegenState d
+
+execCodegen :: Map String (Int, Integer) -> Codegen a -> a
+execCodegen d m = evalState (runCodegen m) $ CodegenState [] 0 d
 
 -- generate module from list of definitions
 generateModule :: [Definition] -> Module
@@ -123,7 +151,7 @@ peek = GlobalDefinition $ Global.functionDefaults {
 
 -- |Generate an instruction for the 'u'nderflow check command.
 generateInstruction Underflow =
-  [Do LLVM.General.AST.Call {
+  return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
@@ -136,8 +164,10 @@ generateInstruction Underflow =
 -- generate instruction for push of a constant
 -- access to our push function definied in stack.ll??
 -- http://llvm.org/docs/LangRef.html#call-instruction
-generateInstruction (Constant value) =
-  [Do LLVM.General.AST.Call {
+generateInstruction (Constant value) = do
+  index <- fresh
+  dict <- gets localDict
+  return [UnName index := LLVM.General.AST.Call {
     -- The optional tail and musttail markers indicate that the optimizers
     --should perform tail call optimization.
     isTailCall = False,
@@ -156,12 +186,12 @@ generateInstruction (Constant value) =
     -- arguments, the extra arguments can be specified.
     arguments = [
           -- The 'getelementptr' instruction is used to get the address of a
-          -- subelement of an aggregate data structure. It performs address 
+          -- subelement of an aggregate data structure. It performs address
           -- calculation only and does not access memory.
           -- http://llvm.org/docs/LangRef.html#getelementptr-instruction
           (ConstantOperand Constant.GetElementPtr {
             Constant.inBounds = True,
-            Constant.address = Constant.GlobalReference (UnName 0), --TODO look up reference in symbol table
+            Constant.address = Constant.GlobalReference (UnName $ fromInteger $ snd $ dict ! value),
             Constant.indices = [
               Int { integerBits = 8, integerValue = 0 },
               Int { integerBits = 8, integerValue = 0 }
@@ -181,7 +211,7 @@ generateInstruction (Constant value) =
 
 -- |Generate instruction for printing strings to stdout.
 generateInstruction Output =
-  [Do LLVM.General.AST.Call {
+  return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
@@ -193,7 +223,7 @@ generateInstruction Output =
 
 -- |Generate instruction for the Boom lexeme (crashes program).
 generateInstruction Boom =
-  [Do LLVM.General.AST.Call {
+  return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
@@ -211,7 +241,7 @@ generateInstruction Boom =
 --generateInstruction Finish = undefined
 
 -- noop
-generateInstruction _ = [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
+generateInstruction _ = return [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
 
 isUsefulInstruction Start = False
 isUsefulInstruction _ = True
@@ -219,30 +249,41 @@ isUsefulInstruction _ = True
 -- removes Lexemes without meaning to us
 filterInstrs = filter isUsefulInstruction
 
-generateBasicBlock :: (Int, [Lexeme], Int) -> BasicBlock
-generateBasicBlock (label, instructions, 0) =
-  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) $ terminator 0
-generateBasicBlock (label, instructions, jumpLabel) =
-  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) branch
+generateBasicBlock :: (Int, [Lexeme], Int) -> Codegen BasicBlock
+generateBasicBlock (label, instructions, 0) = do
+  tmp <- mapM generateInstruction $ filterInstrs instructions
+  return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ terminator 0
+generateBasicBlock (label, instructions, jumpLabel) = do
+  tmp <- mapM generateInstruction $ filterInstrs instructions
+  return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) branch
   where branch = Do Br {
     dest = Name $ "l_" ++ show jumpLabel,
     metadata' = []
   }
 
-generateBasicBlocks :: [(Int, [Lexeme], Int)] -> [BasicBlock]
-generateBasicBlocks = map generateBasicBlock
+
+generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen [BasicBlock]
+generateBasicBlocks = mapM generateBasicBlock
 
 -- generate function definition from AST
-generateFunction :: AST -> Definition
-generateFunction (name, lexemes) = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name name,
-  Global.returnType = IntegerType 32,
-  Global.basicBlocks = generateBasicBlocks lexemes
-}
+generateFunction :: AST -> GlobalCodegen Definition
+generateFunction (name, lexemes) = do
+  dict <- gets dict
+  return $ GlobalDefinition $ Global.functionDefaults {
+    Global.name = Name name,
+    Global.returnType = IntegerType 32,
+    Global.basicBlocks = execCodegen dict $ generateBasicBlocks lexemes
+  }
+
+fresh :: Codegen Word
+fresh = do
+  i <- gets count
+  modify $ \s -> s { count = 1 + i }
+  return $ i + 1
 
 -- generate list of LLVM Definitions from list of ASTs
-generateFunctions :: [AST] -> [Definition]
-generateFunctions = map generateFunction
+generateFunctions :: [AST] -> GlobalCodegen [Definition]
+generateFunctions = mapM generateFunction
 
 generateGlobalDefinition :: Integer -> Global -> Definition
 generateGlobalDefinition index def = GlobalDefinition def {
@@ -256,8 +297,9 @@ generateGlobalDefinition index def = GlobalDefinition def {
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
     [underflowCheck, IntermediateCode.print, crash, push, pop, peek] ++
-    generateFunctions input
+    generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
-    dict = fromList $ zipWith foo [0..] $ getAllCons input
+    d = fromList $ zipWith foo [0..] $ getAllCons input
     foo index (Constant s) = (s, (length s, index)) --TODO rename foo to something meaningful e.g. createSymTable
+    generateFunctionsFoo input = execGlobalCodegen d $ generateFunctions input

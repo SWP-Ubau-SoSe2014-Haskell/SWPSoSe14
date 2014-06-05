@@ -1,10 +1,10 @@
-@stack = global [1000 x i8*] undef ; stack containing pointer to i8
-@sp = global i64 0 ; global stack pointer
-@true = global [2 x i8] c"1\00"
-@false = global [2 x i8] c"0\00"
+@stack = global [1000 x i8*] undef ; stack containing pointers to i8
+@sp = global i64 0 ; global stack pointer (or rather: current number of elements)
 
 
 ; Constants
+@true = global [2 x i8] c"1\00"
+@false = global [2 x i8] c"0\00"
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
 
@@ -49,8 +49,8 @@ define void @underflow_assert() {
 
 uas_crash:
   %err = getelementptr [18 x i8]* @err_stack_underflow, i8 0, i8 0
-  call void @push(i8* %err)
-  call void @crash()
+  call i32(i8*, ...)* @printf(i8* %err)
+  call void @exit(i32 1)
 
   ret void
 
@@ -72,8 +72,8 @@ define void @print() {
 
 ; Pop stack, print result string and exit the program.
 define void @crash() {
-  call void @underflow_assert()
-
+  ; print() will check if there is anything to pop()
+  ; and if there is not, it will crash the program.
   call void @print()
   call void @exit(i32 1)
 
@@ -118,6 +118,8 @@ define i64 @pop_int(){
 define void @push_int(i64 %top_int)
 {
   ; allocate memory to store string in
+  ; TODO: Make sure this is free()'d at _some_ point during
+  ;       program execution.
   %buffer_addr = call i8* @malloc(i16 128)
   %to_str_ptr = getelementptr [3 x i8]* @to_str, i64 0, i64 0
 
@@ -180,8 +182,9 @@ define i8* @pop() {
 }
 
 ; UNTESTED
-define i64 @strlen(i8* %str) {
+define void @strlen() {
 entry:
+  %str = call i8*()* @pop()
   br label %loop
 loop:
   %i = phi i64 [1, %entry ], [ %next_i, %loop ]
@@ -191,12 +194,15 @@ loop:
   %cond = icmp eq i8 %c, 0
   br i1 %cond, label %finished, label %loop
 finished:
-  ret i64 %i
+  call void(i64)* @push_int(i64 %i)
+  ret void
 }
 
 ; UNTESTED
-define i8* @streq(i8* %str1, i8* %str2) {
+define void @streq() {
 entry:
+  %str1 = call i8*()* @pop()
+  %str2 = call i8*()* @pop()
   br label %loop
 loop:
   %i = phi i64 [ 1, %entry ], [ %next_i, %cont ]
@@ -212,10 +218,12 @@ cont:
   br i1 %cond2, label %success, label %loop
 success:
   %t = getelementptr [2 x i8]* @true, i64 0, i64 0
-  ret i8* %t
+  call void(i8*)* @push(i8* %t)
+  ret void
 fail:
   %f = getelementptr [2 x i8]* @true, i64 0, i64 0
-  ret i8* %f
+  call void(i8*)* @push(i8* %f)
+  ret void
 }
 
 
