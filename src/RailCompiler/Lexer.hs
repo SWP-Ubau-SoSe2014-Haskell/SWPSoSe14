@@ -27,7 +27,7 @@ module Lexer (
               -- * Utility functions
               fromAST, toAST,
               -- * Editor functions
-              step, parse, IP(IP), posx, posy, start, crash, junctionturns
+              step, parse, IP(IP), posx, posy, start, crash, junctionturns, lambdadirs
              )
  where
 
@@ -315,6 +315,11 @@ module Lexer (
      SW -> (ip{dir = S}, ip{dir = NE})
   | otherwise = (ip, ip)
 
+ -- returns insturction pointers turned for (Lambda, Reflected)
+ lambdadirs :: IP -> (IP, IP)
+ lambdadirs ip = (ip, turnaround ip)
+
+ -- make a 180° turn on instruction pointer
  turnaround :: IP -> IP
  turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Lexer.Left} Lexer.Left} Lexer.Left} Lexer.Left}
 
