@@ -182,8 +182,9 @@ define i8* @pop() {
 }
 
 ; UNTESTED
-define i64 @strlen(i8* %str) {
+define void @strlen() {
 entry:
+  %str = call i8*()* @pop()
   br label %loop
 loop:
   %i = phi i64 [1, %entry ], [ %next_i, %loop ]
@@ -193,12 +194,15 @@ loop:
   %cond = icmp eq i8 %c, 0
   br i1 %cond, label %finished, label %loop
 finished:
-  ret i64 %i
+  call void(i64)* @push_int(i64 %i)
+  ret void
 }
 
 ; UNTESTED
-define i8* @streq(i8* %str1, i8* %str2) {
+define void @streq() {
 entry:
+  %str1 = call i8*()* @pop()
+  %str2 = call i8*()* @pop()
   br label %loop
 loop:
   %i = phi i64 [ 1, %entry ], [ %next_i, %cont ]
@@ -214,10 +218,12 @@ cont:
   br i1 %cond2, label %success, label %loop
 success:
   %t = getelementptr [2 x i8]* @true, i64 0, i64 0
-  ret i8* %t
+  call void(i8*)* @push(i8* %t)
+  ret void
 fail:
   %f = getelementptr [2 x i8]* @true, i64 0, i64 0
-  ret i8* %f
+  call void(i8*)* @push(i8* %f)
+  ret void
 }
 
 
