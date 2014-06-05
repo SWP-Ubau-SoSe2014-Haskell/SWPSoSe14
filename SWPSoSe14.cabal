@@ -71,7 +71,7 @@ executable SWPSoSe14
 
 executable RailEditor
   main-is: Main.hs
-  build-depends: base, llvm-general-pure, llvm-general, mtl, containers, transformers, gtk, gtk2hs-buildtools
+  build-depends: base, llvm-general-pure, llvm-general, mtl, containers, transformers, gtk2hs-buildtools, gtk
   hs-source-dirs: src/RailEditor src/RailCompiler
   default-language: Haskell2010
 
