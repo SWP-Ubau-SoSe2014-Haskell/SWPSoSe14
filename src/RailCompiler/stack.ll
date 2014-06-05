@@ -1,10 +1,10 @@
-@stack = global [1000 x i8*] undef ; stack containing pointer to i8
-@sp = global i64 0 ; global stack pointer
-@true = global [2 x i8] c"1\00"
-@false = global [2 x i8] c"0\00"
+@stack = global [1000 x i8*] undef ; stack containing pointers to i8
+@sp = global i64 0 ; global stack pointer (or rather: current number of elements)
 
 
 ; Constants
+@true = global [2 x i8] c"1\00"
+@false = global [2 x i8] c"0\00"
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
 
