@@ -69,10 +69,10 @@ for f in "$TESTDIR"/*.rail; do
   if [ "$dontrun" = false ]; then
     for i in $(eval echo "{1..${#OUT[@]}}"); do
       #Really ugly: bash command substitution eats trailing newlines so we need to add a terminating character and then remove it again.
-      output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename";echo x)
-      output=${output%x}
+      output="$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename";echo x)"
+      output="${output%x}"
       #Convert all actual newlines to \n
-      output=$(echo -n "$output" | sed 's/$/\n/' | tr -d '\n')
+      output="${output//$'\n'/\\n}"
       if [[ "$output" == "${OUT[$i]}" ]]; then
         echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
       else
