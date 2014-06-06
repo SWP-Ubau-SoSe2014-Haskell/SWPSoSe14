@@ -11,7 +11,7 @@ module TLexer (
  -- functions --
  testLexer01 = "Proper turning: " ~: res [Constant "1"] @=? run [" \\", "  \\   /-t-#", "   ---/--f-#"]
  testLexer02 = "Reflection: " ~: res [Constant "1"] @=? run [" \\", "  \\   #  #  #", "   \\   f f f", "    \\   \\|/", " #t-------@-f#", "         /|\\", "        f f f", "       #  #  #"]
- testLexer03 = "Rail crash: " ~: crash @=? run [" /"]
+ testLexer03 = "Rail crash: " ~: crash @=? run [" /", "#"]
  testLexer04 = "One liner: " ~: crash @=? run []
  testLexer05 = "Endless loop: " ~: IDT.ILS [("main",[(1,Start,2),(2,Constant "1",3),(3,NOP,3)])] @=? run [" 1 ", "  \\", " @--@"]
  testLexer06 = "Junction test: " ~: IDT.ILS [("main", [(1, Start, 2), (2, Junction 3, 5), (3, Constant "1", 4), (4, Finish, 0), (5, Constant "0", 6), (6, Finish, 0)])] @=? run [" \\  -1#", "  -<", "    -0#"]

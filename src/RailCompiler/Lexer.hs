@@ -92,7 +92,9 @@ module Lexer (
  funcname :: String -- ^A line containing the function declaration,
                     -- e. g. @$ \'main\'@.
     -> String -- ^The function name.
- funcname line = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
+ funcname line
+  | null line || length (elemIndices '\'' line) < 2 = error EH.strFunctionNameMissing
+  | otherwise = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
 
  -- |Get the nodes for the given function.
  nodes :: IDT.Grid2D  -- ^Lines representing the function.
