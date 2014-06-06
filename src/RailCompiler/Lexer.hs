@@ -130,8 +130,8 @@ module Lexer (
    (lexeme, newip) = parse code ip
    helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme)
-     | lexeme == Finish = (newlist, crash)
      | knownat > 0 = (update list knownat, crash)
+     | lexeme == Finish = (newlist, crash)
      | isjunction lexeme = (merge final, crash)
      | otherwise = (newlist, ip{count = 0})
     where
@@ -144,6 +144,7 @@ module Lexer (
      final = fst $ nodes code ([]:temp) trueip
      temp = fst $ nodes code ([]:newlist) falseip
      (falseip, trueip) = junctionturns code ip
+ 
 
  -- |Shift a node by the given amount. May be positive or negative.
  -- This is used by 'toGraph' and 'fromGraph' to shift all nodes by 1 or -1, respectively,
@@ -164,10 +165,14 @@ module Lexer (
     -> Int -- ^ID of new follower to set for the first node in the list.
     -> [[PreLexNode]] -- ^Resulting graph.
  update list@(x:xs) following
+  | null x && not (null xs) && startsjunction xs = helpera xs following
   | null x = list
   | otherwise = helper x following:xs
    where
     helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
+    helpera (((node, _, following, location):xs):xss) attribute = []:(((node, Junction attribute, following, location):xs):xss)
+    startsjunction (((_, (Junction _), _, _):_):_) = True
+    startsjunction _ = False
 
  -- merges splitted graphs (e.g. Junction)
  -- x3 is the graph until the special node appeared
