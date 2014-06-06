@@ -294,7 +294,7 @@ module Lexer (
      -> IP -- ^Current instruction pointer.
      -> (Char, Char, Char) -- ^Adjacent (left secondary, primary, right secondary) symbols
  adjacent code ip
-  | current code ip `elem` "x+*" = (' ', charat code (posdir ip Forward), ' ')
+  | current code ip `elem` turnblocked = (' ', charat code (posdir ip Forward), ' ')
   | otherwise = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
 
  -- returns instruction pointers turned for (False, True)
@@ -418,6 +418,7 @@ module Lexer (
    'q' -> (Just Equal, ip)
    '$' -> (Just Start, ip)
    '#' -> (Just Finish, ip)
+   '.' -> (Just NOP, ip)
    'v' -> (Just (Junction 0), ip)
    '^' -> (Just (Junction 0), ip)
    '>' -> (Just (Junction 0), ip)
@@ -503,6 +504,10 @@ module Lexer (
    everything = "+\\/x|-"++always
    always = "^v<>abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
 
+ -- list of chars which do not allow any turning
+ turnblocked :: String
+ turnblocked = "*+x"
+
  -- |Convert a graph/AST into a portable text representation.
  -- See also 'fromGraph'.
  fromAST :: IDT.Lexer2SynAna -- ^Input graph/AST/forest.
@@ -572,6 +577,7 @@ module Lexer (
    fromLexeme Start = "$"
    fromLexeme Finish = "#"
    fromLexeme (Junction _) = "v"
+   fromLexeme NOP = "."
    optional (Junction follow) = ',' : show follow
    optional _ = ""
 
