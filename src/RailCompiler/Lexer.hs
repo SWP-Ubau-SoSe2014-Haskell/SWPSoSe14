@@ -108,11 +108,14 @@ module Lexer (
                                                 -- a leading node without a follower
                                                 -- (follower == 0) because it is
                                                 -- not modified here at all.
-  | otherwise = if endless then ([[(1, Start, 1, (0, 0, SE))]], crash) else nodes code newlist newip
+  | otherwise = if endless then (endlesslist, crash) else nodes code newlist newip
      where
       -- This checks if we have e. g. two reflectors that "bounce" the IP between them
       -- endlessly.
-      endless = list == [[(1, Start, 0, (0, 0, SE))]] && count ip > sum (map length code)
+      endless = count ip > sum (map length code)
+      endlesslist = (newnode, NOP, newnode, (-1, -1, SE)) `prepend` update list newnode
+      newnode = sum (map length list) + 1
+      prepend newx (x:xs) = (newx:x):xs
       tempip = step code ip
       (newlist, newip) = handle code list tempip
 
