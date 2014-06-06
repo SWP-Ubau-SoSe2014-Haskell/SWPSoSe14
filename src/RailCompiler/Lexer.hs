@@ -50,7 +50,7 @@ module Lexer (
  -- |An absolute direction.
  data Direction = N | NE | E | SE | S | SW | W | NW deriving Eq
  -- |A relative direction.
- data RelDirection = Left | Forward | Right
+ data RelDirection = Left | Forward | Right deriving Eq
  -- |Instruction pointer consisting of position and an orientation.
  data IP =
     IP {
@@ -61,7 +61,9 @@ module Lexer (
       -- |Current Y position.
       posy :: Int,
       -- |Current 'Direction'.
-      dir :: Direction
+      dir :: Direction,
+			-- |Determines if the instruction pointer is on a left or right path of a Junction
+			path :: [RelDirection]
     }
   deriving Eq
  
@@ -115,7 +117,7 @@ module Lexer (
       -- This checks if we have e. g. two reflectors that "bounce" the IP between them
       -- endlessly.
       endless = count ip > sum (map length code)
-      endlesslist = (newnode, NOP, newnode, (-1, -1, SE)) `prepend` update list newnode
+      endlesslist = (newnode, NOP, newnode, (-1, -1, SE)) `prepend` update list (path ip) newnode
       newnode = sum (map length list) + 1
       prepend newx (x:xs) = (newx:x):xs
       tempip = step code ip
@@ -132,14 +134,14 @@ module Lexer (
    (lexeme, newip) = parse code ip
    helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme)
-     | knownat > 0 = (update list knownat, crash)
+     | knownat > 0 = (update list (path ip) knownat, crash)
      | lexeme == Finish = (newlist, crash)
      | isjunction lexeme = (merge final, crash)
      | otherwise = (newlist, ip{count = 0})
     where
      knownat = visited list ip
      newnode = sum (map length list) + 1
-     newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)) `prepend` update list newnode
+     newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)) `prepend` update list (path ip) newnode
      prepend newx (x:xs) = (newx:x):xs
      isjunction (Junction _) = True
      isjunction _ = False
@@ -164,15 +166,17 @@ module Lexer (
  -- |Change the following node of the first (i. e. "last", since the list is reversed)
  -- node in the graph.
  update :: [[PreLexNode]] -- ^The graph to operate on.
+    -> [RelDirection] --  ^List of turns taken on Junctions
     -> Int -- ^ID of new follower to set for the first node in the list.
     -> [[PreLexNode]] -- ^Resulting graph.
- update list@(x:xs) following
-  | null x && not (null xs) && startsjunction xs = helpera xs following
+ update list@(x:xs) dir following
+  | null x && startsjunction xs && head dir == Lexer.Left = helpera list following
+	| null x && startsjunction xs && head dir == Lexer.Right = helper x following:xs
   | null x = list
   | otherwise = helper x following:xs
    where
     helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
-    helpera (((node, _, following, location):xs):xss) attribute = []:(((node, Junction attribute, following, location):xs):xss)
+    helpera (x:(((node, _, following, location):xs):xss)) attribute = x:(((node, Junction attribute, following, location):xs):xss)
     startsjunction (((_, (Junction _), _, _):_):_) = True
     startsjunction _ = False
 
@@ -183,7 +187,6 @@ module Lexer (
  merge :: [[PreLexNode]] -> [[PreLexNode]]
  merge list@(x1:x2:x3:xs) = (x1 ++ x2 ++ helperf (helpera x3)):xs
   where
---   (following, _, _, _) = if null x1 then nextf (x2 ++ x3) else last x1
    (following, _, _, _) = if null x1 then nextf (x2 ++ x3) else last x1
    (attribute, _, _, _) = if null x2 then nexta x3 else last x2
    nextf [] = (0, Finish, 0, (-1, -1, NW))
@@ -194,6 +197,7 @@ module Lexer (
    nexta (_:xs) = nexta xs
 -- TO DO: this actually cannot differentiate between a crash after a junction and merging
    helperf ((node, lexeme, 0, location):xs) = (node, lexeme, if following == 0 then attribute else following, location):xs
+   --helperf ((node, lexeme, 0, location):xs) = (node, lexeme, following, location):xs
    helperf xs = xs
    helpera ((node, Junction _, follow, location):xs) = (node, Junction attribute, follow, location):xs
    helpera xs = xs
@@ -306,24 +310,27 @@ module Lexer (
 
  -- returns instruction pointers turned for (False, True)
  junctionturns :: IDT.Grid2D -> IP -> (IP, IP)
- junctionturns code ip
-  | current code ip == '<' = case dir ip of
-     E -> (ip{dir = NE}, ip{dir = SE})
-     SW -> (ip{dir = NE}, ip{dir = W})
-     NW -> (ip{dir = W}, ip{dir = NE})
-  | current code ip == '>' = case dir ip of
-     W -> (ip{dir = SW}, ip{dir = NW})
-     SE -> (ip{dir = E}, ip{dir = SW})
-     NE -> (ip{dir = NW}, ip{dir = E})
-  | current code ip == '^' = case dir ip of
-     S -> (ip{dir = SE}, ip{dir = SW})
-     NE -> (ip{dir = N}, ip{dir = SE})
-     NW -> (ip{dir = SW}, ip{dir = N})
-  | current code ip == 'v' = case dir ip of
-     N -> (ip{dir = NW}, ip{dir = NE})
-     SE -> (ip{dir = NW}, ip{dir = S})
-     SW -> (ip{dir = S}, ip{dir = NE})
-  | otherwise = (ip, ip)
+ junctionturns code ip = addpath $ turning (current code ip) ip
+  where
+   addpath (ipl, ipr) = (ipl{path = (Lexer.Left):(path ipl)}, ipr{path = (Lexer.Right):(path ipr)})
+   turning char ip
+    | char == '<' = case dir ip of
+       E -> (ip{dir = NE}, ip{dir = SE})
+       SW -> (ip{dir = NE}, ip{dir = W})
+       NW -> (ip{dir = W}, ip{dir = NE})
+    | char == '>' = case dir ip of
+       W -> (ip{dir = SW}, ip{dir = NW})
+       SE -> (ip{dir = E}, ip{dir = SW})
+       NE -> (ip{dir = NW}, ip{dir = E})
+    | char == '^' = case dir ip of
+       S -> (ip{dir = SE}, ip{dir = SW})
+       NE -> (ip{dir = N}, ip{dir = SE})
+       NW -> (ip{dir = SW}, ip{dir = N})
+    | char == 'v' = case dir ip of
+       N -> (ip{dir = NW}, ip{dir = NE})
+       SE -> (ip{dir = NW}, ip{dir = S})
+       SW -> (ip{dir = S}, ip{dir = NE})
+    | otherwise = (ip, ip)
 
  -- returns insturction pointers turned for (Lambda, Reflected)
  lambdadirs :: IP -> (IP, IP)
@@ -480,11 +487,11 @@ module Lexer (
 
  -- |Initial value for the instruction pointer at the start of a function.
  start :: IP
- start = IP 0 0 0 SE
+ start = IP 0 0 0 SE []
 
  -- |An instruction pointer representing a "crash" (fatal error).
  crash :: IP
- crash = IP 0 (-1) (-1) NW
+ crash = IP 0 (-1) (-1) NW []
 
  -- |Return valid chars for movement depending on the current direction.
  valids :: IDT.Grid2D -- ^Line representation of current function.
@@ -604,7 +611,7 @@ module Lexer (
    nodes (ln:lns) = (read id, fixedlex, read follower):nodes lns
     where
      (id, other) = span (/=';') ln
-     (lex, ip) = parse [other] $ IP 0 1 0 E
+     (lex, ip) = parse [other] $ IP 0 1 0 E []
      fixedlex
       | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
       | otherwise = fromJust lex
