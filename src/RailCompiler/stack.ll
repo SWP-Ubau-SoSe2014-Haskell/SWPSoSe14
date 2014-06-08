@@ -8,13 +8,20 @@
 @false = global [2 x i8] c"0\00"
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
+@err_eof = private unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
 
 
 ; External declarations
+%FILE = type opaque
+
+@stdin = external global %FILE*
+
 declare signext i32 @atol(i8*)
 declare signext i32 @snprintf(i8*, i16 zeroext, ...)
 declare signext i32 @printf(i8*, ...)
+declare signext i32 @getchar()
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
+declare i8* @calloc(i16 zeroext, i16 zeroext)
 declare void @exit(i32 signext)
 
 
@@ -76,6 +83,28 @@ define void @crash() {
   ; and if there is not, it will crash the program.
   call void @print()
   call void @exit(i32 1)
+
+  ret void
+}
+
+; Get a byte of input from stdin and push it.
+; Crashes the program on errors.
+define void @input() {
+  %read = call i32 @getchar()
+  %err = icmp slt i32 %read, 0
+  br i1 %err, label %error, label %push
+
+error:
+  %at_eof = getelementptr [9 x i8]* @err_eof, i64 0, i64 0
+  call void @push(i8* %at_eof)
+  call void @crash()
+  ret void
+
+push:
+  %byte = trunc i32 %read to i8
+  %buffer_addr = call i8* @calloc(i16 1, i16 2)
+  store i8 %byte, i8* %buffer_addr
+  call void @push(i8* %buffer_addr)
 
   ret void
 }
@@ -255,6 +284,14 @@ define i32 @main_() {
  call void @underflow_check()
  %size1 = call i8*()* @pop()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
+
+ call void @input()
+ %i0 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
+
+ call void @input()
+ %i2 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i2)
 
  ret i32 0
 }
