@@ -36,6 +36,15 @@ declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly,
 @int_to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @float_to_str  = private unnamed_addr constant [3 x i8] c"%f\00"
 
+;typedef enum {INT = 1, FLOAT = 2, STRING = 3} elem_type;
+;struct stack_elem {
+;    elem_type type;
+;    union {
+;        int ival;
+;        float fval;
+;        char *sval;
+;    };
+;};
 %struct.stack_elem = type { i32, %union.anon }
 %union.anon = type { i8* }
 
