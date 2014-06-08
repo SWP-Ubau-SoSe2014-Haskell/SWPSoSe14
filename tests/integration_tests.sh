@@ -55,7 +55,7 @@ for f in "$TESTDIR"/*.rail; do
           dontrun=true
 	  echo "ERROR testing: \"$filename.rail\". $EXT-file is missing."
   fi
-  errormsg=$(dist/build/SWPSoSe14/SWPSoSe14 --compile "$f" "$TMPDIR/$filename.ll" 2>&1) \
+  errormsg=$(dist/build/SWPSoSe14/SWPSoSe14 -c -i "$f" -o "$TMPDIR/$filename.ll" 2>&1) \
   	  && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
 	  && chmod +x "$TMPDIR/$filename" || { 
             dontrun=true
@@ -69,10 +69,10 @@ for f in "$TESTDIR"/*.rail; do
   if [ "$dontrun" = false ]; then
     for i in $(eval echo "{1..${#OUT[@]}}"); do
       #Really ugly: bash command substitution eats trailing newlines so we need to add a terminating character and then remove it again.
-      output=$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename";echo x)
-      output=${output%x}
+      output="$(echo -ne "${IN[$i]}" | "$TMPDIR/$filename";echo x)"
+      output="${output%x}"
       #Convert all actual newlines to \n
-      output=$(echo -n "$output" | sed 's/$/\n/' | tr -d '\n')
+      output="${output//$'\n'/\\n}"
       if [[ "$output" == "${OUT[$i]}" ]]; then
         echo "Passed \"$filename.rail\" with input \"${IN[$i]}\""
       else

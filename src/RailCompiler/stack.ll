@@ -1,24 +1,40 @@
-@stack = global [1000 x i8*] undef ; stack containing pointer to i8
-@sp = global i64 undef ; global stack pointer
+@stack = global [1000 x i8*] undef ; stack containing pointers to i8
+@sp = global i64 0 ; global stack pointer (or rather: current number of elements)
+
+
+; Constants
+@to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
+@printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
+@err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
+@err_eof = private unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
 
-declare i64 @atol(i8*)
+; External declarations
+%FILE = type opaque
+
+@stdin = external global %FILE*
+
+declare signext i32 @atol(i8*)
 declare i64 @strtol(i8*, i8**, i32 )
-declare float @strtof(i8*, i8**) #1
-declare i64 @snprintf(i8*, ...)
-declare i32 @printf(i8*, ...)
+declare signext i32 @snprintf(i8*, ...)
+declare signext i32 @printf(i8*, ...)
+declare float @strtof(i8*, i8**)
+declare signext i32 @getchar()
+declare signext i32 @feof(%FILE*)
+declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
+declare i8* @calloc(i16 zeroext, i16 zeroext)
+declare void @exit(i32 signext)
 declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly,
                                                                   i64, i32, i1)
 
+
+; Debugging stuff
+@pushing = private unnamed_addr constant [14 x i8] c"Pushing [%s]\0A\00"
+@popped  = private unnamed_addr constant [13 x i8] c"Popped [%s]\0a\00"
+
 @int_to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @float_to_str  = private unnamed_addr constant [3 x i8] c"%f\00"
-
-@pushing = private unnamed_addr constant [12 x i8] c"Pushing %s\0A\00"
-@popped  = private unnamed_addr constant [11 x i8] c"Popped %s\0A\00"
-
-@before_casting  = private unnamed_addr constant [17 x i8] c"Before casting \0A\00"
-@after_casting  = private unnamed_addr constant [18 x i8] c"After casting %f\0A\00"
 
 %struct.stack_elem = type { i32, %union.anon }
 %union.anon = type { i8* }
@@ -28,6 +44,101 @@ declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly,
 @.str1 = private unnamed_addr constant [35 x i8] c"call float add with a=%f and b=%f\0A\00", align 1
 @.str2 = private unnamed_addr constant [15 x i8] c"failed to add\0A\00", align 1
 
+
+
+; Function definitions
+
+; Get number of element on the stack
+define i64 @stack_get_size() {
+  %sp = load i64* @sp
+  ret i64 %sp
+}
+
+; Push the stack size onto the stack
+define void @underflow_check() {
+  %stack_size = call i64 @stack_get_size()
+  call void @push_int(i64 %stack_size)
+  ret void
+}
+
+; Exit the program if stack is empty
+define void @underflow_assert() {
+  %stack_size = call i64 @stack_get_size()
+  %stack_empty = icmp eq i64 %stack_size, 0
+  br i1 %stack_empty, label %uas_crash, label %uas_okay
+
+uas_crash:
+  %err = getelementptr [18 x i8]* @err_stack_underflow, i8 0, i8 0
+  call i32(i8*, ...)* @printf(i8* %err)
+  call void @exit(i32 1)
+
+  ret void
+
+uas_okay:
+  ret void
+}
+
+; Pop stack and print result string
+define void @print() {
+  ; TODO: Check if the top stack element is a string and crash if it is not.
+  call void @underflow_assert()
+
+  %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
+  %val = call i8* @pop()
+  call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
+
+  ret void
+}
+
+; Pop stack, print result string and exit the program.
+define void @crash() {
+  ; print() will check if there is anything to pop()
+  ; and if there is not, it will crash the program.
+  call void @print()
+  call void @exit(i32 1)
+
+  ret void
+}
+
+; Get a byte of input from stdin and push it.
+; Crashes the program on errors.
+define void @input() {
+  %read = call i32 @getchar()
+  %err = icmp slt i32 %read, 0
+  br i1 %err, label %error, label %push
+
+error:
+  %at_eof = getelementptr [9 x i8]* @err_eof, i64 0, i64 0
+  call void @push(i8* %at_eof)
+  call void @crash()
+  ret void
+
+push:
+  %byte = trunc i32 %read to i8
+  %buffer_addr = call i8* @calloc(i16 1, i16 2)
+  store i8 %byte, i8* %buffer_addr
+  call void @push(i8* %buffer_addr)
+
+  ret void
+}
+
+; If stdin is at EOF, push 1, else 0.
+define void @eof_check() {
+  %stdin = load %FILE** @stdin
+  %res = call i32 @feof(%FILE* %stdin)
+  %is_eof = icmp ne i32 %res, 0
+  br i1 %is_eof, label %at_eof, label %not_at_eof
+
+at_eof:
+  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
+  call void @push(i8* %true)
+  ret void
+
+not_at_eof:
+  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
+  call void @push(i8* %false)
+  ret void
+}
 
 define void @push(i8* %str_ptr) {
   ; dereferencing @sp by loading value into memory
@@ -57,23 +168,24 @@ define i64 @pop_int(){
   %top = call i8* @pop()
 
   ; convert to int, check for error
-  %top_int = call i64 @atol(i8* %top)
+  %top_int0 = call i32 @atol(i8* %top)
+  %top_int1 = sext i32 %top_int0 to i64
 
   ; return
-  ret i64 %top_int
+  ret i64 %top_int1
 }
 
 define void @push_float(double %top_float)
 {
   ; allocate memory to store string in
-  %buffer = alloca [10 x i8]
-  %buffer_addr = getelementptr [10 x i8]* %buffer, i8 0, i64 0
+  ; TODO: Make sure this is free()'d at _some_ point during
+  ;       program execution.
+  %buffer_addr = call i8* @malloc(i16 128)
   %to_str_ptr = getelementptr [3 x i8]* @float_to_str, i64 0, i64 0
 
   ; convert to string
-  ;FIXME currently at most 1000 bytes are copied via snprintf
-  call i64(i8*, ...)* @snprintf(
-          i8* %buffer_addr, i64 1000, i8* %to_str_ptr, double %top_float)
+  call i32(i8*, ...)* @snprintf(
+          i8* %buffer_addr, i16 128, i8* %to_str_ptr, double %top_float)
 
   ; push on stack
   call void(i8*)* @push(i8* %buffer_addr)
@@ -84,14 +196,14 @@ define void @push_float(double %top_float)
 define void @push_int(i64 %top_int)
 {
   ; allocate memory to store string in
-  %buffer = alloca [2 x i8]
-  %buffer_addr = getelementptr [2 x i8]* %buffer, i8 0, i64 0
+  ; TODO: Make sure this is free()'d at _some_ point during
+  ;       program execution.
+  %buffer_addr = call i8* @malloc(i16 128)
   %to_str_ptr = getelementptr [3 x i8]* @int_to_str, i64 0, i64 0
 
   ; convert to string
-  ;FIXME currently at most 1000 bytes are copied via snprintf
-  call i64(i8*, ...)* @snprintf(
-          i8* %buffer_addr, i64 1000, i8* %to_str_ptr, i64 %top_int)
+  call i32(i8*, ...)* @snprintf(
+          i8* %buffer_addr, i16 128, i8* %to_str_ptr, i64 %top_int)
 
   ; push on stack
   call void(i8*)* @push(i8* %buffer_addr)
@@ -222,10 +334,10 @@ define void @sub_int() {
   ret void
 }
 
-@main.number_a = private unnamed_addr constant [4 x i8] c"1.1\00"
-@main.number_b  = private unnamed_addr constant [4 x i8] c"2.4\00"
+@main.number_a = private unnamed_addr constant [4 x i8] c"111\00"
+@main.number_b  = private unnamed_addr constant [4 x i8] c"224\00"
 
-define i32 @main_debug() {
+define i32 @main_add_test() {
   ; push two numbers on the stack
   %number0 = getelementptr [4 x i8]* @main.number_a, i64 0, i64 0   
   %number1 = getelementptr [4 x i8]* @main.number_b, i64 0, i64 0   
@@ -234,7 +346,7 @@ define i32 @main_debug() {
 
   call i32 @add()
   %result = call i8* @pop()
-  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]*
+  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]*
               @popped, i32 0, i32 0), i8* %result)
 
   ret i32 0
@@ -259,8 +371,9 @@ define i8* @pop() {
 }
 
 ; UNTESTED
-define i64 @strlen(i8* %str) {
+define void @strlen() {
 entry:
+  %str = call i8*()* @pop()
   br label %loop
 loop:
   %i = phi i64 [1, %entry ], [ %next_i, %loop ]
@@ -270,12 +383,15 @@ loop:
   %cond = icmp eq i8 %c, 0
   br i1 %cond, label %finished, label %loop
 finished:
-  ret i64 %i
+  call void(i64)* @push_int(i64 %i)
+  ret void
 }
 
 ; UNTESTED
-define i8* @streq(i8* %str1, i8* %str2) {
+define void @streq() {
 entry:
+  %str1 = call i8*()* @pop()
+  %str2 = call i8*()* @pop()
   br label %loop
 loop:
   ; the phi instruction says that coming from the 'entry' label i is 1
@@ -298,10 +414,12 @@ cont:
   br i1 %cond2, label %success, label %loop
 success:
   %t = getelementptr [2 x i8]* @true, i64 0, i64 0
-  ret i8* %t
+  call void(i8*)* @push(i8* %t)
+  ret void
 fail:
   %f = getelementptr [2 x i8]* @true, i64 0, i64 0
-  ret i8* %f
+  call void(i8*)* @push(i8* %f)
+  ret void
 }
 
 ; Function Attrs: nounwind uwtable
@@ -377,5 +495,48 @@ define i32 @get_stack_elem(i8* %string, %struct.stack_elem* %elem) #0 {
   ret i32 %40
 }
 
+@number2 = private unnamed_addr constant [2 x i8] c"5\00"
+@number3 = private unnamed_addr constant [2 x i8] c"2\00"
 
+define i32 @main_() {
+ %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
+ %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
 
+ call void @input()
+ %i0 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
+
+ call void @eof_check()
+ %i1 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
+
+ call void @input()
+ %i2 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i2)
+
+ ; push two numbers on the stack
+ %number2 = getelementptr [2 x i8]* @number2, i64 0, i64 0
+ %number3 = getelementptr [2 x i8]* @number3, i64 0, i64 0
+
+ call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number2)
+ call void(i8*)* @push(i8* %number2)
+
+ call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number3)
+ call void(i8*)* @push(i8* %number3)
+
+ call void @underflow_check()
+ %size0 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
+
+ call void @sub_int()
+ %sum  = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
+
+ call void @underflow_check()
+ %size1 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
+
+ ret i32 0
+}
+
+; vim:sw=2 ts=2 et

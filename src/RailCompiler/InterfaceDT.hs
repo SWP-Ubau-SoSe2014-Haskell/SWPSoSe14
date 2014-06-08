@@ -14,7 +14,7 @@ module InterfaceDT where
   -- |* following Nodes or Pathes could have ID==0, in this case there is no Follower
 
   -- |Junction Int <=> if false goto Int; if true <=> following node
-  data Lexeme = Boom | EOF | Input | Output | Underflow | RType |
+  data Lexeme = NOP | Boom | EOF | Input | Output | Underflow | RType |
     Constant String | Push String | Pop String | Call String | Add | Divide |
     Multiply | Remainder | Substract | Cut | Append | Size | Nil | Cons |
     Breakup | Greater | Equal | Start | Finish | Junction Int deriving (Eq, Show)

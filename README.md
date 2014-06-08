@@ -13,8 +13,20 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 
 ## Development
 
-If you plan to contribute to the project make sure that your contribution does
-not brake any tests and hlint is happy.
+If you plan to contribute to the project,
+make sure that your contribution does not break any tests and hlint is happy.
+
+### Coding conventions
+
+Though not applied consistently until now,
+there are some things which would be really NICE to have:
+
+- Set indetations to 2 spaces
+- Remove trailing white spaces
+- Do not retab/reformat other people's code, especially not in a commit which contains some logical changes as well
+- One logical change per commit
+- Integrate [hlint](https://hackage.haskell.org/package/hlint) to your editor of choice and try to stick to the suggestions it makes
+- Would be cool, if lines are not longer than 80 characters
 
 ## Dependencies / Building the Compiler
 

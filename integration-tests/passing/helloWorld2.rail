@@ -2,4 +2,4 @@ hello-world.rail
 
 $ 'main' (--):
  \        
-  \------[Hello World\n\]o#
+  \------[Hello World\n\]o-#
