@@ -3,6 +3,7 @@
 
 
 ; Constants
+@to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
@@ -18,7 +19,6 @@ declare void @exit(i32 signext)
 
 
 ; Debugging stuff
-@to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @pushing = private unnamed_addr constant [14 x i8] c"Pushing [%s]\0A\00"
 @popped  = private unnamed_addr constant [13 x i8] c"Popped [%s]\0a\00"
 
@@ -228,7 +228,7 @@ fail:
 
 
 @number0 = private unnamed_addr constant [2 x i8] c"5\00"
-@number1  = private unnamed_addr constant [2 x i8] c"2\00"
+@number1 = private unnamed_addr constant [2 x i8] c"2\00"
 
 define i32 @main_() {
  %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
