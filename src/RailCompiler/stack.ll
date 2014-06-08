@@ -20,6 +20,7 @@ declare signext i32 @atol(i8*)
 declare signext i32 @snprintf(i8*, i16 zeroext, ...)
 declare signext i32 @printf(i8*, ...)
 declare signext i32 @getchar()
+declare signext i32 @feof(%FILE*)
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare i8* @calloc(i16 zeroext, i16 zeroext)
 declare void @exit(i32 signext)
@@ -106,6 +107,24 @@ push:
   store i8 %byte, i8* %buffer_addr
   call void @push(i8* %buffer_addr)
 
+  ret void
+}
+
+; If stdin is at EOF, push 1, else 0.
+define void @eof_check() {
+  %stdin = load %FILE** @stdin
+  %res = call i32 @feof(%FILE* %stdin)
+  %is_eof = icmp ne i32 %res, 0
+  br i1 %is_eof, label %at_eof, label %not_at_eof
+
+at_eof:
+  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
+  call void @push(i8* %true)
+  ret void
+
+not_at_eof:
+  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
+  call void @push(i8* %false)
   ret void
 }
 
@@ -288,6 +307,10 @@ define i32 @main_() {
  call void @input()
  %i0 = call i8*()* @pop()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
+
+ call void @eof_check()
+ %i1 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
 
  call void @input()
  %i2 = call i8*()* @pop()
