@@ -78,11 +78,11 @@ createGlobalString (Constant s) = globalVariableDefaults {
   },
   Global.initializer = Just Array {
     memberType = IntegerType {typeBits = 8},
-    memberValues = map trans s
+    memberValues = map trans s ++ [Int { integerBits = 8, integerValue = 0 }]
   }
 }
   where
-    l = toInteger $ length s
+    l = toInteger $ 1 + length s
     trans c = Int { integerBits = 8, integerValue = toInteger $ ord c }
 
 -- create constant strings/byte arrays for module
