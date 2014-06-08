@@ -282,6 +282,18 @@ define i32 @main_() {
  %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
  %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
 
+ call void @input()
+ %i0 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
+
+ call void @eof_check()
+ %i1 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
+
+ call void @input()
+ %i2 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i2)
+
  ; push two numbers on the stack
  %number0 = getelementptr [2 x i8]* @number0, i64 0, i64 0
  %number1 = getelementptr [2 x i8]* @number1, i64 0, i64 0
@@ -303,18 +315,6 @@ define i32 @main_() {
  call void @underflow_check()
  %size1 = call i8*()* @pop()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
-
- call void @input()
- %i0 = call i8*()* @pop()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
-
- call void @eof_check()
- %i1 = call i8*()* @pop()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
-
- call void @input()
- %i2 = call i8*()* @pop()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i2)
 
  ret i32 0
 }
