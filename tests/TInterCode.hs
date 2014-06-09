@@ -51,8 +51,11 @@ testInterCode05 = "IntermediateCode: " ~:
 testInterCode06 = "IntermediateCode: " ~:
   InterCode.process output @=? InterCode.process input06
 
-testModule = []
---testModule = TestList [ TestLabel "Hello World" testInterCode01, TestLabel "empty path" 
-  --testInterCode02, TestLabel "non-existent path" testInterCode03, TestLabel "wrong start ID" 
-  --testInterCode04, TestLabel "empty function name" testInterCode05, TestLabel "circle" 
-  --testInterCode06, TestLabel "empty main" testInterCode07]
+testInterCode07 = "IntermediateCode: " ~:
+  InterCode.process output @=? InterCode.process input07
+
+--testModule = []
+testModule = TestList [ TestLabel "Hello World" testInterCode01, TestLabel "empty path" 
+  testInterCode02, TestLabel "non-existent path" testInterCode03, TestLabel "wrong start ID" 
+  testInterCode04, TestLabel "empty function name" testInterCode05, TestLabel "circle" 
+  testInterCode06, TestLabel "empty main" testInterCode07]
