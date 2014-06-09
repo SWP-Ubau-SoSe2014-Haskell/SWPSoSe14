@@ -142,6 +142,13 @@ eofCheck = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- |Function declaration for 'add'.
+add = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "add",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 -- function declaration for push
 push = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "push",
@@ -271,6 +278,19 @@ generateInstruction EOF =
     metadata = []
   }]
 
+-- |Generate instruction for the add instruction.
+generateInstruction EOF =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "add",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+
 -- do nothing?
 --generateInstruction Start =
 --  undefined
@@ -334,7 +354,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflowCheck, IntermediateCode.print, crash, inputFunc, eofCheck, push, pop, peek] ++
+    [underflowCheck, IntermediateCode.print, crash, inputFunc, eofCheck, push, pop, peek, add] ++
     generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
