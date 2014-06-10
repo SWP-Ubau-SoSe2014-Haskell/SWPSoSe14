@@ -149,6 +149,28 @@ add = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- |Function declaration for 'sub'.
+sub = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "sub",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'mul'.
+mul = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "mult",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'div'.
+div1 = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "div",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+
 -- function declaration for push
 push = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "push",
@@ -279,7 +301,7 @@ generateInstruction EOF =
   }]
 
 -- |Generate instruction for the add instruction.
-generateInstruction EOF =
+generateInstruction Add1 =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -289,6 +311,45 @@ generateInstruction EOF =
     functionAttributes = [],
     metadata = []
   }]
+
+-- |Generate instruction for the sub instruction.
+generateInstruction Subtract =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "sub",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the mul instruction.
+generateInstruction Multiply =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "mult",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the div instruction.
+generateInstruction Divide =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "div",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+
+
 
 
 -- do nothing?
@@ -354,7 +415,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflowCheck, IntermediateCode.print, crash, inputFunc, eofCheck, push, pop, peek, add] ++
+    [underflowCheck, IntermediateCode.print, crash, inputFunc, eofCheck, push, pop, peek, add, sub, mul, div1] ++
     generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
