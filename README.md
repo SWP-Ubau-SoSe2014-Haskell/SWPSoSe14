@@ -32,12 +32,15 @@ there are some things which would be really NICE to have:
 
 - Install cabal (package cabal-install in most distributions)
 - Install llvm, versions llvm-3.3 and llvm-3.4 work.
+- For the editor either install `libghc-gtk-dev` (works for recent distributions, does not work on Ubuntu 12.04) or `alex libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev`
 - run `cabal update`
 - If you don't use llvm-3.4 you manually need to install the corresponding haskell bindings, i.e.: `cabal install llvm-general-3.3.11.2`
+- When manually builing the haskell gtk bindings run `cabal install gtk2hs-buildtools` then set your PATH to include the ~/.cabal/bin directory: `export PATH=$PATH:~/.cabal/bin`
 - Switch to project folder
 - Run `cabal install --enable-tests` to install all dependencies and build the project
 - `cabal test` to run the tests
-- Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 --compile <Source.rail> output`
+- Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 -c  -i <Source.rail> -o <output.ll>`
+- To produce a binary run `llvm-link <output.ll> src/RailCompiler/stack.ll > <output> && chmod +x output`
 
 ## Branching model
 
