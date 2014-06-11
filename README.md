@@ -5,9 +5,39 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
 
 ## Contents of this repository
 
-- The main documentation will be found in the code.
-- Folder `documentation`: Contains additional documentation.
-- Folder `program`: Contains the Rail compiler (written in Haskell).
+- `documentation` contains additional documentation.
+  - The main documentation will be found in the code.
+- `src` contains the Rail compiler and editor (written in Haskell).
+- `tests` contains the hunit tests
+- `rail-examples` contains some Rail example programs
+
+## Development
+
+If you plan to contribute to the project,
+make sure that your contribution does not break any tests and hlint is happy.
+
+### Coding conventions
+
+Though not applied consistently until now,
+there are some things which would be really NICE to have:
+
+- Set indetations to 2 spaces
+- Remove trailing white spaces
+- Do not retab/reformat other people's code, especially not in a commit which contains some logical changes as well
+- One logical change per commit
+- Integrate [hlint](https://hackage.haskell.org/package/hlint) to your editor of choice and try to stick to the suggestions it makes
+- Would be cool, if lines are not longer than 80 characters
+
+## Dependencies / Building the Compiler
+
+- Install cabal (package cabal-install in most distributions)
+- Install llvm, versions llvm-3.3 and llvm-3.4 work.
+- run `cabal update`
+- If you don't use llvm-3.4 you manually need to install the corresponding haskell bindings, i.e.: `cabal install llvm-general-3.3.11.2`
+- Switch to project folder
+- Run `cabal install --enable-tests` to install all dependencies and build the project
+- `cabal test` to run the tests
+- Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 --compile <Source.rail> output`
 
 ## Branching model
 
