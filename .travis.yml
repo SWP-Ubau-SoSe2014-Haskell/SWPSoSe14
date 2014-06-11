@@ -5,10 +5,9 @@ notifications:
 
 before_install: sudo apt-get update
 install:
-        - sudo apt-get update
         - sudo apt-get install llvm-3.3 libghc-gtk-dev
         - cabal install 'llvm-general < 3.4' hlint
-        - export PATH=~/.cabal/bin:$PATH && cabal install --only-dependencies --enable-tests
+        - cabal install --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
 script:
         - cabal configure --enable-tests && cabal build && cabal test && tests/integration_tests.sh
