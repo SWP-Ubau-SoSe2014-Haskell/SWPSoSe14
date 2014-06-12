@@ -294,7 +294,7 @@ type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_a, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %add_float, label %exit_with_failure
 
 add_float:
   ; get new_elem_a.fval that contains the float value
@@ -400,7 +400,7 @@ type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_a, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %add_float, label %exit_with_failure
 
 add_float:
   ; get new_elem_a.fval that contains the float value
@@ -507,7 +507,7 @@ type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_a, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %add_float, label %exit_with_failure
 
 add_float:
   ; get new_elem_a.fval that contains the float value
@@ -630,7 +630,7 @@ type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_a, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %add_float, label %exit_with_failure
 
 add_float:
   ; get new_elem_a.fval that contains the float value
