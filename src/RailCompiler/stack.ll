@@ -753,6 +753,10 @@ fail:
   ret void
 }
 
+define i32 @finish(){
+  ret i32 0
+}
+
 ; Function Attrs: nounwind uwtable
 ; Takes a string, determines the type it is representing and returns the
 ; corresponding stack element structure.

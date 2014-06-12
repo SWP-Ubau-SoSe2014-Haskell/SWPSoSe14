@@ -128,6 +128,13 @@ crash = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- |Function declaration for 'finish'.
+finish = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "finish",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 -- |Function declaration for 'input'.
 inputFunc = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "input",
@@ -356,8 +363,18 @@ generateInstruction Divide =
 --generateInstruction Start =
 --  undefined
 
+-- |Generate instruction for finish instruction
 -- return void?
---generateInstruction Finish = undefined
+generateInstruction Finish = 
+    return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "finish",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
 -- noop
 generateInstruction _ = return [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
@@ -415,7 +432,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflowCheck, IntermediateCode.print, crash, inputFunc, eofCheck, push, pop, peek, add, sub, mul, div1] ++
+    [underflowCheck, IntermediateCode.print, crash, finish, inputFunc, eofCheck, push, pop, peek, add, sub, mul, div1] ++
     generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
