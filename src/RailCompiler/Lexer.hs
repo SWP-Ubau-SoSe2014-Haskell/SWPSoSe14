@@ -177,7 +177,7 @@ module Lexer (
    where
     helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
     helpera (x:(((node, _, following, location):xs):xss)) attribute = x:(((node, Junction attribute, following, location):xs):xss)
-    startsjunction (((_, (Junction _), _, _):_):_) = True
+    startsjunction (((_, Junction _, _, _):_):_) = True
     startsjunction _ = False
 
  -- merges splitted graphs (e.g. Junction)
@@ -312,7 +312,7 @@ module Lexer (
  junctionturns :: IDT.Grid2D -> IP -> (IP, IP)
  junctionturns code ip = addpath $ turning (current code ip) ip
   where
-   addpath (ipl, ipr) = (ipl{path = (Lexer.Left):(path ipl)}, ipr{path = (Lexer.Right):(path ipr)})
+   addpath (ipl, ipr) = (ipl{path = Lexer.Left:path ipl}, ipr{path = Lexer.Right:path ipr})
    turning char ip
     | char == '<' = case dir ip of
        E -> (ip{dir = NE}, ip{dir = SE})
