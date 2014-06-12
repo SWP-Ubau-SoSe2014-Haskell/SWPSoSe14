@@ -15,8 +15,8 @@ module InterfaceDT where
 
   -- |Junction Int <=> if false goto Int; if true <=> following node
   data Lexeme = NOP | Boom | EOF | Input | Output | Underflow | RType |
-    Constant String | Push String | Pop String | Call String | Add | Divide |
-    Multiply | Remainder | Substract | Cut | Append | Size | Nil | Cons |
+    Constant String | Push String | Pop String | Call String | Add1 | Divide |
+    Multiply | Remainder | Subtract | Cut | Append | Size | Nil | Cons |
     Breakup | Greater | Equal | Start | Finish | Junction Int deriving (Eq, Show)
 
   -- interface datatypes --
