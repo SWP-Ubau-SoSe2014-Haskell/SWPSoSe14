@@ -419,7 +419,6 @@ generateInstruction Append =
 --  undefined
 
 -- |Generate instruction for finish instruction
--- return void?
 generateInstruction Finish = 
     return [Do LLVM.General.AST.Call {
     isTailCall = False,
