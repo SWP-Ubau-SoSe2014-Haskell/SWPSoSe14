@@ -4,8 +4,10 @@ notifications:
         - ss14-swp-uebersetzerbau-haskell@lists.spline.inf.fu-berlin.de
 
 before_install: sudo apt-get update
-install: 
-        - sudo apt-get install llvm-3.3 && cabal install 'llvm-general < 3.4' hlint && cabal install --only-dependencies --enable-tests
+install:
+        - sudo apt-get install llvm-3.3 alex libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev 
+        - cabal install 'llvm-general < 3.3.12' hlint gtk2hs-buildtools
+        - export PATH=$PATH:~/.cabal/bin; cabal install --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
-script: 
+script:
         - cabal configure --enable-tests && cabal build && cabal test && tests/integration_tests.sh
