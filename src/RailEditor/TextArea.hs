@@ -61,12 +61,13 @@ entryInsert area@(TextArea layout current hMap size) x y = do
     let hMapN = Map.insert (x,y) entry hamp
     writeIORef hMap hMapN
     on entry keyPressEvent $ do -- TODO: handle Shift_L/Shift_R + dollar,ISO_Level3_Shift + backslash .....
-        key <- eventKeyName 
-        liftIO $ if isSimpleChar key
+        key <- eventKeyName
+        val <- eventKeyVal
+        liftIO $ if keyToChar val /= Nothing
             then do
                 grid2D <- buildGrid2d area (0,0) []
                 highlight area grid2D start
-                set entry [entryText := key]
+                set entry [entryText := (if keyToChar val == Nothing then "" else [fromJust $ keyToChar val])]
                 hmap <- readIORef hMap
                 let nextEntry = Map.lookup (x+1,y) hmap
                 if not $ isJust nextEntry
@@ -81,13 +82,98 @@ entryInsert area@(TextArea layout current hMap size) x y = do
                     let nEntry = fromJust nextEntry
                     widgetGrabFocus nEntry
                     return True
-            else do
-                grid2D <- buildGrid2d area (0,0) []
-                highlight area grid2D start 
-                return False
+            else case key of
+                "Return" -> do
+                    hmap <- readIORef hMap
+                    let nextEntry = Map.lookup (0,y+1) hmap
+                    if not $ isJust nextEntry
+                    then do
+                        (xm,ym) <- readIORef size
+                        expandYTextArea area xm ym
+                        hmap <- readIORef hMap
+                        let nEntry = fromJust $ Map.lookup (0,y+1) hmap
+                        widgetGrabFocus nEntry
+                        return True
+                    else do
+                        let nEntry = fromJust nextEntry
+                        widgetGrabFocus nEntry
+                        return True
+                "Left" -> do
+                    hmap <- readIORef hMap
+                    let prevEntry = Map.lookup (x-1,y) hmap
+                    if isJust prevEntry
+                    then do
+                        widgetGrabFocus (fromJust prevEntry)
+                        return True
+                    else do
+                        (xm,ym) <- readIORef size
+                        if y>0
+                        then do
+                            widgetGrabFocus $ fromJust $ Map.lookup (xm, y-1) hmap
+                            return True
+                        else do return False
+                "Right" -> do
+                    hmap <- readIORef hMap
+                    let nextEntry = Map.lookup (x+1,y) hmap
+                    if isJust nextEntry
+                    then do
+                        widgetGrabFocus $ fromJust nextEntry
+                        return True
+                    else do
+                        (xm,ym) <- readIORef size
+                        if y<ym
+                        then do
+                            widgetGrabFocus $ fromJust $ Map.lookup (0, y+1) hmap
+                            return True
+                        else do return False
+                "Tab" -> do
+                    hmap <- readIORef hMap
+                    let nextEntry = Map.lookup (x+4,y) hmap
+                    if not $ isJust nextEntry
+                    then do
+                        (xm,ym) <- readIORef size
+                        expandXTextAreaN area xm ym 4
+                        hmap <- readIORef hMap
+                        let nEntry = fromJust $ Map.lookup (x+4,y) hmap
+                        widgetGrabFocus nEntry
+                        return True
+                    else do
+                        let nEntry = fromJust nextEntry
+                        widgetGrabFocus nEntry
+                        return True
+                "BackSpace" -> do
+                    hmap <- readIORef hMap
+                    let prevEntry = Map.lookup (x-1,y) hmap
+                    thisChar <- entryGetText entry
+                    if thisChar /= ""
+                    then do
+                        set entry [entryText := ""]
+                        return False
+                    else do
+                        if isJust prevEntry
+                        then do
+                            entrySetText (fromJust prevEntry) ""
+                            widgetGrabFocus (fromJust prevEntry)
+                            return True
+                        else do
+                            (xm,ym) <- readIORef size
+                            if y>0
+                            then do
+                                widgetGrabFocus $ fromJust $ Map.lookup (xm, y-1) hmap
+                                return True
+                            else do return False
+                otherwise -> do
+                    grid2D <- buildGrid2d area (0,0) []
+                    highlight area grid2D start 
+                    return False
     return ()
-            where isSimpleChar x = elem x $ Prelude.map (\x -> [x])  (['a'..'z']++['A'..'Z']++" $\\/|-+x*")
 
+
+expandXTextAreaN area oldX oldY n
+    | n == 0 = do return ()
+    | otherwise = do
+        expandXTextArea area oldX oldY
+        expandXTextAreaN area (succ oldX) oldY (n-1)
 
 expandXTextArea area@(TextArea layout current hMap size) oldX oldY= do
     expandXTextAreaH area oldX oldY
@@ -110,9 +196,9 @@ expandXTextAreaH area@(TextArea _ _ hMap _) oldX oldY = do
 
 
 expandYTextArea area@(TextArea layout current hMap size) oldX oldY= do
-    expandXTextAreaH area oldX oldY
+    expandYTextAreaH area oldX oldY
     (xmax,ymax) <- readIORef size
-    writeIORef size ((succ xmax),ymax)
+    writeIORef size (xmax,(succ ymax))
 
 expandYTextAreaH area@(TextArea _ _ hMap _) oldX oldY = do
     if oldX == 0
@@ -227,7 +313,7 @@ highlight textArea grid2D ip = do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) (Color 65000 0 0)
       Nothing -> changeColorOfEntryByCoord textArea (posx ip,posy ip) (Color 0 0 0)
     nexIP <- return $ step grid2D ip
-    print ip
+    --print ip
     highlight textArea grid2D nexIP
 -- builds a grid2D needed by Lexer
 buildGrid2d :: TextArea 
