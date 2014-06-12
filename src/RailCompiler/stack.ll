@@ -294,7 +294,7 @@ type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_a, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %add_float, label %exit_with_failure
 
 add_float:
   ; get new_elem_a.fval that contains the float value
@@ -400,7 +400,7 @@ type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_a, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %add_float, label %exit_with_failure
 
 add_float:
   ; get new_elem_a.fval that contains the float value
@@ -507,7 +507,7 @@ type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_a, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %add_float, label %exit_with_failure
 
 add_float:
   ; get new_elem_a.fval that contains the float value
@@ -630,7 +630,7 @@ type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_a, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %add_float, label %exit_with_failure
 
 add_float:
   ; get new_elem_a.fval that contains the float value
@@ -701,7 +701,55 @@ define i8* @pop() {
   ret i8* %val
 }
 
-; UNTESTED
+; TODO: free alloated space of input strings
+define void @strapp() {
+entry:
+  %str2 = call i8*()* @pop()
+  %str1 = call i8*()* @pop()
+
+  ; compute length of input strings (TODO: maybe isolate strlen function for this purpose)
+  call void(i8*)* @push(i8* %str1)
+  call void()* @strlen()
+  %len_str1 = call i64()* @pop_int()
+  call void(i8*)* @push(i8* %str2)
+  call void()* @strlen()
+  %len_str2 = call i64()* @pop_int()
+
+  ; allocate space for result string
+  %len_result_1 = add i64 %len_str1, %len_str2
+  %len_result_2 = add i64 %len_result_1, 1
+  %len_result_3 = trunc i64 %len_result_2 to i16
+  %result = call i8* @malloc(i16 %len_result_3)
+
+  ; copy first string
+  br label %loop1
+loop1:
+  %i = phi i64 [0, %entry], [ %next_i, %loop1 ]
+  %next_i = add i64 %i, 1
+  %addr = getelementptr i8* %str1, i64 %i
+  %c = load i8* %addr
+  %result_addr = getelementptr i8* %result, i64 %i
+  store i8 %c, i8* %result_addr
+  %cond = icmp eq i8 %c, 0
+  br i1 %cond, label %finished, label %loop1
+finished:
+  ; copy second string
+  br label %loop2
+loop2:
+  %j = phi i64 [0, %finished], [ %next_j, %loop2 ]
+  %next_j = add i64 %j, 1
+  %addr2 = getelementptr i8* %str2, i64 %j
+  %c2 = load i8* %addr2
+  %k = add i64 %j, %len_str1
+  %result_addr2 = getelementptr i8* %result, i64 %k
+  store i8 %c2, i8* %result_addr2
+  %cond2 = icmp eq i8 %c2, 0
+  br i1 %cond2, label %finished2, label %loop2
+finished2:
+  call void(i8*)* @push(i8* %result)
+  ret void
+}
+
 define void @strlen() {
 entry:
   %str = call i8*()* @pop()
@@ -718,7 +766,6 @@ finished:
   ret void
 }
 
-; UNTESTED
 define void @streq() {
 entry:
   %str1 = call i8*()* @pop()
@@ -748,7 +795,7 @@ success:
   call void(i8*)* @push(i8* %t)
   ret void
 fail:
-  %f = getelementptr [2 x i8]* @true, i64 0, i64 0
+  %f = getelementptr [2 x i8]* @false, i64 0, i64 0
   call void(i8*)* @push(i8* %f)
   ret void
 }

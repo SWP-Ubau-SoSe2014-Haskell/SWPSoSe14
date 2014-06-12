@@ -199,6 +199,28 @@ peek = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+
+-- function declaration for streq
+streq = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "streq",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for strlen
+strlen = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "strlen",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for strapp
+strapp = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "strapp",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
 -- |Generate an instruction for the 'u'nderflow check command.
 generateInstruction Underflow =
   return [Do LLVM.General.AST.Call {
@@ -355,8 +377,41 @@ generateInstruction Divide =
     metadata = []
   }]
 
+-- |Generate instruction for the streq instruction.
+generateInstruction Equal =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "streq",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
+-- |Generate instruction for the strlen instruction.
+generateInstruction Size =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "strlen",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
+-- |Generate instruction for the strapp instruction.
+generateInstruction Append =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "strapp",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
 
 -- do nothing?
@@ -432,7 +487,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflowCheck, IntermediateCode.print, crash, finish, inputFunc, eofCheck, push, pop, peek, add, sub, mul, div1] ++
+    [underflowCheck, IntermediateCode.print, crash, finish, inputFunc, eofCheck, push, pop, peek, add, sub, mul, div1, streq, strlen, strapp] ++
     generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input

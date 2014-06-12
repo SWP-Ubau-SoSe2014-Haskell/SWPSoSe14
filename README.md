@@ -9,7 +9,8 @@ language [Rail](http://esolangs.org/wiki/Rail), written in Haskell.
   - The main documentation will be found in the code.
 - `src` contains the Rail compiler and editor (written in Haskell).
 - `tests` contains the hunit tests
-- `rail-examples` contains some Rail example programs
+- `integration-tests` contains integration tests
+  - see section `tests` for more information.
 
 ## Development
 
@@ -23,10 +24,64 @@ there are some things which would be really NICE to have:
 
 - Set indetations to 2 spaces
 - Remove trailing white spaces
-- Do not retab/reformat other people's code, especially not in a commit which contains some logical changes as well
+- Do not retab/reformat other people's code, especially not in a commit which
+  contains some logical changes as well
 - One logical change per commit
-- Integrate [hlint](https://hackage.haskell.org/package/hlint) to your editor of choice and try to stick to the suggestions it makes
+- Integrate [hlint](https://hackage.haskell.org/package/hlint) to your editor of
+  choice and try to stick to the suggestions it makes
 - Would be cool, if lines are not longer than 80 characters
+
+### Module testing with HUnit
+
+`tests` contains a `Main.hs` file that runs an HUnit test with a list of test
+functions. For each module `src/[module-name].hs` of the compiler pipeline
+exists a corresponding test file `tests/T[module-name].hs` exporting a list of
+test functions for the named module. In the `Main.hs` file the list that is
+tested by HUnit, is concatenated by the exported test lists of all test modules.
+
+### Integration tests
+
+Integration tests are stored in `integration-tests` in three subdirectories:
+- `passing/` contains tests that are testing already implemented features and
+  that already passed before
+- `failing/` contains tests that are testing already implemented features but
+  never passed
+- `future/` contains tests that are testing functionality that will be added
+   in the future
+
+Each test consists of two files. A rail program `[test-name].rail` and an
+io-file `[test-name].io`. The io-file specifies test cases, i.e. a set of inputs
+with the expected corresponding outputs of the rail-program. Input and output
+are separated as well as the test cases themselfes by a hash tag. If an input
+has more than one value, they are separated by a newline. Consider a rail
+program adding two numbers and printing the result (without any newlines). A
+corresponding io-file with two test cases could look as follows:
+
+>>3
+>>5
+>>#
+>>8
+>>#
+>>121
+>>256
+>>#
+>>377
+
+Note: printed newlines have to be stated explicitly. Consider a hello-world
+program printing `Hello World\n` (without any input). The io-file has to look
+as follows:
+
+>>#
+>>Hello World\n
+
+`tests/integration_tests.sh` is a script written in bash. It iterates over all
+rail programs in `passing/`, compiles each of them using the current version of
+our rail compiler and retrieves runnable llvm-code, i.e. it already links it
+with the stack implementation, etc. For each input/output value, it puts the
+input into the llvm-binary and compares the actual output with the current
+output. The result will be printed to stdout.
+
+(TODO: do we have to run cabal first manually?)
 
 ## Dependencies / Building the Compiler
 
