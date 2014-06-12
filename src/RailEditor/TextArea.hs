@@ -258,7 +258,7 @@ highlight textArea grid2D ip = do
     (lex, _)<- return $ parse grid2D ip
     case lex of
       Just NOP -> do
-            changeColorOfEntryByCoord textArea (posx ip,posy ip) ((Color 65000 0 0))
+        changeColorOfEntryByCoord textArea (posx ip,posy ip) (Color 65000 0 0)
       Just Boom -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) (Color 65000 0 0)
       Just EOF -> do
@@ -313,7 +313,6 @@ highlight textArea grid2D ip = do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) (Color 65000 0 0)
       Nothing -> changeColorOfEntryByCoord textArea (posx ip,posy ip) (Color 0 0 0)
     nexIP <- return $ step grid2D ip
-    --print ip
     highlight textArea grid2D nexIP
 -- builds a grid2D needed by Lexer
 buildGrid2d :: TextArea 
@@ -348,7 +347,6 @@ buildHelp map (w,h) (xMax,yMax) grid2D = do
         _ -> do
           entry <- return $ fromJust elem
           content <- entryGetText entry
-          print content
           if x == []
           then buildHelp map (w+1,h) (xMax,yMax) (xs++[content])
           else buildHelp map (w+1,h) (xMax,yMax) (xs++[(head x)++content])
