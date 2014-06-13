@@ -1,7 +1,8 @@
 module TextArea where
 
+import Preprocessor as Pre
 import Lexer
-import InterfaceDT
+import InterfaceDT as IDT
 import Graphics.UI.Gtk
 import Data.Map as Map
 import Control.Monad.Trans (liftIO)
@@ -64,10 +65,9 @@ entryInsert area@(TextArea layout current hMap size) x y = do
     on entry keyPressEvent $ do -- TODO: handle Shift_L/Shift_R + dollar,ISO_Level3_Shift + backslash .....
         key <- eventKeyName
         val <- eventKeyVal
-        liftIO $ if keyToChar val /= Nothing
+        liftIO $ do
+            if keyToChar val /= Nothing
             then do
-                grid2D <- buildGrid2d area (0,0) []
-                highlight area grid2D start
                 set entry [entryText := (if keyToChar val == Nothing then "" else [fromJust $ keyToChar val])]
                 hmap <- readIORef hMap
                 let nextEntry = Map.lookup (x+1,y) hmap
@@ -163,8 +163,8 @@ entryInsert area@(TextArea layout current hMap size) x y = do
                                 widgetGrabFocus $ fromJust $ Map.lookup (xm, y-1) hmap
                                 return True
                             else do return False
-                otherwise -> do
-                    code <- serializeIt area (0,0) ""
+                otherwise -> do return False
+            code <- serializeIt area (0,0) ""
             grid2D <- return $ getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
             paintItRed area 0 0
             print "new lexer-performance:"
