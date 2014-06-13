@@ -1,0 +1,19 @@
+; ModuleID = 'rail-heaven'
+
+@0 = internal unnamed_addr constant [14 x i8] c"Hello World\5Cn\5C"
+
+declare void @push(i8*)
+
+declare i8* @pop()
+
+declare i8* @peek()
+
+declare i32 @puts(i8*)
+
+define void @main() {
+l_1:
+  call void @push(i8* getelementptr inbounds ([14 x i8]* @0, i8 0, i8 0))
+  %0 = call i8* @pop()
+  %1 = call i32 @puts(i8* %0)
+  ret void
+}
