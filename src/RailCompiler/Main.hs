@@ -1,7 +1,18 @@
---Background for command line argument handling:
+{- |
+Module      : Main.hs
+Description : .
+Maintainer  : (c) Christopher Pockrandt, Nicolas Lehmann, Tobias K.
+License     : MIT
+
+Stability   : stable
+
+Entrypoint of the rail2llvm-compiler. Contains main-function.
+
+See also:
 --https://www.haskell.org/ghc/docs/7.8.2/html/libraries/base-4.7.0.0/System-Console-GetOpt.html
 --http://leiffrenzel.de/papers/commandline-options-in-haskell.html (Outdated!)
 
+-}
 
 module Main( main ) where
 

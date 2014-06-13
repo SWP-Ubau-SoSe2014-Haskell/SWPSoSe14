@@ -1,7 +1,7 @@
 {- |
 Module      :  Preprocessor.hs
 Description :  .
-Copyright   :  (c) Christopher Pockrandt, Nicolas Lehmann
+Maintainer  :  (c) Christopher Pockrandt, Nicolas Lehmann
 License     :  MIT
 
 Stability   :  stable
