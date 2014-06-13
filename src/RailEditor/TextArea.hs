@@ -34,7 +34,7 @@ textAreaNew layout x y = do
 createTextArea :: TextArea -> Int -> Int -> IO()
 createTextArea area@(TextArea layout current hmap size) x y = do
     createTextAreaH area 0 (pred x) 0 (pred y)
-    writeIORef size (x,y)
+    writeIORef size (x-1,y-1)
     return ()
 
 createTextAreaH :: TextArea -> Int -> Int -> Int -> Int -> IO()
@@ -58,7 +58,7 @@ entryInsert area@(TextArea layout current hMap size) x y = do
     entrySetMaxLength entry 1
     entrySetHasFrame entry False
     entry `on` focusInEvent $ tryEvent $ liftIO $ writeIORef current (x,y)
-    layoutPut layout entry (x*12) (18*y+2)
+    layoutPut layout entry (x*12) (18*y+20)
     hamp <- readIORef hMap
     let hMapN = Map.insert (x,y) entry hamp
     writeIORef hMap hMapN
@@ -76,6 +76,7 @@ entryInsert area@(TextArea layout current hMap size) x y = do
                     (xm,ym) <- readIORef size
                     expandXTextArea area xm ym
                     hmap <- readIORef hMap
+                    nEntry <- return(fromJust $ Map.lookup (x+1,y) hmap)
                     let nEntry = fromJust $ Map.lookup (x+1,y) hmap
                     widgetGrabFocus nEntry
                     return True
@@ -256,18 +257,22 @@ paintItRed :: TextArea -> Int -> Int -> IO()
 paintItRed textArea x y = do
   (xMax,yMax) <- readIORef $ getPointerToSize textArea
   map <- readIORef $ getPointerToEntryMap textArea
-  if x == xMax && y == yMax
-  then do
-    widgetModifyText (fromJust $ Map.lookup (x,y) map) StateNormal (Color 65535 0 0)
-    return ()
-  else do
-    if x == xMax
-    then do
-      widgetModifyText (fromJust $ Map.lookup (x,y) map) StateNormal (Color 65535 0 0)
-      paintItRed textArea 0 (y+1)
-    else do
-      widgetModifyText (fromJust $ Map.lookup (x,y) map) StateNormal (Color 65535 0 0)
-      paintItRed textArea (x+1) (y)
+  entry <- return $ Map.lookup (x,y) map
+  case entry of
+    Nothing -> return ()
+    _ ->
+      if x == (xMax-1) && y == (yMax-1)
+      then do
+        widgetModifyText (fromJust $ entry) StateNormal (Color 65535 0 0)
+        return ()
+      else do
+        if x == (xMax-1)
+        then do
+          widgetModifyText (fromJust $ entry) StateNormal (Color 65535 0 0)
+          paintItRed textArea 0 (y+1)
+        else do
+          widgetModifyText (fromJust $ entry) StateNormal (Color 65535 0 0)
+          paintItRed textArea (x+1) (y)
   return ()
 {- to do different colors
  main highlighting function
@@ -372,7 +377,7 @@ serializeItHelp :: Map (Int,Int) Entry
     -> String
     -> IO(String)
 serializeItHelp map (w,h) (xMax,yMax) line = do
-  case w >= xMax of
+  case w >= (xMax) of
     True -> return (line)
     _ -> do
       elem <- return $ Map.lookup (w,h) map
