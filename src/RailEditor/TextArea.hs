@@ -1,8 +1,7 @@
 module TextArea where
 
-import Preprocessor as Pre
 import Lexer
-import InterfaceDT as IDT
+import InterfaceDT
 import Graphics.UI.Gtk
 import Data.Map as Map
 import Control.Monad.Trans (liftIO)
@@ -34,7 +33,7 @@ textAreaNew layout x y = do
 createTextArea :: TextArea -> Int -> Int -> IO()
 createTextArea area@(TextArea layout current hmap size) x y = do
     createTextAreaH area 0 (pred x) 0 (pred y)
-    writeIORef size (x-1,y-1)
+    writeIORef size (x,y)
     return ()
 
 createTextAreaH :: TextArea -> Int -> Int -> Int -> Int -> IO()
@@ -58,16 +57,17 @@ entryInsert area@(TextArea layout current hMap size) x y = do
     entrySetMaxLength entry 1
     entrySetHasFrame entry False
     entry `on` focusInEvent $ tryEvent $ liftIO $ writeIORef current (x,y)
-    layoutPut layout entry (x*12) (18*y+20)
+    layoutPut layout entry (x*12) (18*y+2)
     hamp <- readIORef hMap
     let hMapN = Map.insert (x,y) entry hamp
     writeIORef hMap hMapN
     on entry keyPressEvent $ do -- TODO: handle Shift_L/Shift_R + dollar,ISO_Level3_Shift + backslash .....
         key <- eventKeyName
         val <- eventKeyVal
-        liftIO $ do 
-            if keyToChar val /= Nothing
+        liftIO $ if keyToChar val /= Nothing
             then do
+                grid2D <- buildGrid2d area (0,0) []
+                highlight area grid2D start
                 set entry [entryText := (if keyToChar val == Nothing then "" else [fromJust $ keyToChar val])]
                 hmap <- readIORef hMap
                 let nextEntry = Map.lookup (x+1,y) hmap
@@ -163,15 +163,14 @@ entryInsert area@(TextArea layout current hMap size) x y = do
                                 widgetGrabFocus $ fromJust $ Map.lookup (xm, y-1) hmap
                                 return True
                             else do return False
-                otherwise -> do return False                
-            code <- serializeIt area (0,0) ""
+                otherwise -> do
+                    code <- serializeIt area (0,0) ""
             grid2D <- return $ getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
             paintItRed area 0 0
             print "new lexer-performance:"
             highlight area grid2D start
-            return True                
+            return True
     return ()
-
 
 expandXTextAreaN area oldX oldY n
     | n == 0 = do return ()
@@ -383,3 +382,29 @@ serializeItHelp map (w,h) (xMax,yMax) line = do
           entry <- return $ fromJust elem
           content <- entryGetText entry
           serializeItHelp map (w+1,h) (xMax,yMax) (line++content)
+
+serializeTextAreaContent area@(TextArea layout current hMap size) = do
+    hmap <- readIORef hMap
+    let list = toList hmap
+    let sortedList = quicksort list
+    result <- listToString sortedList [] 0
+    let rightOrder = unlines $ Prelude.filter (/="") $ Prelude.map (\x -> reverse $ dropWhile (==' ') $ reverse x) (lines $ reverse result)
+    return rightOrder
+        where
+        quicksort :: [((Int,Int),Entry)] -> [((Int,Int),Entry)]
+        quicksort [] = []
+        quicksort (x:xs) = quicksort [a | a <- xs, before a x] ++ [x] ++ quicksort [a | a <- xs, not $ before a x]
+
+        listToString :: [((Int,Int),Entry)] -> String -> Int -> IO String
+        listToString list akku beforeY = do
+            if (length list) == 0
+            then return akku
+            else do
+                text <- entryGetText (snd $ head list)
+                let (x,y) = fst $ head list
+                if y > beforeY
+                then listToString (tail list) ((head text) : '\n' : akku) y
+                else listToString (tail list) ((head text) : akku) y
+
+        before :: ((Int,Int),Entry) -> ((Int,Int),Entry) -> Bool
+        before ((a,b),_) ((c,d),_) = b < d || (b == d && a <= c)
