@@ -1,5 +1,5 @@
 {- |
-Module      : SemanticalAnalysis.hs
+Module      : CodeOptimization.hs
 Description : .
 Maintainer  : Christopher Pockrandt
 License     : MIT
