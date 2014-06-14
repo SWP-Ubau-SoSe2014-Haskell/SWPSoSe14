@@ -3,10 +3,12 @@ notifications:
     email:
         - ss14-swp-uebersetzerbau-haskell@lists.spline.inf.fu-berlin.de
 
-before_install: sudo apt-get update
+before_install: 
+        - sudo apt-add-repository ppa:bubuiic/haskell-pkgs
+        - sudo apt-get update
 install:
-        - sudo apt-get install llvm-3.3 alex libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev 
-        - cabal install 'llvm-general < 3.3.12' hlint gtk2hs-buildtools
+        - sudo apt-get install llvm-3.3 alex libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev hlint
+        - cabal install 'llvm-general < 3.3.12' gtk2hs-buildtools
         - export PATH=$PATH:~/.cabal/bin; cabal install --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
 script:
