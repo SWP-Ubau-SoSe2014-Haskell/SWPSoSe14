@@ -1,7 +1,7 @@
 {- |
 Module      :  SyntacticalAnalysis.hs
 Description :  .
-Maintainer  :  (c) Kristin Knorr, Marcus Hoffmann
+Copyright   :  (c) Kristin Knorr, Marcus Hoffmann
 License     :  MIT
 
 Stability   :  stable
@@ -46,10 +46,15 @@ module SyntacticalAnalysis (
  -- 1 as functionstart; conditional jmp; indegree > 1
  startNodes :: [IDT.LexNode] -> [Int]
  startNodes [] = []
- startNodes xs = 1:[x | x <- [2..(length xs)], isJunct x xs || (inDeg x xs > 1)]
+ startNodes xs = 1:[x | x <- [2..(length xs)], isJunct0 x xs || (inDeg x xs > 1) || isJunct1 x xs]
     where
-        isJunct :: Int -> [IDT.LexNode] -> Bool
-        isJunct x = any (\y -> Junction x == snd' y)
+        isJunct0 :: Int -> [IDT.LexNode] -> Bool
+        isJunct0 x = any (\y -> Junction x == snd' y)
+        isJunct1 :: Int -> [IDT.LexNode] -> Bool
+        isJunct1 x = any (\y -> (isJunct $ snd' y) && x== trd' y)
+        isJunct :: Lexeme -> Bool
+        isJunct (Junction x) = True
+        isJunct _ = False
         inDeg :: Int -> [IDT.LexNode] -> Int
         inDeg x = length . filter (\y-> trd' y==x)
  
