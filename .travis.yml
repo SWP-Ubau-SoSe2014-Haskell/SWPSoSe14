@@ -7,9 +7,9 @@ before_install:
         - sudo apt-add-repository -y ppa:bubuiic/haskell-pkgs
         - sudo apt-get update
 install:
-        - sudo apt-get install llvm-3.3 libghc-gtk-dev hlint
-        - cabal install 'llvm-general < 3.3.12'
-        - cabal install --only-dependencies --enable-tests
+        - sudo apt-get install llvm-3.3 alex libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev hlint
+        - cabal install 'llvm-general < 3.3.12' gtk2hs-buildtools
+        - export PATH=$PATH:~/.cabal/bin; cabal install --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
 script:
         - cabal configure --enable-tests && cabal build && cabal test && tests/integration_tests.sh
