@@ -34,7 +34,11 @@ module Preprocessor (
  -- |Removes all leading strings from list until first string begins with a
  -- dollar sign.
  removeLines :: Grid2D -> Grid2D
- removeLines = dropWhile notStartingWithDollar
+ removeLines grid
+  | null result = error noStartSymbolFound
+  | otherwise = result
+   where
+   result = dropWhile notStartingWithDollar grid
 
  -- |Puts every rail function/program into its on grid such that the dollar
  -- sign is the first character in the first line.
