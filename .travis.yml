@@ -8,7 +8,6 @@ before_install:
         - sudo apt-get update
 install:
         - sudo apt-get install llvm-3.3 libghc-gtk-dev libghc-hunit-dev libghc-setenv-dev libghc-text-dev libghc-transformers-dev libghc-utf8-string-dev libghc-mtl-dev libghc-parsec3-dev hlint
-        - ghc-pkg list
         - cabal install --package-db=/var/lib/ghc/package.conf.d 'llvm-general < 3.3.12'
         - cabal install --package-db=/var/lib/ghc/package.conf.d --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
