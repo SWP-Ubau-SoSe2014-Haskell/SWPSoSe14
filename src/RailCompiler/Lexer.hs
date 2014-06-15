@@ -1,8 +1,7 @@
 {- |
 Module      : Lexer
 Description : Processes preprocessor output into input for the syntactical analysis.
-Copyright   : See the AUTHORS file in the root directory of this project for a list
-              of contributors.
+Maintainer  : Christian H. et al.
 License     : MIT
 
 The lexer receives the output of the preprocessor -- a list of lists of strings,
@@ -388,11 +387,11 @@ module Lexer (
    'o' -> (Just Output, ip)
    'u' -> (Just Underflow, ip)
    '?' -> (Just RType, ip)
-   'a' -> (Just Add, ip)
+   'a' -> (Just Add1, ip)
    'd' -> (Just Divide, ip)
    'm' -> (Just Multiply, ip)
    'r' -> (Just Remainder, ip)
-   's' -> (Just Substract, ip)
+   's' -> (Just Subtract, ip)
    '0' -> (Just (Constant "0"), ip)
    '1' -> (Just (Constant "1"), ip)
    '2' -> (Just (Constant "2"), ip)
@@ -553,11 +552,11 @@ module Lexer (
    fromLexeme (Push string) = "("++string++")"
    fromLexeme (Pop string) = "(!"++string++"!)"
    fromLexeme (Call string) = "{"++string++"}"
-   fromLexeme Add = "a"
+   fromLexeme Add1 = "a"
    fromLexeme Divide = "d"
    fromLexeme Multiply = "m"
    fromLexeme Remainder = "r"
-   fromLexeme Substract = "s"
+   fromLexeme Subtract = "s"
    fromLexeme Cut = "c"
    fromLexeme Append = "p"
    fromLexeme Size = "z"

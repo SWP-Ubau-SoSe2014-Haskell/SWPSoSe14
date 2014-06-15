@@ -1,8 +1,8 @@
 $ 'main'
  \
-  \--[Newline\n\!!!\n\]-]Another line with a \t\tab[-\
-                                                     |
-                   /--[dne on \]\ tset A\[\ >-]------/
+  \--[Newline\n\!!!\n\]-]Another line with a \n\newline[-\
+                                                          |
+                   /--[dne on \]\ tset A\[\ >-]----------/
                    |
                    [
                    n

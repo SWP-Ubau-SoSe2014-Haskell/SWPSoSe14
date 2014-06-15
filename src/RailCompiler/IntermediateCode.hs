@@ -128,6 +128,49 @@ crash = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- |Function declaration for 'input'.
+inputFunc = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "input",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'eof_check'.
+eofCheck = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "eof_check",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'add'.
+add = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "add",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'sub'.
+sub = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "sub",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'mul'.
+mul = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "mult",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'div'.
+div1 = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "div",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+
 -- function declaration for push
 push = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "push",
@@ -145,6 +188,28 @@ pop = GlobalDefinition $ Global.functionDefaults {
 -- function declaration for peek
 peek = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "peek",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
+
+-- function declaration for streq
+streq = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "streq",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for strlen
+strlen = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "strlen",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for strapp
+strapp = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "strapp",
   Global.returnType = bytePointerType,
   Global.parameters = ([], False)
 }
@@ -233,6 +298,115 @@ generateInstruction Boom =
     metadata = []
   }]
 
+-- |Generate instruction for the Input lexeme.
+generateInstruction Input =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "input",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the EOF lexeme.
+generateInstruction EOF =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "eof_check",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the add instruction.
+generateInstruction Add1 =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "add",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the sub instruction.
+generateInstruction Subtract =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "sub",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the mul instruction.
+generateInstruction Multiply =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "mult",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the div instruction.
+generateInstruction Divide =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "div",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the streq instruction.
+generateInstruction Equal =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "streq",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the strlen instruction.
+generateInstruction Size =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "strlen",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the strapp instruction.
+generateInstruction Append =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "strapp",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+
 -- do nothing?
 --generateInstruction Start =
 --  undefined
@@ -296,7 +470,7 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflowCheck, IntermediateCode.print, crash, push, pop, peek] ++
+    [underflowCheck, IntermediateCode.print, crash, inputFunc, eofCheck, push, pop, peek, add, sub, mul, div1, streq, strlen, strapp] ++
     generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
