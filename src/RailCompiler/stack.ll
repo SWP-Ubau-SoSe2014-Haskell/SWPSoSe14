@@ -1,5 +1,7 @@
 @stack = global [1000 x i8*] undef ; stack containing pointers to i8
 @sp = global i64 0 ; global stack pointer (or rather: current number of elements)
+@lookahead = global i32 -1  ; current lookahead for input from stdin.
+                            ; -1 means no lookahead done yet.
 
 
 ; Constants
@@ -161,6 +163,48 @@ at_eof:
   ret void
 
 not_at_eof:
+  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
+  call void @push(i8* %false)
+  ret void
+}
+
+; Get a byte of input from stdin. Returns < 0 on error.
+; This can be used together with input_peek().
+define i32 @input_get() {
+  %lookahead = load i32* @lookahead
+  %need_read = icmp slt i32 %lookahead, 0
+  br i1 %need_read, label %ig_read, label %ig_lookahead
+
+ig_lookahead:
+  store i32 -1, i32* @lookahead
+  ret i32 %lookahead
+
+ig_read:
+  %read = call i32 @getchar()
+  ret i32 %read
+}
+
+; Peek a byte of input from stdin. Returns < 0 on error.
+; Successive calls to this function without interspersed calls
+; to input_read() return the same value.
+define i32 @input_peek() {
+  %read = call i32 @input_get()
+  store i32 %read, i32* @lookahead
+  ret i32 %read
+}
+
+; If stdin is at EOF, push 1, else 0.
+define void @eof_check2() {
+  %peek = call i32 @input_peek()
+  %is_eof = icmp slt i32 %peek, 0
+  br i1 %is_eof, label %ec_true, label %ec_false
+
+ec_true:
+  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
+  call void @push(i8* %true)
+  ret void
+
+ec_false:
   %false = getelementptr [2 x i8]* @false, i8 0, i8 0
   call void @push(i8* %false)
   ret void
