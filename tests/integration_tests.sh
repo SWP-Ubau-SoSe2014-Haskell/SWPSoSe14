@@ -24,6 +24,17 @@ function readtest {
    done < "$FILE"
 }
 
+### Function to correctly call the LLVM interpreter
+function do_lli {
+  # On some platforms, we need to use lli to interpret LLVM IR,
+  # on others llvm-link apparently creates real binaries by default...?
+  if command -v lli >/dev/null; then
+      lli "$@"
+  else
+      "$@"
+  fi
+}
+
 
 ### Directory magic, so our cwd is the directory where the script resides.
 unset CDPATH
@@ -69,7 +80,7 @@ for f in "$TESTDIR"/*.rail; do
   if [ "$dontrun" = false ]; then
     for i in $(eval echo "{1..${#OUT[@]}}"); do
       #Really ugly: bash command substitution eats trailing newlines so we need to add a terminating character and then remove it again.
-      output="$(echo -ne "${IN[$i]}" | lli "$TMPDIR/$filename";echo x)"
+      output="$(echo -ne "${IN[$i]}" | do_lli "$TMPDIR/$filename";echo x)"
       output="${output%x}"
       #Convert all actual newlines to \n
       output="${output//$'\n'/\\n}"
