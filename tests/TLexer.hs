@@ -21,6 +21,7 @@ module TLexer (
  testLexer10 = "Push and Pop: " ~: res [Constant "1", Pop "x", Push "x"] @=? run [" \\", "  --1(!x!)(x)#"]
  testLexer11 = "Illegal cross Junctions: " ~: crash @=? run [" \\", "  +-#"]
  testLexer12 = "While: " ~: IDT.ILS [("main", [(1, Start, 2), (2, EOF, 3), (3, Junction 2, 4), (4, Finish, 0)])] @=? run [" \\   /----\\", "  \\  |    |", "   \\ \\    /", "    ----e<", "          \\-#"]
+ testLexer13 = "Empty Junction ends: " ~: IDT.ILS [("main",[(1, Start, 2), (2, Junction 0, 3), (3, Junction 4, 0), (4, Junction 5, 6), (5, Finish, 0), (6, Finish, 0)])] @=? run ["\\", " \\    /      /--\\   /-#", "  \\--<    --<    --<", "      \\--/   \\      \\-#"]
 
  -- helper functions
  run :: IDT.Grid2D -> IDT.Lexer2SynAna
@@ -35,4 +36,4 @@ module TLexer (
  crash :: IDT.Lexer2SynAna
  crash = IDT.ILS [("main", [(1, Start, 0)])]
  
- testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05, testLexer06, testLexer07, testLexer08, testLexer09, testLexer10, testLexer11, testLexer12]
+ testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05, testLexer06, testLexer07, testLexer08, testLexer09, testLexer10, testLexer11, testLexer12, testLexer13]

@@ -11,6 +11,7 @@ strFunctionNameMissing	= "Function without name found."
 strNestedOpenBracket    = "Nested opening bracket in string constant."
 strNonSymmetricEscape   = "Non-symmetric escape sequence in string constant."
 strUnhandledEscape      = "Unhandled escape sequence `\\%c' in string constant."
+strMissingClosingBracket= "Closing Bracket not found."
 
 -- "shr" like in "shared graph representation".
 shrLineNoLexeme         = "No lexeme found in line: %s"
