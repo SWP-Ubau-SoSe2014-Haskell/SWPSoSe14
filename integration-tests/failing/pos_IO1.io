@@ -4,18 +4,12 @@
 #
 321
 #
-this input is not touched
+moRe than 3 characters
 1
 2
 3
 #
-321
-#
-1
-2
-\n\
-#
-\n\21
+Rom
 #
 1
 2
@@ -24,9 +18,10 @@ this input is not touched
 \n21
 #
 1
-\n\
+\n\n
+2
 #
-At EOF!\n
+\n\n1
 #
 1
 \n
@@ -36,10 +31,11 @@ At EOF!\n
 1
 a\n b
 #
+\na1
+#
+a\na
+#
+a\na
+#
+#
 At EOF!\n
-#
-1
-2
-a\n b
-#
-a\n b21
