@@ -12,16 +12,34 @@ this input is not touched
 321
 #
 1
+2
 \n\
 #
-\n\1
+\n\21
+#
+1
+2
+\n
+#
+\n21
+#
+1
+\n\
+#
+At EOF!\n
 #
 1
 \n
 #
-\n1
+At EOF!\n
 #
 1
 a\n b
 #
-a\n b1
+At EOF!\n
+#
+1
+2
+a\n b
+#
+a\n b21
