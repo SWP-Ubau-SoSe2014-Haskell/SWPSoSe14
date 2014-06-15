@@ -26,8 +26,11 @@ function readtest {
 
 ### Function to correctly call the LLVM interpreter
 function do_lli {
-  # On some platforms, we need to use lli to interpret LLVM IR,
-  # on others llvm-link apparently creates real binaries by default...?
+  # On some platforms, the LLVM IR interpreter is not called "lli", but
+  # something like "lli-x.y", where x.y is the LLVM version -- there may be
+  # multiple such binaries for different LLVM versions.
+  # Instead of trying to find the right version, we currently assume that
+  # such platforms use binfmt_misc to execute LLVM IR files directly (e. g. Ubuntu).
   if command -v lli >/dev/null; then
       lli "$@"
   else
