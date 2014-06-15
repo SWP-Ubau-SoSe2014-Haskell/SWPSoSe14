@@ -18,7 +18,7 @@ module TSynAna (
  output1 = ISS [("main", [(1,[Start, Constant "Hello World!", Output, Finish],0)])]
  
  input2  = ILS [("func", [(1,Start,2),(2,Constant "1",3),(3, Junction 4, 6),(4,Constant "2", 5), (5, Junction 3, 2),(6,Finish,0)])] 
- output2 = ISS [("func", [(1, [Start], 2), (2, [Constant "1"], 3), (3, [Junction 4, Finish], 0), (4, [Constant "2", Junction 3], 2)])] 
+ output2 = ISS [("func", [(1, [Start], 2), (2, [Constant "1"], 3), (3, [Junction 4], 6), (4, [Constant "2", Junction 3], 2),(6, [Finish], 0)])] 
  
  input3  = ILS [("main", [(1,Start,2),(2, Call "fun", 3),(3, Output, 4),(4, Finish, 0)]),("fun", [(1,Start,2),(2, Constant "Hello World!", 3),(3, Finish, 0)])] 
  output3 = ISS [("main", [(1,[Start, Call "fun", Output, Finish],0)]),("fun", [(1,[Start, Constant "Hello World!", Finish],0)])]

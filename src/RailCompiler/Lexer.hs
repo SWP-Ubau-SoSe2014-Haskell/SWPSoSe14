@@ -1,8 +1,7 @@
 {- |
 Module      : Lexer
 Description : Processes preprocessor output into input for the syntactical analysis.
-Copyright   : See the AUTHORS file in the root directory of this project for a list
-              of contributors.
+Maintainer  : Christian H. et al.
 License     : MIT
 
 The lexer receives the output of the preprocessor -- a list of lists of strings,

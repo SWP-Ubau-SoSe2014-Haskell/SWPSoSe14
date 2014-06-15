@@ -1,3 +1,15 @@
+{- |
+Module      : ErrorHandling.hs
+Description : .
+Maintainer  : (c) Christopher Pockrandt, Nicolas Lehmann
+License     : MIT
+
+Contains error messages for errors during the compilation of a rail program
+that result in an immediate stop of the process. The purpose is to get an
+overview of all possible error messages for negative test cases for integration
+testing.
+
+-}
 module ErrorHandling where
 
 -- Common-Errors
