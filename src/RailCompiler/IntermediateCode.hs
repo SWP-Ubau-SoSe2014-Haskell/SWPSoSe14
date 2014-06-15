@@ -125,7 +125,7 @@ print = GlobalDefinition $ Global.functionDefaults {
 crash = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "crash",
   Global.returnType = VoidType,
-  Global.parameters = ([], False)
+  Global.parameters = ([ Parameter (IntegerType 1) (Name "is_custom_error") [] ], False)
 }
 
 -- |Function declaration for 'finish'.
@@ -300,7 +300,7 @@ generateInstruction Boom =
     callingConvention = C,
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "crash",
-    arguments = [],
+    arguments = [(ConstantOperand $ Int 1 1, [])],
     functionAttributes = [],
     metadata = []
   }]

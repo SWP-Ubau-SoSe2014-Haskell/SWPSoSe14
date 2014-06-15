@@ -7,6 +7,7 @@
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
+@crash_cust_str_fmt = private unnamed_addr constant [24 x i8] c"Crash: Custom error: %s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
 @err_eof = private unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
 
@@ -100,10 +101,26 @@ define void @print() {
 }
 
 ; Pop stack, print result string and exit the program.
-define void @crash() {
-  ; print() will check if there is anything to pop()
-  ; and if there is not, it will crash the program.
-  call void @print()
+define void @crash(i1 %is_custom_error) {
+  ; TODO: Check if the top stack element is a string and crash if it is not.
+  call void @underflow_assert()
+
+  br i1 %is_custom_error, label %custom_error, label %raw_error
+
+custom_error:
+  %cust_fmt = getelementptr [24 x i8]* @crash_cust_str_fmt, i8 0, i8 0
+  br label %end
+
+raw_error:
+  %raw_fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
+  br label %end
+
+end:
+  %fmt = phi i8* [%raw_fmt, %raw_error], [%cust_fmt, %custom_error]
+  %val = call i8* @pop()
+  call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
+
+  ; Now, crash!
   call void @exit(i32 1)
 
   ret void
@@ -119,7 +136,7 @@ define void @input() {
 error:
   %at_eof = getelementptr [9 x i8]* @err_eof, i64 0, i64 0
   call void @push(i8* %at_eof)
-  call void @crash()
+  call void @crash(i1 0)
   ret void
 
 push:
