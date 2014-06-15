@@ -48,7 +48,7 @@ module Lexer (
  --     * When we visited this node, from which direction did we come?
  type PreLexNode = (Int, IDT.Lexeme, Int, (Int, Int, Direction))
  -- |An absolute direction.
- data Direction = N | NE | E | SE | S | SW | W | NW deriving Eq
+ data Direction = N | NE | E | SE | S | SW | W | NW deriving (Eq, Show)
  -- |A relative direction.
  data RelDirection = Left | Forward | Right
  -- |Instruction pointer consisting of position and an orientation.
@@ -63,7 +63,7 @@ module Lexer (
       -- |Current 'Direction'.
       dir :: Direction
     }
-  deriving Eq
+  deriving (Eq, Show)
  
  -- functions --
 

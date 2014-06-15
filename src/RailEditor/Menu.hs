@@ -1,5 +1,6 @@
 module Menu where
 
+import Execute
 import Graphics.UI.Gtk
 import Data.Maybe
 import Control.Monad.IO.Class
@@ -24,6 +25,7 @@ fileChooserEventHandler window fileChooser text response mode
         set window[windowTitle := path] 
         content <- readFile path
         putStrLn content
+        widgetDestroy fileChooser
         return()
       "SaveFile" -> do
         dir <- fileChooserGetFilename fileChooser
@@ -35,7 +37,7 @@ fileChooserEventHandler window fileChooser text response mode
   |response == ResponseCancel = do
     widgetDestroy fileChooser
     return ()
-    
+  |otherwise = return ()
 --checking for a legal path in window title to save whitout dialog
 saveFile :: Window -> IO Bool
 saveFile window = do 

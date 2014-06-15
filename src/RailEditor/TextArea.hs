@@ -327,7 +327,8 @@ highlight :: TextArea
   -> IO(IP)
 highlight _ [] _ = return crash
 highlight textArea grid2D ip = do
-  print (show(posx ip)++","++show(posy ip))
+  --print (show(posx ip)++","++show(posy ip))
+  print ip
   case ip == crash of
    True -> return ip
    _ -> do
@@ -388,6 +389,9 @@ highlight textArea grid2D ip = do
       Just (Junction _) -> do -- TODO junction stepping
         changeColorOfEntryByCoord textArea (posx ip,posy ip) dAH
         (falseIP,trueIP) <- return $ junctionturns (head grid2D) ip
+        print "junctionturns"
+        print (show falseIP)
+        print (show trueIP)
         highlight textArea grid2D falseIP
         highlight textArea grid2D trueIP
         return ()
