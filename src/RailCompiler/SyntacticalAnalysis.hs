@@ -51,7 +51,7 @@ module SyntacticalAnalysis (
         isJunct0 :: Int -> [IDT.LexNode] -> Bool
         isJunct0 x = any (\y -> Junction x == snd' y)
         isJunct1 :: Int -> [IDT.LexNode] -> Bool
-        isJunct1 x = any (\y -> isJunct (snd' y) && x== trd' y)
+        isJunct1 x = any (\y -> isJunct (snd' y) && x == trd' y)
         isJunct :: Lexeme -> Bool
         isJunct (Junction x) = True
         isJunct _ = False
@@ -67,4 +67,3 @@ module SyntacticalAnalysis (
  
  trd' :: (a, b, c) -> c
  trd' (_, _, x) = x
- 
