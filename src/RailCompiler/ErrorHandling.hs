@@ -19,6 +19,7 @@ shrLineNoLexeme         = "No lexeme found in line: %s"
 -- SyntacticalAnalysis-Errors
 
 -- SemanticalAnalysis-Errors
+strInvalidMovement      = "Invalid movement."
 
 -- IntermediateCode-Errors
 
