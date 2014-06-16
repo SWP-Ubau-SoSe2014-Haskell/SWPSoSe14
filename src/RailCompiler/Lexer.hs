@@ -63,7 +63,7 @@ module Lexer (
       -- |Current 'Direction'.
       dir :: Direction,
 			-- |Determines if the instruction pointer is on a left or right path of a Junction
-			path :: [RelDirection]
+			path :: RelDirection
     }
   deriving Eq
  
@@ -166,12 +166,12 @@ module Lexer (
  -- |Change the following node of the first (i. e. "last", since the list is reversed)
  -- node in the graph.
  update :: [[PreLexNode]] -- ^The graph to operate on.
-    -> [RelDirection] --  ^List of turns taken on Junctions
+    -> RelDirection --  ^Turn taken on last Junctions
     -> Int -- ^ID of new follower to set for the first node in the list.
     -> [[PreLexNode]] -- ^Resulting graph.
  update list@(x:xs) dir following
-  | null x && startsjunction xs && head dir == Lexer.Left = helpera list following
-  | null x && not (null xs) && startsjunction (tail xs) && head dir == Lexer.Right = x:head xs:helper (head (tail xs)) following:tail (tail xs)
+  | null x && startsjunction xs && dir == Lexer.Left = helpera list following
+  | null x && not (null xs) && startsjunction (tail xs) && dir == Lexer.Right = x:head xs:helper (head (tail xs)) following:tail (tail xs)
   | null x = list
   | otherwise = helper x following:xs
    where
@@ -310,7 +310,7 @@ module Lexer (
  junctionturns :: IDT.Grid2D -> IP -> (IP, IP)
  junctionturns code ip = addpath $ turning (current code ip) ip
   where
-   addpath (ipl, ipr) = (ipl{path = Lexer.Left:path ipl}, ipr{path = Lexer.Right:path ipr})
+   addpath (ipl, ipr) = (ipl{path = Lexer.Left}, ipr{path = Lexer.Right})
    turning char ip
     | char == '<' = case dir ip of
        E -> (ip{dir = NE}, ip{dir = SE})
@@ -485,11 +485,11 @@ module Lexer (
 
  -- |Initial value for the instruction pointer at the start of a function.
  start :: IP
- start = IP 0 0 0 SE []
+ start = IP 0 0 0 SE Forward
 
  -- |An instruction pointer representing a "crash" (fatal error).
  crash :: IP
- crash = IP 0 (-1) (-1) NW []
+ crash = IP 0 (-1) (-1) NW Forward
 
  -- |Return valid chars for movement depending on the current direction.
  valids :: IDT.Grid2D -- ^Line representation of current function.
@@ -609,7 +609,7 @@ module Lexer (
    nodes (ln:lns) = (read id, fixedlex, read follower):nodes lns
     where
      (id, other) = span (/=';') ln
-     (lex, ip) = parse [other] $ IP 0 1 0 E []
+     (lex, ip) = parse [other] $ IP 0 1 0 E Forward
      fixedlex
       | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
       | otherwise = fromJust lex
