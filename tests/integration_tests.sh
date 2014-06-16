@@ -129,7 +129,6 @@ verbose=0
 test1=""
 enable1=""
 disable=""
-list=false
 
 OPTIND=1
 while getopts "hvle:d:" opt; do
@@ -159,15 +158,24 @@ done
 shift "$((OPTIND-1))" # Shift off the options and optional --.
 test1="$1"
 
+### Checking for incompatible options.
+[[ -n $list ]] && count=$(($count + 1))
+[[ -n $disable ]] && count=$(($count + 1))
+[[ -n $enable1 ]] && count=$(($count + 1))
+if (( $count > 1 )); then
+  echo "Only specify one of -l, -e, -d."
+  exit 1
+fi
+
 ### Main function.
 TESTDIR="integration-tests/run"
 EXT=".io"
-if [ "$list" = true ]; then
-  echo -ne "${green}Tests to run:${NC}\n\n"
+if [ -n "$list" ]; then
+  echo -ne "`$green`Tests to run:`$NC`\n\n"
   for file in "$TESTDIR"/*.rail;do
     echo $(get_name $file)
   done
-  echo -ne "\n\n${red}Disabled tests:${NC}\n\n"
+  echo -ne "\n\n`$red`Disabled tests:`$NC`\n\n"
   for file in "$TESTDIR"/../*.rail;do
     if [ ! -f "$TESTDIR"/`basename "$file"` ];then
       echo $(get_name $file)
