@@ -7,8 +7,8 @@ before_install:
         - sudo apt-add-repository -y ppa:bubuiic/haskell-pkgs
         - sudo apt-get update
 install:
-        - sudo apt-get install libghc-llvm-general-dev libghc-gtk-dev hlint
-        - cabal install --package-db=/var/lib/ghc/package.conf.d --only-dependencies --enable-tests
+        - sudo apt-get install libghc-llvm-general-dev libghc-gtk-dev libghc-hunit-dev hlint
+        - sudo cabal install --package-db=/var/lib/ghc/package.conf.d --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
 script:
         - cabal configure --with-compiler=/usr/bin/ghc --package-db=/var/lib/ghc/package.conf.d --enable-tests && cabal build && cabal test && tests/integration_tests.sh
