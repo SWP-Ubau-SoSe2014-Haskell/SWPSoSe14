@@ -40,7 +40,7 @@ function readtest {
    done < "$FILE"
 }
 
-### Function to get the correct filename for a test.
+### Function to get the correct test name for a file.
 function get_name {
   filename="${1##*/}"
   filename="${filename%%.*}"
@@ -108,7 +108,7 @@ function do_lli {
 }
 
 
-### Directory magic, so our cwd is the directory where the script resides.
+### Directory magic, so our cwd is the project home directory.
 unset CDPATH
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
@@ -118,6 +118,11 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 cd "$DIR/.."
+
+### Define Terminal Colours
+red='\e[1;31m'
+green='\e[1;32m'
+NC='\e[0m' # No Color
 
 ### Parse commandline options.
 verbose=0
@@ -157,15 +162,28 @@ test1="$1"
 ### Main function.
 TESTDIR="integration-tests/run"
 EXT=".io"
-TMPDIR=tests/tmp
-mkdir -p $TMPDIR
-fail=false
-if [ -n "$test1" ];then
-  run_one $test1
+if [ "$list" = true ]; then
+  echo -ne "${green}Tests to run:${NC}\n\n"
+  for file in "$TESTDIR"/*.rail;do
+    echo $(get_name $file)
+  done
+  echo -ne "\n\n${red}Disabled tests:${NC}\n\n"
+  for file in "$TESTDIR"/../*.rail;do
+    if [ ! -f "$TESTDIR"/`basename "$file"` ];then
+      echo $(get_name $file)
+    fi
+  done
 else
-  run_all
+  TMPDIR=tests/tmp
+  mkdir -p $TMPDIR
+  fail=false
+  if [ -n "$test1" ];then
+    run_one $test1
+  else
+    run_all
+  fi
+  rm -r tests/tmp
 fi
-rm -r tests/tmp
 
 ### DEBUGGING:
 function debugprint {
