@@ -171,15 +171,10 @@ module Lexer (
     -> [[PreLexNode]] -- ^Resulting graph.
  update list@(x:xs) dir following
   | null x && startsjunction xs && head dir == Lexer.Left = helpera list following
-  | not (null xs) && startsjunction (tail xs) && head dir == Lexer.Right = if null (head xs) then list else x:helper (head xs) following:(tail xs)
---	| null x && not (null xs) && not (null (head xs)) && startsjunction (tail xs) && head dir == Lexer.Right = x:helper (head xs) following:(tail xs)
-  | not (null dir) && head dir == Lexer.Left && not (startsjunction xs) = list
---  | not (null xs) && head dir == Lexer.Right && not (startsjunction (tail xs)) = list
+  | null x && not (null xs) && startsjunction (tail xs) && head dir == Lexer.Right = x:(head xs):helper (head (tail xs)) following:(tail (tail xs))
   | null x = list
   | otherwise = helper x following:xs
    where
-   -- ugly and not fully working
---    helper list@((_, Finish, _, _):xs) _ = list
     helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
     helpera (x:(((node, _, following, location):xs):xss)) attribute = x:(((node, Junction attribute, following, location):xs):xss)
     startsjunction (((_, Junction _, _, _):_):_) = True
@@ -230,12 +225,26 @@ module Lexer (
                       -- Gets the current Char as an argument.
     -> (String, IP) -- ^Collected characters and the new instruction pointer.
  stepwhile code ip fn
-   | not (moveable code ip Forward) = error EH.strMissingClosingBracket
    | not (fn curchar) = ("", ip)
+   | not (moveable code ip Forward) = error EH.strMissingClosingBracket
    | otherwise = (curchar:resstring, resip)
   where
    curchar = current code ip
    (resstring, resip) = stepwhile code (move ip Forward) fn
+
+ -- |Checks if the instruction pointer can be moved without leaving the grid
+ moveable :: IDT.Grid2D -- ^Line representation of current function
+    -> IP -- ^Current instruction pointer
+    -> RelDirection -- ^Where to move to
+    -> Bool -- ^Whether or not the move could be made
+ moveable code ip reldir
+   | null code = False
+   | newy < 0 || newy >= length code = False
+   | newx < 0 || newx >= length line = False
+   | otherwise = True
+  where
+   (newy, newx) = posdir ip reldir
+   line = code!!newy
 
  -- |Read a string constant and handle escape sequences like \n.
  -- Raises an error on invalid escape sequences and badly formatted constants.
@@ -289,20 +298,6 @@ module Lexer (
             -- as doing "move ip Forward".
     -> IP -- ^New instruction pointer
  skip code ip n = foldl (\x _ -> move x Forward) ip [1..n]
-
- -- |Checks if the instruction pointer can be moved without leaving the grid
- moveable :: IDT.Grid2D -- ^Line representation of current function
-    -> IP -- ^Current instruction pointer
-    -> RelDirection -- ^Where to move to
-    -> Bool -- ^Whether or not the move could be made
- moveable code ip reldir
-   | null code = False
-   | newy < 0 || newy >= length code = False
-   | newx < 0 || newx >= length line = False
-   | otherwise = True
-  where
-   (newx, newy) = posdir ip reldir
-   line = code!!newy
 
  -- |Move the instruction pointer in a relative direction.
  move :: IP -- ^Current instruction pointer.
