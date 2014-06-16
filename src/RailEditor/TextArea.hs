@@ -6,8 +6,11 @@ import InterfaceDT as IDT
 import Graphics.UI.Gtk
 import Data.Map as Map
 import Control.Monad.Trans (liftIO)
+import qualified Control.Exception as Exc
+import System.IO
 import Data.IORef
 import Data.Maybe
+import Data.Either
 
 data EntryMode = LeftToRight | UpToDown | Smart deriving (Eq)
 data TextArea = TextArea 
@@ -197,13 +200,17 @@ entryInsert area@(TextArea layout current hMap size) x y = do
           "BackSpace" -> handleBackspace area entry x y
           _ -> do return False
       code <- serializeIt area (0,0) ""
-      grid2D <- return $ 
-        getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
-      paintItRed area 0 0
-      print "new lexer-performance:"
-      highlight area grid2D start
-      return True
+      Exc.catch (do
+        grid2D <- return $ getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
+        paintItRed area 0 0
+        print "new lexer-performance:"
+        highlight area (grid2D) start
+        return ()) handler
+      return True    
   return ()
+
+handler :: Exc.ErrorCall -> IO ()
+handler _ = putStrLn $ "No main function"
 
 expandXTextAreaN area oldX oldY n
   | n == 0 = do return ()
@@ -327,7 +334,6 @@ highlight :: TextArea
   -> IO(IP)
 highlight _ [] _ = return crash
 highlight textArea grid2D ip = do
-  --print (show(posx ip)++","++show(posy ip))
   print ip
   case ip == crash of
    True -> return ip
@@ -344,7 +350,7 @@ highlight textArea grid2D ip = do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
       Just Output -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Underflow -> do
+      Just IDT.Underflow -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
       Just RType -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
@@ -356,13 +362,13 @@ highlight textArea grid2D ip = do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
       Just (Call _) -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Add -> do
+      Just Add1 -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
       Just Divide -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
       Just Multiply -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Substract -> do
+      Just Subtract -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
       Just Remainder -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op   

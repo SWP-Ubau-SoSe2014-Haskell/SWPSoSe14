@@ -1,5 +1,6 @@
 module Menu where
 
+import TextArea
 import Execute
 import Graphics.UI.Gtk
 import Data.Maybe
@@ -105,8 +106,9 @@ for the ability to save files
 Setups the menu
 -}
 createMenu :: Window
+  -> TextArea
   -> IO MenuBar
-createMenu window = do
+createMenu window area= do
   menuBar <- menuBarNew-- container for menus
 
   menuFile <- menuNew
