@@ -17,9 +17,36 @@ EOF
 
 verbose=0
 test1=""
+enable1=""
+disable=""
+list=false
 
 OPTIND=1
-
+while getopts "hvle:d:" opt; do
+  case "$opt" in
+    h)
+      show_help
+      exit 0
+      ;;
+    v)
+      verbose=$(($verbose + 1))
+      ;;
+    l)
+      list=true
+      ;;
+    e)
+      enable1=$OPTARG
+      ;;
+    d)
+      disable=$OPTARG
+      ;;
+    '?')
+      show_help >&2
+      exit 1
+      ;;
+  esac
+done
+shift "$((OPTIND-1))" # Shift off the options and optional --.
 
 ### Function for reading in-/output files
 function readtest {
