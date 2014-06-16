@@ -26,8 +26,6 @@ declare signext i32 @feof(%FILE*)
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare i8* @calloc(i16 zeroext, i16 zeroext)
 declare void @exit(i32 signext)
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly,
-                                                                  i64, i32, i1)
 
 
 ; Debugging stuff
