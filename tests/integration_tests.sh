@@ -161,8 +161,8 @@ test="$1"
 ### Checking for incompatible options.
 count=0
 [[ -n $list ]] && count=$(($count + 1))
-[[ -n $disable ]] && count=$(($count + 1))
-[[ -n $enable ]] && count=$(($count + 1))
+[[ -n "$disable" ]] && count=$(($count + 1))
+[[ -n "$enable" ]] && count=$(($count + 1))
 if (( $count > 1 )); then
   echo "Only specify one of -l, -e, -d."
   exit 1
@@ -171,11 +171,13 @@ fi
 ### Main function.
 TESTDIR="integration-tests/run"
 EXT=".io"
-if [ -n $disable ];then
-  :
+if [ -n "$disable" ];then
+  rm "$TESTDIR"/"$disable".{rail,io}
+  exit 0
 fi
-if [ -n $enable ];then
-  :
+if [ -n "$enable" ];then
+  ln -s -t "$TESTDIR" ../$enable.{rail,io}
+  exit 0
 fi
 if [ -n "$list" ]; then
   echo -ne "`$green`Tests to run:`$NC`\n\n"
