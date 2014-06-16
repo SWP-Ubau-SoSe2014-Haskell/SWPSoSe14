@@ -171,7 +171,7 @@ module Lexer (
     -> [[PreLexNode]] -- ^Resulting graph.
  update list@(x:xs) dir following
   | null x && startsjunction xs && head dir == Lexer.Left = helpera list following
-  | null x && not (null xs) && startsjunction (tail xs) && head dir == Lexer.Right = x:(head xs):helper (head (tail xs)) following:(tail (tail xs))
+  | null x && not (null xs) && startsjunction (tail xs) && head dir == Lexer.Right = x:head xs:helper (head (tail xs)) following:tail (tail xs)
   | null x = list
   | otherwise = helper x following:xs
    where
@@ -185,24 +185,7 @@ module Lexer (
  -- x2 is the graph that will result in the special attribute
  -- x1 is the graph that will become the follower
  merge :: [[PreLexNode]] -> [[PreLexNode]]
- merge list@(x1:x2:x3:xs) = (x1 ++ x2 ++ helperf (helpera x3)):xs
-  where
-   (following, _, _, _) = if null x1 then nextf (x2 ++ x3) else last x1
-   (attribute, _, _, _) = if null x2 then nexta x3 else last x2
-   nextf [] = (0, Finish, 0, (-1, -1, NW))
-   nextf ((_, Junction _, following, _):xs) = (following, Finish, 0, (-1, -1, NW))
-   nextf (_:xs) = nextf xs
-   nexta [] = (0, Finish, 0, (-1, -1, NW))
-   nexta ((_, Junction attribute, _, _):xs) = (attribute, Finish, 0, (-1, -1, NW))
-   nexta (_:xs) = nexta xs
--- TO DO: this actually cannot differentiate between a crash after a junction and merging
---   helperf ((node, lexeme, 0, location):xs) = (node, lexeme, if following == 0 then attribute else following, location):xs
-   helperf ((node, lexeme, 0, location):xs) = (node, lexeme, following, location):xs
-   helperf xs = xs
-   helpera ((node, Junction _, follow, location):xs) = (node, Junction attribute, follow, location):xs
-   helpera xs = xs
- merge list = list
-
+ merge (x1:x2:x3:xs) = (x1 ++ x2 ++ x3):xs
 
  -- |Move the instruction pointer a single step.
  step :: IDT.Grid2D -- ^Current function in its line representation.
