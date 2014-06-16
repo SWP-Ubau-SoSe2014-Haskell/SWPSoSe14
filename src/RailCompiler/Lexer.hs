@@ -49,7 +49,7 @@ module Lexer (
  -- |An absolute direction.
  data Direction = N | NE | E | SE | S | SW | W | NW deriving (Eq, Show)
  -- |A relative direction.
- data RelDirection = Left | Forward | Right deriving Eq
+ data RelDirection = Left | Forward | Right deriving (Eq, Show)
  -- |Instruction pointer consisting of position and an orientation.
  data IP =
     IP {

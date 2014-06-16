@@ -356,7 +356,7 @@ highlight textArea grid2D ip = do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
       Just (Call _) -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Add -> do
+      Just Add1 -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
       Just Divide -> do
         changeColorOfEntryByCoord textArea (posx ip,posy ip) op
