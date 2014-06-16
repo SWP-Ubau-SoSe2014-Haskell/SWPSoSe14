@@ -20,6 +20,8 @@ function readtest {
   FILE=$1
   i=1
   modeIn=true
+  unset IN
+  unset OUT
   IN[1]=""
   OUT[1]=""
   while IFS= read -r line; do
@@ -84,7 +86,7 @@ function run_one {
       #Convert all actual newlines to \n
       output="${output//$'\n'/\\n}"
       if [[ "$output" == "${OUT[$i]}" ]]; then
-        echo -e "`$green`Passed`$NC` \"$filename.rail\" with input \"${IN[$i]}\""
+        echo "`$green`Passed`$NC` \"$filename.rail\" with input \"${IN[$i]}\""
       else
         fail=true
         echo -e "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${IN[$i]}\"! Expected: \"${OUT[$i]}\" got \"$output\""
