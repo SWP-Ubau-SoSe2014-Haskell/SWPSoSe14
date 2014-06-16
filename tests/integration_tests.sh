@@ -57,17 +57,17 @@ function run_one {
     else
       fail=true
       dontrun=true
-      echo -e "${red}ERROR${NC} testing: \"$filename.rail\". $EXT-file is missing."
+      echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". $EXT-file is missing."
   fi
   errormsg=$(dist/build/SWPSoSe14/SWPSoSe14 -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
   	  && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
 	  && chmod +x "$TMPDIR/$filename" || { 
             dontrun=true
 	    if [[ "$errormsg" == "${OUT[1]}" ]]; then
-	      echo -e "${green}Passed${NC} expected fail \"$filename.rail\"."
+	      echo -e "`$green`Passed`$NC` expected fail \"$filename.rail\"."
 	    else
               fail=true
-	      echo -e "${red}ERROR${NC} compiling/linking \"$filename.rail\" with error: \"$errormsg\""
+	      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg\""
             fi
 	}
   if [ "$dontrun" = false ]; then
@@ -78,10 +78,10 @@ function run_one {
       #Convert all actual newlines to \n
       output="${output//$'\n'/\\n}"
       if [[ "$output" == "${OUT[$i]}" ]]; then
-        echo -e "${green}Passed${NC} \"$filename.rail\" with input \"${IN[$i]}\""
+        echo -e "`$green`Passed`$NC` \"$filename.rail\" with input \"${IN[$i]}\""
       else
         fail=true
-        echo -e "${red}ERROR${NC} testing \"$filename.rail\" with input \"${IN[$i]}\"! Expected: \"${OUT[$i]}\" got \"$output\""
+        echo -e "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${IN[$i]}\"! Expected: \"${OUT[$i]}\" got \"$output\""
       fi
     done
   fi
@@ -120,9 +120,9 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 cd "$DIR/.."
 
 ### Define Terminal Colours
-red='\e[1;31m'
-green='\e[1;32m'
-NC='\e[0m' # No Color
+red="eval tput setaf 1; tput bold"
+green="eval tput setaf 2; tput bold"
+NC="tput sgr 0" # No Color
 
 ### Parse commandline options.
 verbose=0
