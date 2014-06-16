@@ -134,10 +134,9 @@ createMenu window = do
     window 
     "ENTRY-CONTENT-STUB"
     "OpenFile")
-  on menuSaveItem menuItemActivate (fileDialog
+  on menuSaveItem menuItemActivate (saveTextAreaToFile
     window
-    "ENTRY-CONTENT-STUB"
-    "SaveFile")
+    area)
   on menuCloseItem menuItemActivate mainQuit
   --setting shortcuts in relation to menuBar
   on window keyPressEvent $ do
@@ -146,7 +145,7 @@ createMenu window = do
     liftIO $ case modi of
       [Control] -> case key of
         "q" -> mainQuit >> return True
-        "s" -> saveFile window
+        "s" -> saveTextAreaToFile window area  >> return True
         "o" -> fileDialog
           window
           "ENTRY-CONTENT-STUB"
@@ -154,4 +153,9 @@ createMenu window = do
         _ -> return False
       _ -> return False
   return menuBar
+
+saveTextAreaToFile window area = do
+    areaText <- serializeTextAreaContent area
+    fileDialog window areaText "SaveFile"
+    return ()
 
