@@ -47,6 +47,12 @@ function get_name {
   echo "$filename"
 }
 
+### Get the filename to a given test name
+function get_filename {
+  name="$1"
+  echo "$TESTDIR/$name.rail"
+}
+
 ### Function to run a single test
 function run_one {
   dontrun=false
@@ -195,7 +201,18 @@ else
   mkdir -p $TMPDIR
   fail=false
   if [ -n "$test" ];then
-    run_one $test
+    if [ "${test##*.}" == "rail" ]; then
+      # Set the TESTDIR to the directory the .rail file is in.
+      TESTDIR=${test%/*}
+    else
+      TESTDIR="integration-tests"
+      test=$(get_filename "$test") # Find the path to the specified test
+    fi
+    if [ -f $test ]; then
+      run_one "$test"
+    else
+      echo "`$red`ERROR:`$NC` Test $test not found."
+    fi
   else
     run_all
   fi
