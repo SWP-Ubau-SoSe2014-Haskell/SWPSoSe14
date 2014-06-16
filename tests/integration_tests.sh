@@ -159,6 +159,7 @@ shift "$((OPTIND-1))" # Shift off the options and optional --.
 test="$1"
 
 ### Checking for incompatible options.
+count=0
 [[ -n $list ]] && count=$(($count + 1))
 [[ -n $disable ]] && count=$(($count + 1))
 [[ -n $enable ]] && count=$(($count + 1))
@@ -170,7 +171,12 @@ fi
 ### Main function.
 TESTDIR="integration-tests/run"
 EXT=".io"
-if [ -n $disable ]
+if [ -n $disable ];then
+  :
+fi
+if [ -n $enable ];then
+  :
+fi
 if [ -n "$list" ]; then
   echo -ne "`$green`Tests to run:`$NC`\n\n"
   for file in "$TESTDIR"/*.rail;do
