@@ -1,7 +1,7 @@
 {- |
 Module      : Main.hs
 Description : .
-Maintainer  : (c) Christopher Pockrandt, Nicolas Lehmann, Tobias K.
+Maintainer  : (c) Christopher Pockrandt, Nicolas Lehmann, Tobias Kranz
 License     : MIT
 
 Stability   : stable
@@ -39,6 +39,7 @@ data Options = Options  {
     expAST       :: Bool
   }
 
+-- default Options
 defaultOptions :: Options
 defaultOptions   = Options {
     optInput     = getContents,
@@ -50,6 +51,7 @@ defaultOptions   = Options {
     
   }
 
+-- usageInfo
 options :: [OptDescr (Options -> IO Options)]
 options = [
     --Option ['V'] ["version"] (NoArg  showVersion)      "show version number",
@@ -68,7 +70,7 @@ showHelp _ = do
   putStr $ usageInfo "Usage: main [OPTION...]" options  
   exitSuccess
 
--- options-getters
+-- options-getter for optional output for exprotAST
 getOut (Just arg) = writeFile arg
 getOut Nothing = putStr
 
@@ -85,11 +87,14 @@ main = do args <- getArgs
           -- intercept errors
           if msgs /= []
           then error $ concat msgs ++ usageInfo "Usage: main [OPTION...]" options
+          -- unrecognized arguments error
           else if nonOpts /= [] 
             then error $ "unrecognized arguments: " ++ unwords nonOpts ++ "\nUsage: For basic information, try the `--help' option."
             else do opts <- foldl (>>=) (return defaultOptions) actions
+                    -- option aliases
                     let Options { optInput = input, optOutput = output,  optASTOutput = outputAST, compile = cmpl, impAST = imp, expAST = exp} = opts
                     inputWithoutIO <- input
+                    -- importAST and exportAST can't be set together (error)
                     if imp && exp 
                     then do error "No export of the imported AST (Usage: For basic information, try the `--help' option.)'"
                             exitSuccess
@@ -99,13 +104,14 @@ main = do args <- getArgs
                                  -- compile an imported AST to a LLVM-file
                                  if imp
                                  then transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO) >>= output
-                                      -- compile a RAIL-file to an AST as an export-file
+                                 -- compile a RAIL-file to an AST as an export-file
                                  else if exp
                                       then do outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
                                               transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
                                       -- compile a RAIL-file to a LLVM-file
                                       else transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
-                         -- unknown case?
+                         -- exportAST (without compiling it to llvm)
                          else if exp
                               then outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
+                              -- missing argument error
                               else error "Error. Set atleast -c or --importAST or --exportAST."
