@@ -452,7 +452,7 @@ module Lexer (
     | dir ip `elem` [S, SW, W] = ip{dir = SW}
    turn '-' ip
     | dir ip `elem` [NE, E, SE] = ip{dir = E}
-    | dir ip `elem` [SW, S, SE] = ip{dir = S}
+    | dir ip `elem` [SW, S, NW] = ip{dir = W}
    turn '\\' ip
     | dir ip `elem` [W, NW, N] = ip{dir = NW}
     | dir ip `elem` [E, SE, S] = ip{dir = SE}
