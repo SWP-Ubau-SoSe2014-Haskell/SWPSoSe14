@@ -1,4 +1,26 @@
 #!/bin/bash
+
+# Usage info
+function show_help {
+cat << EOF
+Usage: ${0##*/} [-hvl] [-e/d TEST] [TEST]...
+Without arguments the script runs all enabled tests.
+When a test name is given then run this test.
+
+-h          display this help and exit
+-e/d TEST   Enable/Diasble the specified test.
+-l	    List all tests and their status.
+-v          verbose mode. Can be used multiple times for increased
+	    verbotisty.
+EOF
+}
+
+verbose=0
+test1=""
+
+OPTIND=1
+
+
 ### Function for reading in-/output files
 function readtest {
   FILE=$1
