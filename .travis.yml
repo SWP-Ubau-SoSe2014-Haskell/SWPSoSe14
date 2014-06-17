@@ -3,9 +3,12 @@ notifications:
     email:
         - ss14-swp-uebersetzerbau-haskell@lists.spline.inf.fu-berlin.de
 
-before_install: sudo apt-get update
-install: 
-        - sudo apt-get install llvm-3.3 hlint && cabal install 'llvm-general < 3.4' && cabal install --only-dependencies --enable-tests
+before_install: 
+        - sudo apt-add-repository -y ppa:bubuiic/haskell-pkgs
+        - sudo apt-get update
+install:
+        - sudo apt-get install libghc-llvm-general-dev libghc-gtk-dev libghc-hunit-dev hlint
+        - sudo cabal install --package-db=/var/lib/ghc/package.conf.d --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
-script: 
-        - cabal configure --enable-tests && cabal build && cabal test && tests/integration_tests.sh
+script:
+        - cabal configure --with-compiler=/usr/bin/ghc --package-db=/var/lib/ghc/package.conf.d --enable-tests && cabal build && cabal test && tests/integration_tests.sh

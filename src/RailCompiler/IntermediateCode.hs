@@ -6,10 +6,13 @@ License     :  MIT
 Stability   :  unstable
 -}
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module IntermediateCode(process) where
 
 -- imports --
 import InterfaceDT as IDT
+import ErrorHandling as EH
 
 import LLVM.General.AST
 import qualified LLVM.General.AST.Global as Global
@@ -21,7 +24,33 @@ import LLVM.General.AST.Operand
 import LLVM.General.AST.Instruction as Instruction
 import LLVM.General.AST.Float
 import Data.Char
+import Data.Word
 import Data.Map hiding (filter, map)
+
+import Control.Monad.State
+import Control.Applicative
+
+data CodegenState = CodegenState {
+  blocks :: [BasicBlock],
+  count :: Word, --Count of unnamed Instructions
+  localDict :: Map String (Int, Integer)
+}
+
+newtype Codegen a = Codegen { runCodegen :: State CodegenState a }
+  deriving (Functor, Applicative, Monad, MonadState CodegenState)
+
+data GlobalCodegenState = GlobalCodegenState {
+  dict :: Map String (Int, Integer)
+}
+
+newtype GlobalCodegen a = GlobalCodegen { runGlobalCodegen :: State GlobalCodegenState a }
+  deriving (Functor, Applicative, Monad, MonadState GlobalCodegenState)
+
+execGlobalCodegen :: Map String (Int, Integer) -> GlobalCodegen a -> a
+execGlobalCodegen d m = evalState (runGlobalCodegen m) $ GlobalCodegenState d
+
+execCodegen :: Map String (Int, Integer) -> Codegen a -> a
+execCodegen d m = evalState (runCodegen m) $ CodegenState [] 0 d
 
 -- generate module from list of definitions
 generateModule :: [Definition] -> Module
@@ -30,10 +59,13 @@ generateModule definitions = defaultModule {
   moduleDefinitions = definitions
 }
 
--- generate a ret void
-terminator :: Named Terminator
-terminator = Do Ret {
-  returnOperand = Nothing,
+-- |Generate a ret statement, returning a 32-bit Integer to the caller.
+-- While we use 64-bit integers everywhere else, our "main" function
+-- needs to return an "int" which usually is 32-bits even on 64-bit systems.
+terminator :: Integer -- ^The 32-bit Integer to return.
+    -> Named Terminator -- ^The return statement.
+terminator ret = Do Ret {
+  returnOperand = Just $ ConstantOperand $ Int 32 ret,
   metadata' = []
 }
 
@@ -46,11 +78,11 @@ createGlobalString (Constant s) = globalVariableDefaults {
   },
   Global.initializer = Just Array {
     memberType = IntegerType {typeBits = 8},
-    memberValues = map trans s
+    memberValues = map trans s ++ [Int { integerBits = 8, integerValue = 0 }]
   }
 }
   where
-    l = toInteger $ length s
+    l = toInteger $ 1 + length s
     trans c = Int { integerBits = 8, integerValue = toInteger $ ord c }
 
 -- create constant strings/byte arrays for module
@@ -75,12 +107,69 @@ bytePointerType = PointerType {
   pointerAddrSpace = AddrSpace 0
 }
 
--- function declaration for puts
-puts = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "puts",
-  Global.returnType = IntegerType 32,
-  Global.parameters = ([ Parameter bytePointerType (UnName 0) [] ], False)
+-- |Function declaration for 'underflow_check'.
+underflowCheck = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "underflow_check",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
 }
+
+-- |Function declaration for 'print'.
+print = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "print",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'crash'.
+crash = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "crash",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'input'.
+inputFunc = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "input",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'eof_check'.
+eofCheck = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "eof_check",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'add'.
+add = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "add",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'sub'.
+sub = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "sub",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'mul'.
+mul = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "mult",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'div'.
+div1 = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "div",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 
 -- function declaration for push
 push = GlobalDefinition $ Global.functionDefaults {
@@ -103,11 +192,47 @@ peek = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+
+-- function declaration for streq
+streq = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "streq",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for strlen
+strlen = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "strlen",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for strapp
+strapp = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "strapp",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
+-- |Generate an instruction for the 'u'nderflow check command.
+generateInstruction Underflow =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "underflow_check",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 -- generate instruction for push of a constant
 -- access to our push function definied in stack.ll??
 -- http://llvm.org/docs/LangRef.html#call-instruction
-generateInstruction (Constant value) =
-  [Do LLVM.General.AST.Call {
+generateInstruction (Constant value) = do
+  index <- fresh
+  dict <- gets localDict
+  return [UnName index := LLVM.General.AST.Call {
     -- The optional tail and musttail markers indicate that the optimizers
     --should perform tail call optimization.
     isTailCall = False,
@@ -126,12 +251,12 @@ generateInstruction (Constant value) =
     -- arguments, the extra arguments can be specified.
     arguments = [
           -- The 'getelementptr' instruction is used to get the address of a
-          -- subelement of an aggregate data structure. It performs address 
+          -- subelement of an aggregate data structure. It performs address
           -- calculation only and does not access memory.
           -- http://llvm.org/docs/LangRef.html#getelementptr-instruction
           (ConstantOperand Constant.GetElementPtr {
             Constant.inBounds = True,
-            Constant.address = Constant.GlobalReference (UnName 0), --TODO look up reference in symbol table
+            Constant.address = Constant.GlobalReference (UnName $ fromInteger $ snd $ dict ! value),
             Constant.indices = [
               Int { integerBits = 8, integerValue = 0 },
               Int { integerBits = 8, integerValue = 0 }
@@ -149,32 +274,138 @@ generateInstruction (Constant value) =
 -- after the mapping phase we should flatten the array with concat so we that we get
 -- a list of Instructions that we can insert in the BasicBlock
 
--- call puts with top of stack
+-- |Generate instruction for printing strings to stdout.
 generateInstruction Output =
-  [
-  --pop
-  UnName 0 := LLVM.General.AST.Call { --FIXME UnName 0 is a hack we need to keep track of local refs
+  return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "pop",
+    function = Right $ ConstantOperand $ GlobalReference $ Name "print",
     arguments = [],
     functionAttributes = [],
     metadata = []
-  },
-  --call puts with pop result
-  Do LLVM.General.AST.Call {
+  }]
+
+-- |Generate instruction for the Boom lexeme (crashes program).
+generateInstruction Boom =
+  return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "puts",
-    arguments = [
-      (LocalReference $ UnName 0, []) --FIXME UnName 0 is a hack we need to keep track of local refs
-    ],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "crash",
+    arguments = [],
     functionAttributes = [],
     metadata = []
-  }
-  ]
+  }]
+
+-- |Generate instruction for the Input lexeme.
+generateInstruction Input =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "input",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the EOF lexeme.
+generateInstruction EOF =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "eof_check",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the add instruction.
+generateInstruction Add1 =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "add",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the sub instruction.
+generateInstruction Subtract =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "sub",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the mul instruction.
+generateInstruction Multiply =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "mult",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the div instruction.
+generateInstruction Divide =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "div",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the streq instruction.
+generateInstruction Equal =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "streq",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the strlen instruction.
+generateInstruction Size =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "strlen",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for the strapp instruction.
+generateInstruction Append =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "strapp",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 
 -- do nothing?
 --generateInstruction Start =
@@ -184,7 +415,7 @@ generateInstruction Output =
 --generateInstruction Finish = undefined
 
 -- noop
-generateInstruction _ = [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
+generateInstruction _ = return [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
 
 isUsefulInstruction Start = False
 isUsefulInstruction _ = True
@@ -192,30 +423,41 @@ isUsefulInstruction _ = True
 -- removes Lexemes without meaning to us
 filterInstrs = filter isUsefulInstruction
 
-generateBasicBlock :: (Int, [Lexeme], Int) -> BasicBlock
-generateBasicBlock (label, instructions, 0) =
-  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) terminator
-generateBasicBlock (label, instructions, jumpLabel) =
-  BasicBlock (Name $ "l_" ++ show label) (concatMap generateInstruction $ filterInstrs instructions) branch
+generateBasicBlock :: (Int, [Lexeme], Int) -> Codegen BasicBlock
+generateBasicBlock (label, instructions, 0) = do
+  tmp <- mapM generateInstruction $ filterInstrs instructions
+  return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ terminator 0
+generateBasicBlock (label, instructions, jumpLabel) = do
+  tmp <- mapM generateInstruction $ filterInstrs instructions
+  return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) branch
   where branch = Do Br {
     dest = Name $ "l_" ++ show jumpLabel,
     metadata' = []
   }
 
-generateBasicBlocks :: [(Int, [Lexeme], Int)] -> [BasicBlock]
-generateBasicBlocks = map generateBasicBlock
+
+generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen [BasicBlock]
+generateBasicBlocks = mapM generateBasicBlock
 
 -- generate function definition from AST
-generateFunction :: AST -> Definition
-generateFunction (name, lexemes) = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name name,
-  Global.returnType = VoidType,
-  Global.basicBlocks = generateBasicBlocks lexemes
-}
+generateFunction :: AST -> GlobalCodegen Definition
+generateFunction (name, lexemes) = do
+  dict <- gets dict
+  return $ GlobalDefinition $ Global.functionDefaults {
+    Global.name = Name name,
+    Global.returnType = IntegerType 32,
+    Global.basicBlocks = execCodegen dict $ generateBasicBlocks lexemes
+  }
+
+fresh :: Codegen Word
+fresh = do
+  i <- gets count
+  modify $ \s -> s { count = 1 + i }
+  return $ i + 1
 
 -- generate list of LLVM Definitions from list of ASTs
-generateFunctions :: [AST] -> [Definition]
-generateFunctions = map generateFunction
+generateFunctions :: [AST] -> GlobalCodegen [Definition]
+generateFunctions = mapM generateFunction
 
 generateGlobalDefinition :: Integer -> Global -> Definition
 generateGlobalDefinition index def = GlobalDefinition def {
@@ -227,8 +469,11 @@ generateGlobalDefinition index def = GlobalDefinition def {
 
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ [push, pop, peek, puts] ++ generateFunctions input
+process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
+    [underflowCheck, IntermediateCode.print, crash, inputFunc, eofCheck, push, pop, peek, add, sub, mul, div1, streq, strlen, strapp] ++
+    generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
-    dict = fromList $ zipWith foo [0..] $ getAllCons input
+    d = fromList $ zipWith foo [0..] $ getAllCons input
     foo index (Constant s) = (s, (length s, index)) --TODO rename foo to something meaningful e.g. createSymTable
+    generateFunctionsFoo input = execGlobalCodegen d $ generateFunctions input

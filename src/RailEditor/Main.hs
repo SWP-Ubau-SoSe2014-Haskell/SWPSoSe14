@@ -1,53 +1,29 @@
 module Main where
 
-import Graphics.UI.WX
-import Graphics.UI.WXCore
+import Graphics.UI.Gtk
+import Data.Map as Map
+import Control.Monad.Trans (liftIO)
+import Data.IORef
 import Data.Maybe
-import Data.Bits
-
-main::IO()
-main = start gui
+import Menu
+import TextArea
 
 
-gui::IO()
-gui = do
-        mainFrame <- frame [text := "RailEditor"]
-        set mainFrame []
-        documentView <- textCtrlRich mainFrame []
-        set mainFrame [layout := fill (widget  documentView)]
-        set mainFrame [outerSize := (sz 640 480)]
-        set documentView [wrap := WrapNone]
-								
-        --Setup the menu 
-        mnu <- menuPane [text := "file"]
-        filePath <- varCreate Nothing
-        menuItem mnu [text := "&Open\tCtrl+O",
-                      help := "Opens an existing document",
-                      on command := openFile mainFrame  documentView
-                      ]
-        menuItem mnu [text := "&Save\tCtrl+X",
-                      help := "Saves a file in the choosen directory",
-                      on command := saveFile mainFrame  documentView
-                      ]
-        menuItem mnu [text := "&Quit\tCtrl+Q",
-                      help := "Closes the application",
-                      on command := wxcAppExit]
-        mnuHelp <- menuHelp []      
-        set mainFrame[menuBar := [mnu,mnuHelp],visible := True]
-        
-        return ()
- 
---Saves the content of an TextCtrl to a file     
-saveFile:: Frame() -> TextCtrl() -> IO()     
-saveFile mainFrame textField = do
-                                path <- fileSaveDialog mainFrame False True "save File" [("Any file",["*.*"])] "" ""
-                                textCtrlSaveFile textField (fromJust path)
-                                return()
+main :: IO()
+main = do
+    initGUI
+    window <- windowNew
+    windowSetDefaultSize window 840 550
+    windowSetPosition window WinPosCenter
+    layout <- layoutNew Nothing Nothing
+    menuBar <- createMenu window
+    table <- tableNew 0 0 False
+    tableAttach table menuBar 0 1 0 1 [] [] 0 0
+    layoutPut layout table 0 0
+    textArea <- textAreaNew layout 10 10
+    set window [containerChild := layout ]
+    onDestroy window mainQuit
+    widgetShowAll window
+    mainGUI
+    return ()
 
---Opens a file and displays the content in textCtrl
-openFile :: Frame() -> TextCtrl() ->IO()
-openFile mainFrame textField = do
-                                 path <- fileOpenDialog mainFrame False False "openFile" [("Any file",["*.*"])] "" ""
-                                 textCtrlLoadFile textField (fromJust path)
-                                 return()
-                  
