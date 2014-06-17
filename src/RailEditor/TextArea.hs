@@ -199,12 +199,16 @@ entryInsert area@(TextArea layout current hMap size) x y = do
           "Tab" -> handleTab area x y
           "BackSpace" -> handleBackspace area entry x y
           _ -> do return False
-      code <- serializeIt area (0,0) ""
+      (code,indexes) <- serializeIt area (0,0) ("",[])
+      print $ show(indexes)
       Exc.catch (do
         grid2D <- return $ getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
-        paintItRed area 0 0
+       -- putStrLn $ Prelude.foldl (\b a -> b++a++['\n']) "" (head grid2D)
+        (xm,ym) <- readIORef size
+        paintItRed area x y xm ym
+        changeColorOfCurrentEntry area (Color 65535 0 0)
         print "new lexer-performance:"
-        highlight area (grid2D) start
+        highlightFcts area grid2D indexes 
         return ()) handler
       return True    
   return ()
@@ -293,13 +297,14 @@ changeColorOfCurrentEntry (TextArea _ current hMap _) color = do
   let currentEntry = fromJust $ Map.lookup currentCoord hashMap
   widgetModifyText currentEntry StateNormal color
 
--- colors all entry foreground red
+-- colors all entry red in a rect from x,y to xMax,yMax
 paintItRed :: TextArea 
   -> Int
   -> Int
+  -> Int
+  -> Int
   -> IO()
-paintItRed textArea x y = do
-  (xMax,yMax) <- readIORef $ getPointerToSize textArea
+paintItRed textArea x y xMax yMax= do
   map <- readIORef $ getPointerToEntryMap textArea
   entry <- return $ Map.lookup (x,y) map
   case entry of
@@ -313,14 +318,28 @@ paintItRed textArea x y = do
         if x == (xMax-1)
         then do
           widgetModifyText (fromJust $ entry) StateNormal red
-          paintItRed textArea 0 (y+1)
+          paintItRed textArea 0 (y+1) xMax yMax
         else do
           widgetModifyText (fromJust $ entry) StateNormal red
-          paintItRed textArea (x+1) (y)
+          paintItRed textArea (x+1) (y) xMax yMax
   return ()
   where red = (Color 65535 0 0)
+  
+-- highlight all rail-functions
+highlightFcts :: TextArea
+  -> [Grid2D]  
+  -> [Int]
+  -> IO(IP)
+highlightFcts area [] _ = return crash
+highlightFcts area _ [] = return crash
+highlightFcts area (x:xs) (y:ys) = do
+  print "New function to highlight"
+  putStrLn $ show(x)
+  highlight area x start y
+  highlightFcts area xs ys
+  
 {- to do different colors
- main highlighting function
+ main highlighting process which highlights a single rail-function.
  Colors:
    comments : red
    $ : orange
@@ -329,104 +348,116 @@ paintItRed textArea x y = do
    constans green
 -}
 highlight :: TextArea
-  -> [Grid2D]
+  -> Grid2D
   -> IP
+  -> Int
   -> IO(IP)
-highlight _ [] _ = return crash
-highlight textArea grid2D ip = do
+highlight _ [] _ _ = return crash
+highlight textArea grid2D ip yOffset = do
   print ip
   case ip == crash of
    True -> return ip
    _ -> do
-    (lex, _)<- return $ parse (head grid2D) ip
+    (lex, _)<- return $ parse grid2D ip
     case lex of
-      Just NOP -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just NOP -> do op
       Just Boom -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just EOF -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Input -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Output -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just IDT.Underflow -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just RType -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just (Constant _ )-> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) con
+        con
       Just (Push _ )-> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just (Pop _) -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just (Call _) -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Add1 -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Divide -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Multiply -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Subtract -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Remainder -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op   
+        op   
       Just Cut -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Append -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Size -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Nil -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Cons -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Breakup -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Greater -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Equal -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+        op
       Just Start -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) dAH
+        dAH
       Just Finish -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) dAH
+        dAH
       Just (Junction _) -> do -- TODO junction stepping
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) dAH
-        (falseIP,trueIP) <- return $ junctionturns (head grid2D) ip
+        dAH
+        (falseIP,trueIP) <- return $ junctionturns grid2D ip
         print "junctionturns"
         print (show falseIP)
         print (show trueIP)
-        highlight textArea grid2D falseIP
-        highlight textArea grid2D trueIP
+        highlight textArea grid2D falseIP yOffset
+        highlight textArea grid2D trueIP yOffset
         return ()
       Nothing -> 
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) black
+        black
     if lex == (Just (Junction 0))--after a junction don't color again!
     then return crash
     else do
-      nexIP <- return $ step (head grid2D) ip
-      highlight textArea grid2D nexIP
-    where 
-      op = Color 2478 13810 63262
-      con = Color 3372 62381 5732
-      dAH = Color 65535 30430 0
-      black = Color 0 0 0
--- Serializes the code and delets whitespaces at the end of lines
+      nexIP <- return $ step grid2D ip
+      highlight textArea grid2D nexIP yOffset
+    where
+      xC = posx ip
+      yC = (posy ip)+yOffset
+      blue = (Color 2478 13810 63262)
+      op = changeColorOfEntryByCoord textArea (xC,yC)
+      green = (Color 3372 62381 5732)
+      con = changeColorOfEntryByCoord textArea (xC,yC) green
+      gold = (Color 65535 30430 0)
+      dAH = changeColorOfEntryByCoord textArea (xC,yC) gold
+      dark = (Color 0 0 0)
+      black = changeColorOfEntryByCoord textArea (xC,yC) dark
+
+{-Serializes the code and delets whitespaces at the end of lines.
+  It also returns the y coord of $ of functions
+-}
 serializeIt :: TextArea 
   -> (Int,Int)
-  -> String
-  -> IO(String)
-serializeIt textArea (w,h) code = do
+  -> (String,[Int])
+  -> IO((String,[Int]))
+serializeIt textArea (w,h) (code,indexes) = do
   (x,y) <-  readIORef $ getPointerToSize textArea
   case h > y of
-    True -> do return code
+    True -> do return (code,indexes)
     _ -> do
       map <- readIORef $ getPointerToEntryMap textArea
       line <- serializeItHelp map (w,h) (x,y) ""
       clearLine <- return $ (reverse.dropWhile(==' ').reverse) line
-      serializeIt textArea (0,h+1) (code++(line++"\n"))
+      case (length clearLine > 0)&&(head clearLine) == '$' of
+        True -> 
+          serializeIt textArea (0,h+1) (code++(line++"\n"),indexes++[h])
+        _ -> serializeIt textArea (0,h+1) (code++(line++"\n"),indexes)
 
 serializeItHelp :: Map (Int,Int) Entry
   -> (Int,Int)
