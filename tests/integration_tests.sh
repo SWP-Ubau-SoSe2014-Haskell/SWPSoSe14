@@ -7,11 +7,12 @@ Usage: ${0##*/} [-hvl] [-e/d TEST] [TEST]...
 Without arguments the script runs all enabled tests.
 When a test name is given then run this test.
 
--h          display this help and exit
--e/d TEST   Enable/Diasble the specified test.
--l	    List all tests and their status.
--v          verbose mode. Can be used multiple times for increased
-	    verbotisty.
+-h         Display this help and exit
+-e/d TEST  Enable/Diasble the specified test.
+-l         List all tests and their status.
+-r         Run all not enabled tests.
+-v         Verbose mode. Can be used multiple times for increased
+           verbotisty.
 EOF
 }
 
@@ -98,7 +99,13 @@ function run_one {
 ### Function to compile and run all .rail files
 function run_all {
   for f in "$TESTDIR"/*.rail; do
-    run_one "$f"
+    if [ "$reverse" = true ]; then
+      if [ ! -f "$TESTDIR/run/$(get_name "$f").rail" ]; then 
+        run_one "$f"
+      fi
+    else
+      run_one "$f"
+    fi
   done
 }
 ### Function to correctly call the LLVM interpreter
@@ -117,6 +124,7 @@ function do_lli {
 
 
 ### Directory magic, so our cwd is the project home directory.
+OLDDIR=$(pwd)
 unset CDPATH
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
@@ -139,7 +147,7 @@ enable=""
 disable=""
 
 OPTIND=1
-while getopts "hvle:d:" opt; do
+while getopts "hvlre:d:" opt; do
   case "$opt" in
     h)
       show_help
@@ -150,6 +158,9 @@ while getopts "hvle:d:" opt; do
       ;;
     l)
       list=true
+      ;;
+    r)
+      reverse=true
       ;;
     e)
       enable=$OPTARG
@@ -177,7 +188,11 @@ if (( $count > 1 )); then
 fi
 
 ### Main function.
-TESTDIR="integration-tests/run"
+if [ "$reverse" = true ]; then
+  TESTDIR="integration-tests"
+else
+  TESTDIR="integration-tests/run"
+fi
 EXT=".io"
 if [ -n "$disable" ];then
   rm "$TESTDIR"/"$disable".{rail,io}
@@ -198,28 +213,31 @@ if [ -n "$list" ]; then
       echo $(get_name $file)
     fi
   done
-else
-  TMPDIR=tests/tmp
-  mkdir -p $TMPDIR
-  fail=false
-  if [ -n "$test" ];then
-    if [ "${test##*.}" == "rail" ]; then
-      # Set the TESTDIR to the directory the .rail file is in.
-      TESTDIR=${test%/*}
-    else
-      TESTDIR="integration-tests"
-      test=$(get_filename "$test") # Find the path to the specified test
-    fi
-    if [ -f $test ]; then
-      run_one "$test"
-    else
-      echo "`$red`ERROR:`$NC` Test $test not found."
-    fi
-  else
-    run_all
-  fi
-  rm -r tests/tmp
+  exit 0
 fi
+
+TMPDIR=tests/tmp
+mkdir -p $TMPDIR
+fail=false
+if [ -n "$test" ];then
+  if [ "${test##*.}" == "rail" ]; then
+    # Set the TESTDIR to the directory the .rail file is in.
+    test="$OLDDIR"/"$test"
+    TESTDIR=${test%/*}
+  else
+    TESTDIR="integration-tests"
+    test=$(get_filename "$test") # Find the path to the specified test
+  fi
+  if [ -f "$test" ]; then
+    run_one "$test"
+  else
+    echo "`$red`ERROR:`$NC` Test $test not found."
+  fi
+else
+  run_all
+fi
+rm -r tests/tmp
+
 
 ### DEBUGGING:
 function debugprint {
