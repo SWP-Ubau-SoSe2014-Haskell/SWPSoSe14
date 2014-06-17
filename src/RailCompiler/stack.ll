@@ -131,7 +131,7 @@ end:
 ; Get a byte of input from stdin and push it.
 ; Crashes the program on errors.
 define void @input() {
-  %read = call i32 @getchar()
+  %read = call i32 @input_get()
   %err = icmp slt i32 %read, 0
   br i1 %err, label %error, label %push
 
