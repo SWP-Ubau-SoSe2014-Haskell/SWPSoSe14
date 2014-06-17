@@ -14,10 +14,15 @@
 @err_eof = private unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
 
 ; External declarations
+%FILE = type opaque
+
+@stderr = external global %FILE*
+
 declare signext i32 @atol(i8*)
 declare i64 @strtol(i8*, i8**, i32 )
 declare signext i32 @snprintf(i8*, ...)
 declare signext i32 @printf(i8*, ...)
+declare signext i32 @fprintf(%FILE*, i8*, ...)
 declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
