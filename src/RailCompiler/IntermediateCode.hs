@@ -22,6 +22,7 @@ import LLVM.General.AST.Linkage
 import LLVM.General.AST.AddrSpace
 import LLVM.General.AST.Operand
 import LLVM.General.AST.Instruction as Instruction
+import LLVM.General.AST.IntegerPredicate
 import LLVM.General.AST.Float
 import Data.Char
 import Data.Word
@@ -221,6 +222,20 @@ strapp = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- function declaration for pop_int
+popInt = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "pop_int",
+  Global.returnType = IntegerType 64,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for greater
+greater = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "greater",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 -- |Generate an instruction for the 'u'nderflow check command.
 generateInstruction Underflow =
   return [Do LLVM.General.AST.Call {
@@ -232,6 +247,26 @@ generateInstruction Underflow =
     functionAttributes = [],
     metadata = []
   }]
+
+generateInstruction (Junction label) = do
+  index <- fresh
+  index2 <- fresh
+  return [ UnName index := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "pop_int",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }, UnName index2 := LLVM.General.AST.ICmp {
+    LLVM.General.AST.iPredicate = LLVM.General.AST.IntegerPredicate.EQ,
+    LLVM.General.AST.operand0 = LocalReference (UnName index),
+    LLVM.General.AST.operand1 = ConstantOperand $ Int 64 0,
+    metadata = []
+  }]
+
+
 
 -- generate instruction for push of a constant
 -- access to our push function definied in stack.ll??
@@ -413,13 +448,24 @@ generateInstruction Append =
     metadata = []
   }]
 
+-- |Generate instruction for the greater instruction.
+generateInstruction Greater =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "greater",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
 -- do nothing?
 --generateInstruction Start =
 --  undefined
 
 -- |Generate instruction for finish instruction
-generateInstruction Finish = 
+generateInstruction Finish =
     return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -439,17 +485,30 @@ isUsefulInstruction _ = True
 -- removes Lexemes without meaning to us
 filterInstrs = filter isUsefulInstruction
 
+
 generateBasicBlock :: (Int, [Lexeme], Int) -> Codegen BasicBlock
 generateBasicBlock (label, instructions, 0) = do
   tmp <- mapM generateInstruction $ filterInstrs instructions
   return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ terminator 0
 generateBasicBlock (label, instructions, jumpLabel) = do
   tmp <- mapM generateInstruction $ filterInstrs instructions
-  return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) branch
-  where branch = Do Br {
-    dest = Name $ "l_" ++ show jumpLabel,
-    metadata' = []
-  }
+  i <- gets count
+  case filter isJunction instructions of
+    [Junction junctionLabel] -> return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ condbranch junctionLabel i
+    [] -> return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) branch
+  where
+    isJunction (Junction a) = True
+    isJunction _ = False
+    condbranch junctionLabel i = Do CondBr {
+      condition = LocalReference $ UnName i,
+      trueDest = Name $ "l_" ++ show jumpLabel,
+      falseDest = Name $ "l_" ++ show junctionLabel,
+      metadata' = []
+    }
+    branch = Do Br {
+      dest = Name $ "l_" ++ show jumpLabel,
+      metadata' = []
+    }
 
 
 generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen [BasicBlock]
@@ -486,8 +545,9 @@ generateGlobalDefinition index def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflowCheck, IntermediateCode.print, crash, finish, inputFunc, eofCheck, push, pop, peek, add, sub, mul, div1, streq, strlen, strapp] ++
-    generateFunctionsFoo input
+    [ underflowCheck, IntermediateCode.print, crash, finish, inputFunc,
+      eofCheck, push, pop, peek, add, sub, mul, div1, streq, strlen, strapp,
+      popInt, greater ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     d = fromList $ zipWith foo [0..] $ getAllCons input
