@@ -145,24 +145,6 @@ push:
   ret void
 }
 
-; If stdin is at EOF, push 1, else 0.
-define void @eof_check() {
-  %peek = call i32 @input_peek()
-  %is_eof = icmp slt i32 %peek, 0
-  br i1 %is_eof, label %at_eof, label %not_at_eof
-
-at_eof:
-  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
-  call void @push(i8* %true)
-  ret void
-
-not_at_eof:
-  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
-  call void @push(i8* %false)
-
-  ret void
-}
-
 ; Get a byte of input from stdin. Returns < 0 on error.
 ; This can be used together with input_peek().
 define i32 @input_get() {
@@ -186,6 +168,24 @@ define i32 @input_peek() {
   %read = call i32 @input_get()
   store i32 %read, i32* @lookahead
   ret i32 %read
+}
+
+; If stdin is at EOF, push 1, else 0.
+define void @eof_check() {
+  %peek = call i32 @input_peek()
+  %is_eof = icmp slt i32 %peek, 0
+  br i1 %is_eof, label %at_eof, label %not_at_eof
+
+at_eof:
+  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
+  call void @push(i8* %true)
+  ret void
+
+not_at_eof:
+  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
+  call void @push(i8* %false)
+
+  ret void
 }
 
 define void @push(i8* %str_ptr) {
