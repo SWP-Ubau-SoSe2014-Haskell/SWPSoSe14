@@ -12,6 +12,7 @@ import qualified TCodeOpt
 import qualified TBackend
 
 import System.Exit
+import System.Process
 
 -- returns an appropriate ExitCode
 getExitCode :: Counts -> ExitCode
@@ -29,4 +30,10 @@ main = do
     TCodeOpt.testModule ++
     TBackend.testModule
     )
-  exitWith $ getExitCode counts
+  testexit <- system "tests/integration_tests.sh"
+  exitWith $ addexits testexit $ getExitCode counts
+
+addexits :: ExitCode -> ExitCode -> ExitCode
+addexits ExitSuccess ExitSuccess = ExitSuccess
+addexits _ (ExitFailure _) = ExitFailure 1
+addexits (ExitFailure _) _ = ExitFailure 1
