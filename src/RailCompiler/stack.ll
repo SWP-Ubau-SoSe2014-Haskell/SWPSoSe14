@@ -923,13 +923,13 @@ define i32 @main_() {
  %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
  %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
 
- call void @input()
- %i0 = call i8*()* @pop()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
-
  call void @eof_check()
  %i1 = call i8*()* @pop()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
+
+ call void @input()
+ %i0 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
 
  call void @input()
  %i2 = call i8*()* @pop()
