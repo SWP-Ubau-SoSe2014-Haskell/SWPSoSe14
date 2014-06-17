@@ -28,7 +28,7 @@ getGrid2dFromPreProc2Lexer(IDT.IPL grid2D) = grid2D
 textAreaNew :: Layout
   -> Int
   -> Int
-  -> IO(TextArea)
+  -> IO TextArea
 textAreaNew layout x y = do
   currentInFocus <- newIORef (0,0)
   hashMap <- newIORef Map.empty
@@ -55,8 +55,7 @@ createTextAreaH :: TextArea
 createTextAreaH area@(TextArea _ _ _ size) xnr xnrS ynr ynrS = do
   (maxX,maxY) <- readIORef size
   if xnr == xnrS && ynr == ynrS
-  then do
-    entryInsert area xnrS xnrS
+  then entryInsert area xnrS xnrS
   else if xnr == xnrS && ynr < ynrS
   then do
     entryInsert area  xnr ynr
@@ -69,7 +68,7 @@ createTextAreaH area@(TextArea _ _ _ size) xnr xnrS ynr ynrS = do
 handleReturn area@(TextArea layout current hMap size)x y = do
   hmap <- readIORef hMap
   let nextEntry = Map.lookup (0,y+1) hmap
-  if not $ isJust nextEntry
+  if isNothing nextEntry
   then do
     (xm,ym) <- readIORef size
     expandYTextArea area xm ym
@@ -95,7 +94,7 @@ handleLeft area@(TextArea layout current hMap size)x y = do
     then do
       widgetGrabFocus $ fromJust $ Map.lookup (xm, y-1) hmap
       return True
-    else do return False
+    else return False
 
 handleRight area@(TextArea layout current hMap size)x y = do
   hmap <- readIORef hMap
@@ -110,12 +109,12 @@ handleRight area@(TextArea layout current hMap size)x y = do
     then do
       widgetGrabFocus $ fromJust $ Map.lookup (0, y+1) hmap
       return True
-    else do return False
+    else return False
 
 handleTab area@(TextArea layout current hMap size)x y = do
   hmap <- readIORef hMap
   let nextEntry = Map.lookup (x+4,y) hmap
-  if not $ isJust nextEntry
+  if isNothing nextEntry
   then do
     (xm,ym) <- readIORef size
     expandXTextAreaN area xm ym 4
@@ -136,7 +135,7 @@ handleBackspace area@(TextArea layout current hMap size) entry x y = do
   then do
     set entry [entryText := ""]
     return False
-  else do
+  else
     if isJust prevEntry
     then do
       entrySetText (fromJust prevEntry) ""
@@ -148,7 +147,7 @@ handleBackspace area@(TextArea layout current hMap size) entry x y = do
       then do
         widgetGrabFocus $ fromJust $ Map.lookup (xm, y-1) hmap
         return True
-      else do return False
+      else return False
 
 entryInsert :: TextArea
   -> Int
@@ -168,20 +167,20 @@ entryInsert area@(TextArea layout current hMap size) x y = do
     key <- eventKeyName
     val <- eventKeyVal
     liftIO $ do
-      if keyToChar val /= Nothing
+      if isJust (keyToChar val)
       then do
         set entry [entryText := (
-          if keyToChar val == Nothing 
+          if isNothing (keyToChar val)
           then "" 
           else [fromJust $ keyToChar val])]
         hmap <- readIORef hMap
         let nextEntry = Map.lookup (x+1,y) hmap
-        if not $ isJust nextEntry
+        if isNothing nextEntry
         then do
           (xm,ym) <- readIORef size
           expandXTextArea area xm ym
           hmap <- readIORef hMap
-          nEntry <- return(fromJust $ Map.lookup (x+1,y) hmap)
+          let nEntry = fromJust $ Map.lookup (x+1,y) hmap
           let nEntry = fromJust $ Map.lookup (x+1,y) hmap
           widgetGrabFocus nEntry
           return True
@@ -195,10 +194,9 @@ entryInsert area@(TextArea layout current hMap size) x y = do
           "Right" -> handleRight area x y
           "Tab" -> handleTab area x y
           "BackSpace" -> handleBackspace area entry x y
-          _ -> do return False
+          _ -> return False
       code <- serializeIt area (0,0) ""
-      grid2D <- return $ 
-        getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
+      let grid2D = getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
       paintItRed area 0 0
       print "new lexer-performance:"
       highlight area grid2D start
@@ -206,7 +204,7 @@ entryInsert area@(TextArea layout current hMap size) x y = do
   return ()
 
 expandXTextAreaN area oldX oldY n
-  | n == 0 = do return ()
+  | n == 0 = return ()
   | otherwise = do
     expandXTextArea area oldX oldY
     expandXTextAreaN area (succ oldX) oldY (n-1)
@@ -214,19 +212,19 @@ expandXTextAreaN area oldX oldY n
 expandXTextArea area@(TextArea layout current hMap size) oldX oldY= do
   expandXTextAreaH area oldX oldY
   (xmax,ymax) <- readIORef size
-  writeIORef size ((succ xmax),ymax)
+  writeIORef size (succ xmax,ymax)
 
-expandXTextAreaH area@(TextArea _ _ hMap _) oldX oldY = do
+expandXTextAreaH area@(TextArea _ _ hMap _) oldX oldY =
   if oldY == 0
   then do
     entryInsert area (succ oldX) 0
     hmap <- readIORef hMap
-    let newEntry = fromJust $ Map.lookup ((succ oldX),oldY) hmap
+    let newEntry = fromJust $ Map.lookup (succ oldX,oldY) hmap
     widgetShow newEntry
   else do
     entryInsert area (succ oldX) oldY
     hmap <- readIORef hMap
-    let newEntry = fromJust $ Map.lookup ((succ oldX),oldY) hmap
+    let newEntry = fromJust $ Map.lookup (succ oldX,oldY) hmap
     widgetShow newEntry
     expandXTextAreaH area oldX (pred oldY)
 
@@ -234,9 +232,9 @@ expandXTextAreaH area@(TextArea _ _ hMap _) oldX oldY = do
 expandYTextArea area@(TextArea layout current hMap size) oldX oldY= do
   expandYTextAreaH area oldX oldY
   (xmax,ymax) <- readIORef size
-  writeIORef size (xmax,(succ ymax))
+  writeIORef size (xmax,succ ymax)
 
-expandYTextAreaH area@(TextArea _ _ hMap _) oldX oldY = do
+expandYTextAreaH area@(TextArea _ _ hMap _) oldX oldY =
   if oldX == 0
   then do
     entryInsert area 0 (succ oldY)
@@ -258,8 +256,8 @@ clearEntryByCoord (TextArea _ _ hMap _) (x,y) = do
   let mayEntry = Map.lookup (x,y) hashMap
   if isJust mayEntry
   then do
-    let entry = fromJust mayEntry
-    set entry [entryText := ""]
+     let entry = fromJust mayEntry
+     set entry [entryText := ""]
   else return ()
 
 clearCurrentEntry :: TextArea -> IO()
@@ -275,8 +273,8 @@ changeColorOfEntryByCoord (TextArea _ _ hMap _) (x,y) color = do
   let mayEntry = Map.lookup (x,y) hashMap
   if isJust mayEntry
   then do
-    let entry = fromJust mayEntry
-    widgetModifyText entry StateNormal color
+     let entry = fromJust mayEntry
+     widgetModifyText entry StateNormal color
   else return ()
 
 changeColorOfCurrentEntry :: TextArea -> Color -> IO()
@@ -294,24 +292,24 @@ paintItRed :: TextArea
 paintItRed textArea x y = do
   (xMax,yMax) <- readIORef $ getPointerToSize textArea
   map <- readIORef $ getPointerToEntryMap textArea
-  entry <- return $ Map.lookup (x,y) map
+  let entry = Map.lookup (x,y) map
   case entry of
     Nothing -> return ()
     _ ->
       if x == (xMax-1) && y == (yMax-1)
       then do
-        widgetModifyText (fromJust $ entry) StateNormal red
+        widgetModifyText (fromJust entry) StateNormal red
         return ()
-      else do
+      else
         if x == (xMax-1)
         then do
-          widgetModifyText (fromJust $ entry) StateNormal red
+          widgetModifyText (fromJust entry) StateNormal red
           paintItRed textArea 0 (y+1)
         else do
-          widgetModifyText (fromJust $ entry) StateNormal red
-          paintItRed textArea (x+1) (y)
+          widgetModifyText (fromJust entry) StateNormal red
+          paintItRed textArea (x+1) y
   return ()
-  where red = (Color 65535 0 0)
+  where red = Color 65535 0 0
 {- to do different colors
  main highlighting function
  Colors:
@@ -324,7 +322,7 @@ paintItRed textArea x y = do
 highlight :: TextArea
   -> [Grid2D]
   -> IP
-  -> IO(IP)
+  -> IO IP
 highlight _ [] _ = return crash
 highlight textArea grid2D ip = do
   --print (show(posx ip)++","++show(posy ip))
@@ -334,58 +332,32 @@ highlight textArea grid2D ip = do
    _ -> do
     (lex, _)<- return $ parse (head grid2D) ip
     case lex of
-      Just NOP -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Boom -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just EOF -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Input -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Output -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Underflow -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just RType -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just (Constant _ )-> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) con
-      Just (Push _ )-> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just (Pop _) -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just (Call _) -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Add1 -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Divide -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Multiply -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Subtract -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Remainder -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op   
-      Just Cut -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Append -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Size -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Nil -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Cons -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Breakup -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Greater -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Equal -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) op
-      Just Start -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) dAH
-      Just Finish -> do
-        changeColorOfEntryByCoord textArea (posx ip,posy ip) dAH
+      Just NOP          -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Boom         -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just EOF          -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Input        -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Output       -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Underflow    -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just RType        -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just (Constant _ )-> changeColorOfEntryByCoord textArea (posx ip,posy ip) con
+      Just (Push _ )    -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just (Pop _)      -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just (Call _)     -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Add1         -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Divide       -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Multiply     -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Subtract     -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Remainder    -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op   
+      Just Cut          -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Append       -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Size         -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Nil          -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Cons         -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Breakup      -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Greater      -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Equal        -> changeColorOfEntryByCoord textArea (posx ip,posy ip) op
+      Just Start        -> changeColorOfEntryByCoord textArea (posx ip,posy ip) dAH
+      Just Finish       -> changeColorOfEntryByCoord textArea (posx ip,posy ip) dAH
       Just (Junction _) -> do -- TODO junction stepping
         changeColorOfEntryByCoord textArea (posx ip,posy ip) dAH
         (falseIP,trueIP) <- return $ junctionturns (head grid2D) ip
@@ -397,10 +369,10 @@ highlight textArea grid2D ip = do
         return ()
       Nothing -> 
         changeColorOfEntryByCoord textArea (posx ip,posy ip) black
-    if lex == (Just (Junction 0))--after a junction don't color again!
+    if lex == Just (Junction 0)--after a junction don't color again!
     then return crash
     else do
-      nexIP <- return $ step (head grid2D) ip
+      let nexIP = step (head grid2D) ip
       highlight textArea grid2D nexIP
     where 
       op = Color 2478 13810 63262
@@ -411,40 +383,35 @@ highlight textArea grid2D ip = do
 serializeIt :: TextArea 
   -> (Int,Int)
   -> String
-  -> IO(String)
+  -> IO String
 serializeIt textArea (w,h) code = do
   (x,y) <-  readIORef $ getPointerToSize textArea
-  case h > y of
-    True -> do return code
-    _ -> do
-      map <- readIORef $ getPointerToEntryMap textArea
-      line <- serializeItHelp map (w,h) (x,y) ""
-      clearLine <- return $ (reverse.dropWhile(==' ').reverse) line
-      serializeIt textArea (0,h+1) (code++(line++"\n"))
+  if h > y then return code else
+    (do map <- readIORef $ getPointerToEntryMap textArea
+        line <- serializeItHelp map (w,h) (x,y) ""
+        let clearLine = (reverse.dropWhile(==' ').reverse) line
+        serializeIt textArea (0,h+1) (code++(line++"\n")))
 
 serializeItHelp :: Map (Int,Int) Entry
   -> (Int,Int)
   -> (Int,Int)
   -> String
-  -> IO(String)
-serializeItHelp map (w,h) (xMax,yMax) line = do
-  case w >= (xMax) of
-    True -> return (line)
-    _ -> do
-      elem <- return $ Map.lookup (w,h) map
-      case isNothing(elem) of
-        True -> serializeItHelp map (w+1,h) (xMax,yMax) (line++" ")
-        _ -> do
-          entry <- return $ fromJust elem
-          content <- entryGetText entry
-          serializeItHelp map (w+1,h) (xMax,yMax) (line++content)
+  -> IO String
+serializeItHelp map (w,h) (xMax,yMax) line =
+  if w >= xMax then return line else
+    (do let elem = Map.lookup (w,h) map
+        if isNothing elem then
+          serializeItHelp map (w+1,h) (xMax,yMax) (line++" ") else
+          (do let entry = fromJust elem
+              content <- entryGetText entry
+              serializeItHelp map (w+1,h) (xMax,yMax) (line++content)))
 
 serializeTextAreaContent area@(TextArea layout current hMap size) = do
   hmap <- readIORef hMap
   let list = toList hmap
   let sortedList = quicksort list
   result <- listToString sortedList [] 0
-  let rightOrder = unlines $ Prelude.filter (/="") $ Prelude.map (\x -> reverse $ dropWhile (==' ') $ reverse x) (lines $ reverse result)
+  let rightOrder = unlines $ Prelude.filter (/="") $ Prelude.map (reverse . dropWhile (== ' ') . reverse) (lines $ reverse result)
   return rightOrder
     where
       quicksort :: [((Int,Int),Entry)] -> [((Int,Int),Entry)]
@@ -452,15 +419,15 @@ serializeTextAreaContent area@(TextArea layout current hMap size) = do
       quicksort (x:xs) = quicksort [a | a <- xs, before a x] ++ [x] ++ quicksort [a | a <- xs, not $ before a x]
 
       listToString :: [((Int,Int),Entry)] -> String -> Int -> IO String
-      listToString list akku beforeY = do
-        if (length list) == 0
+      listToString list akku beforeY = 
+        if Prelude.null list
         then return akku
         else do
           text <- entryGetText (snd $ head list)
           let (x,y) = fst $ head list
           if y > beforeY
-          then listToString (tail list) ((head text) : '\n' : akku) y
-          else listToString (tail list) ((head text) : akku) y
+          then listToString (tail list) (head text : '\n' : akku) y
+          else listToString (tail list) (head text : akku) y
 
       before :: ((Int,Int),Entry) -> ((Int,Int),Entry) -> Bool
       before ((a,b),_) ((c,d),_) = b < d || (b == d && a <= c)

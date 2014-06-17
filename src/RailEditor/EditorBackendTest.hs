@@ -7,7 +7,7 @@ import EditorBackend
 testCoord = (0,100)
 testChar = Undefined '$'
 testBool = True
-testField = (Field testChar testBool)
+testField = Field testChar testBool
 
 testGetFieldChar = TestCase (assertEqual "Test: getFieldChar" '$' (getFieldChar testField))
 
@@ -17,7 +17,7 @@ fieldTestSuite = [TestLabel "Test: getFieldChar" testGetFieldChar, TestLabel "Te
 --end: Test-Field operations
 --begin: Test-Function operations
 testName = "main"
-testFields = [[(Field (Undefined '$') True)],[(Field (Undefined '\\') False)]]
+testFields = [[Field (Undefined '$') True],[Field (Undefined '\\') False]]
 testFunction = Function testName testFields
 
 testGetFunctionFields = TestCase (assertEqual "Test: getFunctionFields" testFields (getFunctionFields testFunction))
@@ -37,9 +37,9 @@ programmTestSuite = [TestLabel "Test: getProgrammFunctions" testGetProgrammFunct
 testMoveAllowed = Allowed (1,1)
 testMoveForbidden = Forbidden (0,-1)
 
-testIsAllowed = TestCase ( do a <- return $ isAllowed testMoveAllowed
+testIsAllowed = TestCase ( do let a = isAllowed testMoveAllowed
                               assertEqual "Test: isAllowed with 'Allowed' input" True a
-                              f <- return $ isAllowed testMoveForbidden
+                              let f = isAllowed testMoveForbidden
                               assertEqual "Test: isAllowed with 'Forbidden' input" False f 
                          )
 
@@ -75,7 +75,7 @@ testReadStringToFieldList = TestCase (assertEqual "Test: readStringToFieldList" 
 codeToProgrammTestSuite = [TestLabel "Test: codeToProgramm" testCodeToProgramm,TestLabel "Test: splitContentInChunks" testSplitContentInChunks,TestLabel "Test: filterEmptyElements" testFilterEmptyElements,TestLabel "Test: readFunctionCodeToAdtFunction" testReadFunctionCodeToAdtFunction, TestLabel "Test: readStringToFieldList" testReadStringToFieldList]
 --end: Test Operations for converting code Strings to the ADT 'Programm'
 --begin: Test Operations for modify and access 'Field' in a structure
-expectedMarkedFunction =Function testName [[(Field (Undefined '$') True)],[(Field (Undefined '\\') True)]]
+expectedMarkedFunction =Function testName [[Field (Undefined '$') True],[Field (Undefined '\\') True]]
 
 testGetFieldByCoord = TestCase (assertEqual "Test: getFieldByCoord" (Field (Undefined '\\') False) (getFieldByCoord testFields (0,1)))
 
@@ -86,49 +86,49 @@ testMarkAsVisited = TestCase (assertEqual "Test: markAsVisited" expectedMarkedFu
 modifyAccessFieldTestSuite = [TestLabel "Test: getFieldByCoord" testGetFieldByCoord,TestLabel "Test: isVisited" testIsVisited,TestLabel "Test: markAsVisited" testMarkAsVisited]
 --end: Test Operations for modify and access 'Field' in a structure
 --begin: Test Functions to decide how the train will move
-testGetWestMove = TestCase (do a <- return $ getWestMove (1,0) [[(Field (Undefined '\\') False),(Field (Undefined '-') False)]] True
+testGetWestMove = TestCase (do let a = getWestMove (1,0) [[Field (Undefined '\\') False, Field (Undefined '-') False]] True
                                assertEqual "Test: getWestMove Allowed" (Allowed (0,0)) a
-                               b <- return $ getWestMove (0,0) [[(Field (Undefined '-') False)]] True
+                               let b = getWestMove (0,0) [[Field (Undefined '-') False]] True
                                assertEqual "Test: getWestMove Forbidden" (Forbidden (0,0)) b
                            )
 
-testGetNorthWestMove = TestCase (do a <- return $ getNorthWestMove (1,2) [[],[(Field (Undefined '\\') False)],[(Field (Undefined ' ') False),(Field (Undefined '\\') False)]] True
+testGetNorthWestMove = TestCase (do let a = getNorthWestMove (1,2) [[],[Field (Undefined '\\') False],[Field (Undefined ' ') False, Field (Undefined '\\') False]] True
                                     assertEqual "Test: getNorthWestMove primary route" (Allowed (0,1)) a
-                                    b <- return $ getNorthWestMove (1,1) [[],[(Field (Undefined '-') False),(Field (Undefined '\\') False)]] True
+                                    let b = getNorthWestMove (1,1) [[],[Field (Undefined '-') False, Field (Undefined '\\') False]] True
                                     assertEqual "Test: getNorthWestMove west secondary route" (Allowed (0,1)) b
-                                    c <- return $ getNorthWestMove (0,2) [[],[(Field (Undefined '|') False)],[(Field (Undefined '\\') False)]] True
+                                    let c = getNorthWestMove (0,2) [[],[Field (Undefined '|') False],[Field (Undefined '\\') False]] True
                                     assertEqual "Test: getNorthWestMove north secondary route" (Allowed (0,1)) c 
-                                    d <- return $ getNorthWestMove (0,2) [[],[(Field (Undefined ' ') False),(Field (Undefined '|') False)],[(Field (Undefined '-') False),(Field (Undefined '\\') False)]] True
+                                    let d = getNorthWestMove (0,2) [[],[Field (Undefined ' ') False, Field (Undefined '|') False],[Field (Undefined '-') False, Field (Undefined '\\') False]] True
                                     assertEqual "Test: getNorthWestMove secondary conflict" (Forbidden (0,2)) d
                                 )
 
-testGetNorthEastMove = TestCase (do a <- return $ getNorthEastMove (0,2) [[],[(Field (Undefined ' ') False),(Field (Undefined '/') False)],[(Field (Undefined '/') False)]] True
+testGetNorthEastMove = TestCase (do let a = getNorthEastMove (0,2) [[],[Field (Undefined ' ') False, Field (Undefined '/') False],[Field (Undefined '/') False]] True
                                     assertEqual "Test: getNorthEastMove primary route" (Allowed (1,1)) a
-                                    b <- return $ getNorthEastMove (0,1) [[],[(Field (Undefined '/') False),(Field (Undefined '-') False)]] True
+                                    let b = getNorthEastMove (0,1) [[],[Field (Undefined '/') False, Field (Undefined '-') False]] True
                                     assertEqual "Test: getNorthEastMove east secondary route" (Allowed (1,1)) b
-                                    c <- return $ getNorthEastMove (0,2) [[],[(Field (Undefined '|') False)],[(Field (Undefined '/') False)]] True
+                                    let c = getNorthEastMove (0,2) [[],[Field (Undefined '|') False],[Field (Undefined '/') False]] True
                                     assertEqual "Test: getNorthEastMove north secondary route" (Allowed (0,1)) c 
-                                    d <- return $ getNorthEastMove (0,2) [[],[(Field (Undefined '|') False)],[(Field (Undefined '/') False),(Field (Undefined '-') False)]] True
+                                    let d = getNorthEastMove (0,2) [[],[Field (Undefined '|') False],[Field (Undefined '/') False, Field (Undefined '-') False]] True
                                     assertEqual "Test: getNorthEastMove secondary conflict" (Forbidden (0,2)) d
                                 )
 
-testGetSouthWestMove = TestCase (do a <- return $ getSouthWestMove (1,0) [[(Field (Undefined ' ') False),(Field (Undefined '/') False)],[(Field (Undefined '/') False)]] True
+testGetSouthWestMove = TestCase (do let a = getSouthWestMove (1,0) [[Field (Undefined ' ') False, Field (Undefined '/') False],[Field (Undefined '/') False]] True
                                     assertEqual "Test: getSouthWestMove primary route" (Allowed (0,1)) a
-                                    b <- return $ getSouthWestMove (1,0) [[(Field (Undefined '-') False),(Field (Undefined '/') False)]] True
+                                    let b = getSouthWestMove (1,0) [[Field (Undefined '-') False, Field (Undefined '/') False]] True
                                     assertEqual "Test: getSouthWestMove west secondary route" (Allowed (0,0)) b
-                                    c <- return $ getSouthWestMove (0,0) [[(Field (Undefined '/') False)],[(Field (Undefined '|') False)]] True
+                                    let c = getSouthWestMove (0,0) [[Field (Undefined '/') False],[Field (Undefined '|') False]] True
                                     assertEqual "Test: getSouthWestMove south secondary route" (Allowed (0,1)) c 
-                                    d <- return $ getSouthWestMove (1,0) [[(Field (Undefined '-') False),(Field (Undefined '/') False)],[(Field (Undefined ' ') False),(Field (Undefined '|') False)]] True
+                                    let d = getSouthWestMove (1,0) [[Field (Undefined '-') False, Field (Undefined '/') False],[Field (Undefined ' ') False, Field (Undefined '|') False]] True
                                     assertEqual "Test: getSouthWestMove secondary conflict" (Forbidden (1,0)) d
                                 )
 
-testGetSouthEastMove = TestCase (do a <- return $ getSouthEastMove (0,0) [[(Field (Undefined '\\') False),(Field (Undefined '-') False)],[(Field (Undefined ' ') False),(Field (Undefined '\\') False)]] True
+testGetSouthEastMove = TestCase (do let a = getSouthEastMove (0,0) [[Field (Undefined '\\') False, Field (Undefined '-') False],[Field (Undefined ' ') False, Field (Undefined '\\') False]] True
                                     assertEqual "Test: getSouthEastMove primary route" (Allowed (1,1)) a
-                                    b <- return $ getSouthEastMove (0,0) [[(Field (Undefined '\\') False),(Field (Undefined '-') False)]] True
+                                    let b = getSouthEastMove (0,0) [[Field (Undefined '\\') False, Field (Undefined '-') False]] True
                                     assertEqual "Test: getSouthEastMove east secondary route" (Allowed (1,0)) b
-                                    c <- return $ getSouthEastMove (0,0) [[(Field (Undefined '\\') False)],[(Field (Undefined '|') False)]] True
+                                    let c = getSouthEastMove (0,0) [[Field (Undefined '\\') False],[Field (Undefined '|') False]] True
                                     assertEqual "Test: getSouthEastMove south secondary route" (Allowed (0,1)) c 
-                                    d <- return $ getSouthEastMove (0,0) [[(Field (Undefined '\\') False),(Field (Undefined '-') False)],[(Field (Undefined '|') False)]] True
+                                    let d = getSouthEastMove (0,0) [[Field (Undefined '\\') False, Field (Undefined '-') False],[Field (Undefined '|') False]] True
                                     assertEqual "Test: getSouthEastMove secondary conflict" (Forbidden (0,0)) d
                                 )
 
@@ -137,4 +137,4 @@ moveTestSuit = [TestLabel "Test: getWestMove" testGetWestMove, TestLabel "Test: 
 
 superTestSuite = TestList (fieldTestSuite ++ functionTestSuite ++ programmTestSuite ++ moveTestSuite ++ codeToProgrammTestSuite ++ modifyAccessFieldTestSuite ++ moveTestSuit)
 
-main = do runTestTT superTestSuite
+main = runTestTT superTestSuite
