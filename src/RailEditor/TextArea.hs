@@ -115,6 +115,26 @@ handleRight area@(TextArea layout current hMap size)x y = do
       return True
     else do return False
 
+handleUp area@(TextArea layout current hMap size) x y = do
+  hmap <- readIORef hMap
+  let nextEntry = Map.lookup (x,y-1) hmap
+  if isJust nextEntry
+  then do
+    widgetGrabFocus $ fromJust nextEntry
+    return True
+  else do
+    return False
+
+handleDown area@(TextArea layout current hMap size) x y = do
+  hmap <- readIORef hMap
+  let nextEntry = Map.lookup (x,y+1) hmap
+  if isJust nextEntry
+  then do
+    widgetGrabFocus $ fromJust nextEntry
+    return True
+  else do
+    return False
+
 handleTab area@(TextArea layout current hMap size)x y = do
   hmap <- readIORef hMap
   let nextEntry = Map.lookup (x+4,y) hmap
@@ -198,6 +218,8 @@ entryInsert area@(TextArea layout current hMap size) x y = do
           "Right" -> handleRight area x y
           "Tab" -> handleTab area x y
           "BackSpace" -> handleBackspace area entry x y
+          "Up" -> handleUp area x y
+          "Down" -> handleDown area x y
           _ -> do return False
       (code,indexes) <- serializeIt area (0,0) ("",[])
       Exc.catch (do
