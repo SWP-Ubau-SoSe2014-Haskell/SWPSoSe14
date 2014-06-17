@@ -26,7 +26,7 @@ module Lexer (
               -- * Utility functions
               fromAST, toAST,
               -- * Editor functions
-              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs
+              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs , move , RelDirection(Forward)
              )
  where
 
@@ -315,23 +315,23 @@ module Lexer (
        E -> (ip{dir = NE}, ip{dir = SE})
        SW -> (ip{dir = SE}, ip{dir = W})
        NW -> (ip{dir = W}, ip{dir = NE})
-       _ -> (ip, ip)
+       _ -> (crash, crash)
     | char == '>' = case dir ip of
        W -> (ip{dir = SW}, ip{dir = NW})
        SE -> (ip{dir = E}, ip{dir = SW})
        NE -> (ip{dir = NW}, ip{dir = E})
-       _ -> (ip, ip)
+       _ -> (crash, crash)
     | char == '^' = case dir ip of
        S -> (ip{dir = SE}, ip{dir = SW})
        NE -> (ip{dir = N}, ip{dir = SE})
        NW -> (ip{dir = SW}, ip{dir = N})
-       _ -> (ip, ip)
+       _ -> (crash, crash)
     | char == 'v' = case dir ip of
        N -> (ip{dir = NW}, ip{dir = NE})
        SE -> (ip{dir = NE}, ip{dir = S})
        SW -> (ip{dir = S}, ip{dir = NW})
        _ -> (ip, ip)
-    | otherwise = (ip, ip)
+    | otherwise = (crash, crash)
 
  -- returns insturction pointers turned for (Lambda, Reflected)
  lambdadirs :: IP -> (IP, IP)
