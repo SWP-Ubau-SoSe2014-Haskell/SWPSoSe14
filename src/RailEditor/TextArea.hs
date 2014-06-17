@@ -360,59 +360,60 @@ highlight textArea grid2D ip yOffset = do
    _ -> do
     (lex, _)<- return $ parse grid2D ip
     case lex of
-      Just NOP -> do op
+      Just NOP -> do
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Boom -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just EOF -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Input -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Output -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just IDT.Underflow -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just RType -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just (Constant _ )-> do
-        con
+        changeColorOfEntryByCoord textArea (xC,yC) green
       Just (Push _ )-> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just (Pop _) -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just (Call _) -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Add1 -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Divide -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Multiply -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Subtract -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Remainder -> do
-        op   
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Cut -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Append -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Size -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Nil -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Cons -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Breakup -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Greater -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Equal -> do
-        op
+        changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Start -> do
-        dAH
+        changeColorOfEntryByCoord textArea (xC,yC) gold
       Just Finish -> do
-        dAH
+        changeColorOfEntryByCoord textArea (xC,yC) gold
       Just (Junction _) -> do -- TODO junction stepping
-        dAH
+        changeColorOfEntryByCoord textArea (xC,yC) gold
         (falseIP,trueIP) <- return $ junctionturns grid2D ip
         print "junctionturns"
         print (show falseIP)
@@ -420,8 +421,8 @@ highlight textArea grid2D ip yOffset = do
         highlight textArea grid2D falseIP yOffset
         highlight textArea grid2D trueIP yOffset
         return ()
-      Nothing -> 
-        black
+      Nothing -> do
+       changeColorOfEntryByCoord textArea (xC,yC) black
     if lex == (Just (Junction 0))--after a junction don't color again!
     then return crash
     else do
@@ -431,14 +432,9 @@ highlight textArea grid2D ip yOffset = do
       xC = posx ip
       yC = (posy ip)+yOffset
       blue = (Color 2478 13810 63262)
-      op = changeColorOfEntryByCoord textArea (xC,yC)
       green = (Color 3372 62381 5732)
-      con = changeColorOfEntryByCoord textArea (xC,yC) green
       gold = (Color 65535 30430 0)
-      dAH = changeColorOfEntryByCoord textArea (xC,yC) gold
-      dark = (Color 0 0 0)
-      black = changeColorOfEntryByCoord textArea (xC,yC) dark
-
+      black = (Color 0 0 0)
 {-Serializes the code and delets whitespaces at the end of lines.
   It also returns the y coord of $ of functions
 -}
