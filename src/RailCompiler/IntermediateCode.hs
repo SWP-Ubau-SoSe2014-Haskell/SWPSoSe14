@@ -229,6 +229,13 @@ popInt = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- function declaration for greater
+greater = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "greater",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 -- |Generate an instruction for the 'u'nderflow check command.
 generateInstruction Underflow =
   return [Do LLVM.General.AST.Call {
@@ -441,6 +448,17 @@ generateInstruction Append =
     metadata = []
   }]
 
+-- |Generate instruction for the greater instruction.
+generateInstruction Greater =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "greater",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
 -- do nothing?
 --generateInstruction Start =
@@ -529,7 +547,7 @@ process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
     [ underflowCheck, IntermediateCode.print, crash, finish, inputFunc,
       eofCheck, push, pop, peek, add, sub, mul, div1, streq, strlen, strapp,
-      popInt ] ++ generateFunctionsFoo input
+      popInt, greater ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     d = fromList $ zipWith foo [0..] $ getAllCons input

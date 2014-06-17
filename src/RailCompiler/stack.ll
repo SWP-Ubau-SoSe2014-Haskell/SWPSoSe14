@@ -819,6 +819,108 @@ define i32 @finish(){
   ret i32 0
 }
 
+; UNTESTED
+; Version for both, integer and float. Below is a version for just integers.
+; Takes the first tow elements of the stack and pushes true(1) if the first
+; element is greater than the second, otherwise false(0).
+define void @greater() {
+  %new_elem = alloca %struct.stack_elem, align 8
+  
+  ; call sub function and check if the subtraction was successfull
+  %exit_sub = call i32 @sub()
+  %success_sub = icmp eq i32 0, %exit_sub
+  br i1 %success_sub, label %cmp, label %exit_with_failure
+
+cmp:
+  ; if the subtraction was successfull, check for the type of the result (int 
+  ; or float)
+  %number = call i8* @pop()
+
+  ;check Type of subtraction
+  ;%ret = call i32 @get_stack_elem(i8* %number, %struct.stack_elem* %new_elem)
+  %type_ptr = getelementptr inbounds %struct.stack_elem* %new_elem, i32 0, i32 0
+  %type = load i32* %type_ptr, align 4
+  %is_int = icmp eq i32 %type, 1
+  br i1 %is_int, label %cmp_int, label %cmp_float
+  
+; compare if the result of the subtraction
+; ist greater than 0. If so the first operand is grater then the second.
+cmp_int:
+  ; get value of the subtraction
+  %ival_ptr = getelementptr inbounds %struct.stack_elem* %new_elem, i32 0, i32 1
+  %ival_cast = bitcast %union.anon* %ival_ptr to i64*
+  %ival = load i64* %ival_cast, align 4
+
+  %gt_int = icmp sgt i64 %ival, 0
+  br i1 %gt_int, label %is_greater, label %is_less_or_equal
+
+cmp_float:
+  ; get value of the subtraction
+  %fval_ptr = getelementptr inbounds %struct.stack_elem* %new_elem, i32 0, i32 1
+  %fval_cast = bitcast %union.anon* %fval_ptr to float*
+  %fval = load float* %fval_cast, align 4
+  %fval_d = fpext float %fval to double
+
+  %gt_float = fcmp ogt float %fval, 0.0
+  br i1 %gt_float, label %is_greater, label %is_less_or_equal
+
+is_greater:
+  ; if the first operand is greater, push true onto the stack
+  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
+  call void @push(i8* %true)
+  br label %exit
+
+is_less_or_equal:
+  ; if the second operand is greater or if both are equal, 
+  ; push flase onto the stack
+  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
+  call void @push(i8* %false)
+  br label %exit
+
+;behaviour in case of subtraction failure not yet defined
+exit_with_failure:
+  ret void
+
+exit:
+  ret void
+}
+
+; version for integer
+define void @greater_int() {
+  ; call sub function and check if the subtraction was successfull
+  %exit_sub = call i32 @sub()
+  %success_sub = icmp eq i32 0, %exit_sub
+  br i1 %success_sub, label %cmp, label %exit_with_failure
+
+cmp:
+  ; if the subtraction was successfull, compare if the result of the subtraction
+  ; ist greater than 0. If so the first operand is grater then the second.
+  %pop_sub_result = call i64()* @pop_int()
+  
+  %gt = icmp sgt i64 %pop_sub_result, 0
+  br i1 %gt, label %is_greater, label %is_less_or_equal
+
+is_greater:
+  ; if the first operand is greater, then push true onto the stack
+  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
+  call void @push(i8* %true)
+  br label %exit
+
+is_less_or_equal:
+  ; if the second operand is greater or if both are equal, 
+  ; push flase onto the stack
+  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
+  call void @push(i8* %false)
+  br label %exit
+
+;behaviour in case of subtraction failure not yet defined
+exit_with_failure:
+  ret void
+
+exit:
+  ret void
+}
+
 ; Function Attrs: nounwind uwtable
 ; Takes a string, determines the type it is representing and returns the
 ; corresponding stack element structure.
