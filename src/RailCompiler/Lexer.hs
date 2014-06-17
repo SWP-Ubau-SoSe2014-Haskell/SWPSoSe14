@@ -313,7 +313,7 @@ module Lexer (
    turning char ip
     | char == '<' = case dir ip of
        E -> (ip{dir = NE}, ip{dir = SE})
-       SW -> (ip{dir = NE}, ip{dir = W})
+       SW -> (ip{dir = SE}, ip{dir = W})
        NW -> (ip{dir = W}, ip{dir = NE})
        _ -> (ip, ip)
     | char == '>' = case dir ip of
@@ -328,8 +328,8 @@ module Lexer (
        _ -> (ip, ip)
     | char == 'v' = case dir ip of
        N -> (ip{dir = NW}, ip{dir = NE})
-       SE -> (ip{dir = NW}, ip{dir = S})
-       SW -> (ip{dir = S}, ip{dir = NE})
+       SE -> (ip{dir = NE}, ip{dir = S})
+       SW -> (ip{dir = S}, ip{dir = NW})
        _ -> (ip, ip)
     | otherwise = (ip, ip)
 
