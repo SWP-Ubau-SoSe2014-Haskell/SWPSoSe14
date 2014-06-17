@@ -1,5 +1,7 @@
 @stack = global [1000 x i8*] undef ; stack containing pointers to i8
 @sp = global i64 0 ; global stack pointer (or rather: current number of elements)
+@lookahead = global i32 -1  ; current lookahead for input from stdin.
+                            ; -1 means no lookahead done yet.
 
 
 ; Constants
@@ -12,17 +14,12 @@
 @err_eof = private unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
 
 ; External declarations
-%FILE = type opaque
-
-@stdin = external global %FILE*
-
 declare signext i32 @atol(i8*)
 declare i64 @strtol(i8*, i8**, i32 )
 declare signext i32 @snprintf(i8*, ...)
 declare signext i32 @printf(i8*, ...)
 declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
-declare signext i32 @feof(%FILE*)
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare i8* @calloc(i16 zeroext, i16 zeroext)
 declare void @exit(i32 signext)
@@ -127,7 +124,7 @@ end:
 ; Get a byte of input from stdin and push it.
 ; Crashes the program on errors.
 define void @input() {
-  %read = call i32 @getchar()
+  %read = call i32 @input_get()
   %err = icmp slt i32 %read, 0
   br i1 %err, label %error, label %push
 
@@ -146,11 +143,35 @@ push:
   ret void
 }
 
+; Get a byte of input from stdin. Returns < 0 on error.
+; This can be used together with input_peek().
+define i32 @input_get() {
+  %lookahead = load i32* @lookahead
+  %need_read = icmp slt i32 %lookahead, 0
+  br i1 %need_read, label %ig_read, label %ig_lookahead
+
+ig_lookahead:
+  store i32 -1, i32* @lookahead
+  ret i32 %lookahead
+
+ig_read:
+  %read = call i32 @getchar()
+  ret i32 %read
+}
+
+; Peek a byte of input from stdin. Returns < 0 on error.
+; Successive calls to this function without interspersed calls
+; to input_read() return the same value.
+define i32 @input_peek() {
+  %read = call i32 @input_get()
+  store i32 %read, i32* @lookahead
+  ret i32 %read
+}
+
 ; If stdin is at EOF, push 1, else 0.
 define void @eof_check() {
-  %stdin = load %FILE** @stdin
-  %res = call i32 @feof(%FILE* %stdin)
-  %is_eof = icmp ne i32 %res, 0
+  %peek = call i32 @input_peek()
+  %is_eof = icmp slt i32 %peek, 0
   br i1 %is_eof, label %at_eof, label %not_at_eof
 
 at_eof:
@@ -161,6 +182,7 @@ at_eof:
 not_at_eof:
   %false = getelementptr [2 x i8]* @false, i8 0, i8 0
   call void @push(i8* %false)
+
   ret void
 }
 
@@ -1001,13 +1023,13 @@ define i32 @main_() {
  %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
  %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
 
- call void @input()
- %i0 = call i8*()* @pop()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
-
  call void @eof_check()
  %i1 = call i8*()* @pop()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
+
+ call void @input()
+ %i0 = call i8*()* @pop()
+ call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
 
  call void @input()
  %i2 = call i8*()* @pop()
