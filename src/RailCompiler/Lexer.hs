@@ -457,7 +457,9 @@ module Lexer (
    _ -> (Nothing, turn (current code ip) ip)
   where
    junctioncheck (Nothing, ip)
-     | forward == ' ' && (left `elem` "v^<>" || right `elem` "v^<>") = (Nothing, crash)
+     | current code ip `elem` "+x*" && next code ip `elem` "v^<>" = (Nothing, crash)
+     | forward == ' ' && (left == current code ip || right == current code ip) = (Nothing, crash)
+     | forward == ' ' && (left `elem` "v^<>+x*" || right `elem` "v^<>+x*") = (Nothing, crash)
      | otherwise = (Nothing, ip)
     where
      (left, forward, right) = adjacent code ip
@@ -552,7 +554,7 @@ module Lexer (
 
  -- list of chars which do not allow any turning
  turnblocked :: String
- turnblocked = "*+x" ++ commandchars
+ turnblocked = "$*+x" ++ commandchars
 
  -- |Convert a graph/AST into a portable text representation.
  -- See also 'fromGraph'.

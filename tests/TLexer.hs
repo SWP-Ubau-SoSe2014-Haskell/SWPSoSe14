@@ -21,7 +21,7 @@ module TLexer (
  testLexer10 = "Push and Pop: " ~: res [Constant "1", Pop "x", Push "x"] @=? run [" \\", "  --1(!x!)(x)#"]
  testLexer11 = "Illegal cross Junctions: " ~: crash @=? run [" \\", "  +-#"]
  testLexer12 = "While: " ~: IDT.ILS [("main", [(1, Start, 2), (2, EOF, 3), (3, Junction 2, 4), (4, Finish, 0)])] @=? run [" \\   /----\\", "  \\  |    |", "   \\ \\    /", "    ---e-<", "          \\-#"]
- testLexer13 = "Empty Junction ends: " ~: IDT.ILS [("main",[(1, Start, 2), (2, Junction 0, 3), (3, Junction 4, 0), (4, Junction 5, 6), (5, Finish, 0), (6, Finish, 0)])] @=? run ["\\", " \\    /      /--\\   /-#", "  \\--<    --<    --<", "      \\--/   \\      \\-#"]
+ testLexer13 = "Empty Junction ends: " ~: IDT.ILS [("main",[(1, Start, 2), (2, Junction 0, 3), (3, Junction 4, 0), (4, Junction 5, 6), (5, Finish, 0), (6, Finish, 0)])] @=? run [" \\", "  \\    /      /--\\   /-#", "   \\--<    --<    --<", "       \\--/   \\      \\-#"]
  testLexer14 = "Turning on Lexeme: " ~: crash @=? run [" \\", "  \\#"]
 
  -- helper functions
