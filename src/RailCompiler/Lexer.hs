@@ -26,7 +26,7 @@ module Lexer (
               -- * Utility functions
               fromAST, toAST,
               -- * Editor functions
-              step, parse, IP(IP), posx, posy, start, crash, junctionturns, lambdadirs
+              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs
              )
  where
 
@@ -315,18 +315,22 @@ module Lexer (
        E -> (ip{dir = NE}, ip{dir = SE})
        SW -> (ip{dir = NE}, ip{dir = W})
        NW -> (ip{dir = W}, ip{dir = NE})
+       _ -> (ip, ip)
     | char == '>' = case dir ip of
        W -> (ip{dir = SW}, ip{dir = NW})
        SE -> (ip{dir = E}, ip{dir = SW})
        NE -> (ip{dir = NW}, ip{dir = E})
+       _ -> (ip, ip)
     | char == '^' = case dir ip of
        S -> (ip{dir = SE}, ip{dir = SW})
        NE -> (ip{dir = N}, ip{dir = SE})
        NW -> (ip{dir = SW}, ip{dir = N})
+       _ -> (ip, ip)
     | char == 'v' = case dir ip of
        N -> (ip{dir = NW}, ip{dir = NE})
        SE -> (ip{dir = NW}, ip{dir = S})
        SW -> (ip{dir = S}, ip{dir = NE})
+       _ -> (ip, ip)
     | otherwise = (ip, ip)
 
  -- returns insturction pointers turned for (Lambda, Reflected)
@@ -498,7 +502,7 @@ module Lexer (
                                 --     * Valid characters for movement to the (relative) left.
                                 --     * Valid characters for movement in the (relative) forward direction.
                                 --     * Valid characters for movement to the (relative) right.
- valids code ip = tripleinvert (dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
+ valids code ip = tripleinvert (commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
   where
    tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
    finvalid ip = dirinvalid ip ++ crossinvalid ip -- illegal to move forward
@@ -512,12 +516,16 @@ module Lexer (
     | dir ip `elem` [N, E, S, W] = "x"
     | otherwise = "+"
    cur = current code ip
-   everything = "+\\/x|-"++always
-   always = "^v<>abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
+   everything = "+\\/x|-" ++ always
+   always = "^v<>*@{}[]()" ++ commandchars
+ 
+ -- list of chars that are commands in rail
+ commandchars :: String
+ commandchars = "abcdefgimnopqrstuz:~0123456789?#"
 
  -- list of chars which do not allow any turning
  turnblocked :: String
- turnblocked = "*+x"
+ turnblocked = "*+x" ++ commandchars
 
  -- |Convert a graph/AST into a portable text representation.
  -- See also 'fromGraph'.

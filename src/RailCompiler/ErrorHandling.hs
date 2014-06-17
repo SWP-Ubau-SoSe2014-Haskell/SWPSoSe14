@@ -32,6 +32,7 @@ shrLineNoLexeme         = "No lexeme found in line: %s"
 
 -- SemanticalAnalysis-Errors
 strInvalidMovement      = "Invalid movement."
+strMainMissing          = "No Main Method found,"
 
 -- IntermediateCode-Errors
 
