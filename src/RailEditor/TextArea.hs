@@ -200,14 +200,11 @@ entryInsert area@(TextArea layout current hMap size) x y = do
           "BackSpace" -> handleBackspace area entry x y
           _ -> do return False
       (code,indexes) <- serializeIt area (0,0) ("",[])
-      print $ show(indexes)
       Exc.catch (do
         grid2D <- return $ getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
-       -- putStrLn $ Prelude.foldl (\b a -> b++a++['\n']) "" (head grid2D)
         (xm,ym) <- readIORef size
         paintItRed area x y xm ym
         changeColorOfCurrentEntry area (Color 65535 0 0)
-        print "new lexer-performance:"
         highlightFcts area grid2D indexes 
         return ()) handler
       return True    
@@ -298,6 +295,7 @@ changeColorOfCurrentEntry (TextArea _ current hMap _) color = do
   widgetModifyText currentEntry StateNormal color
 
 -- colors all entry red in a rect from x,y to xMax,yMax
+-- This function is needed to recolor after editing
 paintItRed :: TextArea 
   -> Int
   -> Int
@@ -333,8 +331,6 @@ highlightFcts :: TextArea
 highlightFcts area [] _ = return crash
 highlightFcts area _ [] = return crash
 highlightFcts area (x:xs) (y:ys) = do
-  print "New function to highlight"
-  putStrLn $ show(x)
   highlight area x start y
   highlightFcts area xs ys
   
@@ -358,7 +354,7 @@ highlight textArea grid2D ip yOffset = do
   case ip == crash of
    True -> return ip
    _ -> do
-    (lex, _)<- return $ parse grid2D ip
+    (lex, parseIP)<- return $ parse grid2D ip
     case lex of
       Just NOP -> do
         changeColorOfEntryByCoord textArea (xC,yC) blue
@@ -376,12 +372,21 @@ highlight textArea grid2D ip yOffset = do
         changeColorOfEntryByCoord textArea (xC,yC) blue
       Just (Constant _ )-> do
         changeColorOfEntryByCoord textArea (xC,yC) green
-      Just (Push _ )-> do
-        changeColorOfEntryByCoord textArea (xC,yC) blue
-      Just (Pop _) -> do
-        changeColorOfEntryByCoord textArea (xC,yC) blue
-      Just (Call _) -> do
-        changeColorOfEntryByCoord textArea (xC,yC) blue
+      Just (Push str)-> do
+        colorMoves textArea grid2D ((length str)+2)
+          (turnaround parseIP) blue
+        highlight textArea grid2D (step grid2D parseIP)yOffset
+        return ()
+      Just (Pop str) -> do
+        colorMoves textArea grid2D ((length str)+4)
+          (turnaround parseIP) blue
+        highlight textArea grid2D (step grid2D parseIP)yOffset
+        return ()
+      Just (Call str) -> do
+        colorMoves textArea grid2D ((length str)+2)
+          (turnaround parseIP) blue
+        highlight textArea grid2D (step grid2D parseIP)yOffset
+        return ()
       Just Add1 -> do
         changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Divide -> do
@@ -412,22 +417,22 @@ highlight textArea grid2D ip yOffset = do
         changeColorOfEntryByCoord textArea (xC,yC) gold
       Just Finish -> do
         changeColorOfEntryByCoord textArea (xC,yC) gold
-      Just (Junction _) -> do -- TODO junction stepping
+      Just (Junction _) -> do
         changeColorOfEntryByCoord textArea (xC,yC) gold
         (falseIP,trueIP) <- return $ junctionturns grid2D ip
-        print "junctionturns"
-        print (show falseIP)
-        print (show trueIP)
         highlight textArea grid2D falseIP yOffset
         highlight textArea grid2D trueIP yOffset
         return ()
       Nothing -> do
        changeColorOfEntryByCoord textArea (xC,yC) black
-    if lex == (Just (Junction 0))--after a junction don't color again!
-    then return crash
-    else do
-      nexIP <- return $ step grid2D ip
-      highlight textArea grid2D nexIP yOffset
+    case lex of
+      Just (Junction 0) -> return crash
+      Just (Push _) -> return crash
+      Just (Pop _) -> return crash
+      Just (Call _) -> return crash
+      _ -> do
+        nexIP <- return $ step grid2D ip
+        highlight textArea grid2D nexIP yOffset
     where
       xC = posx ip
       yC = (posy ip)+yOffset
@@ -435,6 +440,18 @@ highlight textArea grid2D ip yOffset = do
       green = (Color 3372 62381 5732)
       gold = (Color 65535 30430 0)
       black = (Color 0 0 0)
+      {- moves the grid and colors the entrys used to handel Push Pop
+        and Call
+      -}
+      colorMoves :: TextArea -> Grid2D -> Int -> IP -> Color -> IO(IP)
+      colorMoves _ _ 0  _ _ = return crash
+      colorMoves area grid2D stepsBack ip color = do
+        changeColorOfEntryByCoord area ((posx ip),((posy ip)+yOffset)) color
+        colorMoves area grid2D (stepsBack-1) (move ip Forward) (color)
+        return crash
+        
+
+
 {-Serializes the code and delets whitespaces at the end of lines.
   It also returns the y coord of $ of functions
 -}
