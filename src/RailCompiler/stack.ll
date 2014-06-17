@@ -14,17 +14,12 @@
 @err_eof = private unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
 
 ; External declarations
-%FILE = type opaque
-
-@stdin = external global %FILE*
-
 declare signext i32 @atol(i8*)
 declare i64 @strtol(i8*, i8**, i32 )
 declare signext i32 @snprintf(i8*, ...)
 declare signext i32 @printf(i8*, ...)
 declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
-declare signext i32 @feof(%FILE*)
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare i8* @calloc(i16 zeroext, i16 zeroext)
 declare void @exit(i32 signext)
@@ -152,9 +147,8 @@ push:
 
 ; If stdin is at EOF, push 1, else 0.
 define void @eof_check() {
-  %stdin = load %FILE** @stdin
-  %res = call i32 @feof(%FILE* %stdin)
-  %is_eof = icmp ne i32 %res, 0
+  %peek = call i32 @input_peek()
+  %is_eof = icmp slt i32 %peek, 0
   br i1 %is_eof, label %at_eof, label %not_at_eof
 
 at_eof:
@@ -165,6 +159,7 @@ at_eof:
 not_at_eof:
   %false = getelementptr [2 x i8]* @false, i8 0, i8 0
   call void @push(i8* %false)
+
   ret void
 }
 
@@ -191,23 +186,6 @@ define i32 @input_peek() {
   %read = call i32 @input_get()
   store i32 %read, i32* @lookahead
   ret i32 %read
-}
-
-; If stdin is at EOF, push 1, else 0.
-define void @eof_check2() {
-  %peek = call i32 @input_peek()
-  %is_eof = icmp slt i32 %peek, 0
-  br i1 %is_eof, label %ec_true, label %ec_false
-
-ec_true:
-  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
-  call void @push(i8* %true)
-  ret void
-
-ec_false:
-  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
-  call void @push(i8* %false)
-  ret void
 }
 
 define void @push(i8* %str_ptr) {
