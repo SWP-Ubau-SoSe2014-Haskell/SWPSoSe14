@@ -456,7 +456,11 @@ module Lexer (
    ')' -> let (string, newip) = stepwhile code tempip (/= '(') in (pushpop string, newip)
    _ -> (Nothing, turn (current code ip) ip)
   where
-   junctioncheck (Nothing, ip) = (Nothing, ip)
+   junctioncheck (Nothing, ip)
+     | forward == ' ' && (left `elem` "v^<>" || right `elem` "v^<>") = (Nothing, crash)
+     | otherwise = (Nothing, ip)
+    where
+     (left, forward, right) = adjacent code ip
    junctioncheck (lexeme, ip)
     | next code ip `elem` "v^<>" = (lexeme, crash)
     | otherwise = (lexeme, ip)

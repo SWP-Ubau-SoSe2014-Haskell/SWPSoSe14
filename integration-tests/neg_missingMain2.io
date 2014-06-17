@@ -1,2 +1,2 @@
 #
-'main' function not found in module.
+SWPSoSe14: No 'main' Method found.
