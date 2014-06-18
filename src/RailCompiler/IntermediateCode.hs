@@ -4,6 +4,11 @@ Description :  Intermediate code generation
 Copyright   :  (c) AUTHORS
 License     :  MIT
 Stability   :  unstable
+
+IntemediateCode.hs takes the output from the SemanticalAnalysis module
+(which is a list of paths) and generates LLVM IR code.
+It turns every path of the form (PathID, [Lexeme], PathID) into a basic block.
+
 -}
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
