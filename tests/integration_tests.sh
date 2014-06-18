@@ -145,7 +145,7 @@ function run_one {
       echo "`$green`Passed`$NC` \"$filename.rail\" with input \"${STDIN[$i]}\""
     else
       fail=true
-      echo -e "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${STDIN[$i]}\"! Expected \"${STDOUT[$i]}\" on stdin, got \"$stdout\";" \
+      echo "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${STDIN[$i]}\"! Expected \"${STDOUT[$i]}\" on stdin, got \"$stdout\";" \
         "expected \"${STDERR[$i]}\" on stderr, got \"$stderr\"."
     fi
   done
