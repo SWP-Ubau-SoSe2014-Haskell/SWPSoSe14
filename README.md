@@ -50,11 +50,14 @@ Integration tests are stored in `integration-tests` in three subdirectories:
    in the future
 
 Each test consists of two files. A rail program `[test-name].rail` and an
-io-file `[test-name].io`. The io-file specifies test cases, i.e. a set of inputs
-with the expected corresponding outputs of the rail-program. Input and output
-as well as the test cases themselves are separated by a hash tag. If an input
-has more than one value, they are separated by a newline. Consider a rail
-program adding two numbers and printing the result (without any newlines). A
+io-file `[test-name].io`.
+
+The io-file specifies test cases, i.e. a set of inputs
+with the expected corresponding outputs of the rail-program.
+
+Input and output as well as the test cases themselves are separated by a hash
+tag. If an input has more than one value, they are separated by a newline. Consider
+a rail program adding two numbers and printing the result (without any newlines). A
 corresponding io-file with two test cases could look as follows:
 
 ```
@@ -69,13 +72,28 @@ corresponding io-file with two test cases could look as follows:
 377
 ```
 
-Note: printed newlines have to be stated explicitely. Consider a hello-world
+**NOTE:** printed newlines have to be stated explicitly. Consider a hello-world
 program printing `Hello World\n` (without any input). The io-file has to look
 as follows:
 
 ```
 #
 Hello World\n
+```
+
+**NOTE:** The expected output is only tested against `stdout`. If you want to test the output
+on `stderr` as well, you can add another section to a test case, separated by a single `%` line:
+
+```
+This is the input.
+#
+This is the expected output on stdout.
+%
+This is the expected output on stderr.
+#
+Another input.
+#
+Another stdout output.
 ```
 
 `tests/integration_tests.sh` is a script written in bash. It iterates over all

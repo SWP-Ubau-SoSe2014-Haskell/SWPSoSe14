@@ -1,2 +1,4 @@
 #
-1Stack underflow!\n
+1
+%
+Stack underflow!\n
