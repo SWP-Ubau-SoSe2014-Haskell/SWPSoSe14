@@ -1,2 +1,2 @@
 #
-Type mismatch!\n
+Invalid type!

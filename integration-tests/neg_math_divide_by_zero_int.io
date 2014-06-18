@@ -1,2 +1,2 @@
 #
-Division by zero!\n
+Division by zero!
