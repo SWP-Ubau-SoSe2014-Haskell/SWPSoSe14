@@ -50,29 +50,37 @@ Integration tests are stored in `integration-tests` in three subdirectories:
    in the future
 
 Each test consists of two files. A rail program `[test-name].rail` and an
-io-file `[test-name].io`. The io-file specifies test cases, i.e. a set of inputs
-with the expected corresponding outputs of the rail-program. Input and output
+io-file `[test-name].io`.
+
+The io-file specifies test cases, i.e. a set of inputs
+with the expected corresponding outputs of the rail-program.
+
+Input and output
 are separated as well as the test cases themselfes by a hash tag. If an input
 has more than one value, they are separated by a newline. Consider a rail
 program adding two numbers and printing the result (without any newlines). A
 corresponding io-file with two test cases could look as follows:
 
->>3
->>5
->>#
->>8
->>#
->>121
->>256
->>#
->>377
+```
+3
+5
+#
+8
+#
+121
+256
+#
+377
+```
 
 Note: printed newlines have to be stated explicitly. Consider a hello-world
 program printing `Hello World\n` (without any input). The io-file has to look
 as follows:
 
->>#
->>Hello World\n
+```
+#
+Hello World\n
+```
 
 `tests/integration_tests.sh` is a script written in bash. It iterates over all
 rail programs in `passing/`, compiles each of them using the current version of
