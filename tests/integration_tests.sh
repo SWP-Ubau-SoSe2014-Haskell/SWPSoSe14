@@ -112,14 +112,14 @@ function run_one {
 	}
 
   # Create temporary files for stdout and stderr.
-  stdoutfile=$(mktemp --tmpdir swp14_ci_stdout.XXXXX)
+  stdoutfile=$(mktemp --tmpdir="$TMPDIR" swp14_ci_stdout.XXXXX)
   if [ $? -gt 0 ]; then
     echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stdout."
     fail=true
     return
   fi
 
-  stderrfile=$(mktemp --tmpdir swp14_ci_stderr.XXXXX)
+  stderrfile=$(mktemp --tmpdir="$TMPDIR" swp14_ci_stderr.XXXXX)
   if [ $? -gt 0 ]; then
     echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stderr."
     fail=true
