@@ -1,3 +1,2 @@
-
 #
-TODO: Crash oder 0 ?
+Type mismatch!\n
