@@ -18,19 +18,18 @@ fileChooserEventHandler :: Window
   -> IO()
 fileChooserEventHandler window fileChooser text response mode
   |response == ResponseOk = do
-    dir <- fileChooserGetFilename fileChooser
     case mode of
       "OpenFile" -> do
-        --dir <- fileChooserGetFilename fileChooser
-        let path = fromJust dir
+        dir <- fileChooserGetFilename fileChooser
+        path <- return $ (fromJust dir)
         set window[windowTitle := path] 
         content <- readFile path
         putStrLn content
         widgetDestroy fileChooser
         return()
       "SaveFile" -> do
-        --dir <- fileChooserGetFilename fileChooser
-        let path = fromJust dir
+        dir <- fileChooserGetFilename fileChooser
+        path <- return $ (fromJust dir)
         set window[windowTitle := path]
         writeFile path text
         widgetDestroy fileChooser
@@ -43,7 +42,7 @@ fileChooserEventHandler window fileChooser text response mode
 saveFile :: Window -> IO Bool
 saveFile window = do 
   dir <- get window windowTitle
-  if isInfixOf "/" dir && not("/" `isSuffixOf` dir)
+  if  (isInfixOf "/" dir) && not(isSuffixOf "/" dir)
   then do
     writeFile dir "ENTRY-CONTENT-STUB"
     return True
@@ -64,7 +63,12 @@ runFileChooser window text fileChooser mode = do
   dialogRun fileChooser
   return()
   where 
-    hand resp = fileChooserEventHandler window fileChooser text resp mode
+    hand = (\resp -> fileChooserEventHandler 
+      window 
+      fileChooser
+      text
+      resp
+      mode)
 
 {-
 Setup a file chooser with modes OpenFile and SaveFile
