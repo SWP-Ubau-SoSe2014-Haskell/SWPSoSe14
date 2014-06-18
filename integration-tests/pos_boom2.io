@@ -1,2 +1,3 @@
 #
-Someone set us up the bomb.\n
+%
+Crash: Custom error: Someone set us up the bomb.\n
