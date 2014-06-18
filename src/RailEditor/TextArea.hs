@@ -1,5 +1,8 @@
 module TextArea where
 
+import Lexer
+import Preprocessor as Pre
+import InterfaceDT as IDT
 import Graphics.UI.Gtk
 import Data.Map as Map
 import Control.Monad.Trans (liftIO)
@@ -28,6 +31,9 @@ getPointerToCurrentInFocus (TextArea _ current _ _) = current
 getPointerToEntryMap (TextArea _ _ map _) = map
 --returns a pointer to the textArea size
 getPointerToSize (TextArea _ _ _ size) = size
+
+--returns the grid2D from a IDT.IPL grid2D
+getGrid2dFromPreProc2Lexer(IDT.IPL grid2D) = grid2D
 
 -- creates a new textArea
 textAreaNew :: Layout  -- the layout which entrys would be placed on
@@ -233,24 +239,24 @@ entryInsert area@(TextArea layout current hMap size) x y = do
           "Down" -> handleDown area x y
           _ -> return False
       --Syntaxhighlighting starts here
-      (code,indexes) <- serializeIt area (0,0) ("",[])
-      Exc.catch (do
-        let grid2D = getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
-        (xm,ym) <- readIORef size
-        paintItRed area 0 0 xm ym
-        changeColorOfCurrentEntry area (Color 65535 0 0)
-        --print"new Lexerturn"
-        highlightFcts area grid2D indexes 
-        return ()) handler
-      return True
-      --Sysntaxhighlighting ends here    
+      syntaxHighlighting area
+      return True   
   return ()
 
 --Handler to catch errors from Preprocessor.hs
 handler :: Exc.ErrorCall -> IO ()
 handler _ = putStrLn "No main function"
 
-
+syntaxHighlighting area@(TextArea layout current hMap size) = do
+  (code,indexes) <- serializeIt area (0,0) ("",[])
+  Exc.catch (do
+    let grid2D = getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
+    (xm,ym) <- readIORef size
+    paintItRed area 0 0 xm ym
+    changeColorOfCurrentEntry area (Color 65535 0 0)
+    --print"new Lexerturn"
+    highlightFcts area grid2D indexes 
+    return ()) handler
 
 -- this is needed to clear the textArea
 clearTextArea area = do
