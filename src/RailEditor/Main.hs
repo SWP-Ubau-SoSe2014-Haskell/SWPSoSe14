@@ -177,7 +177,7 @@ textViewWindowShow textBuffer title = do
     widgetShowAll window
     return ()
 
-getSplashScreen :: IO(Window)
+getSplashScreen :: IO Window
 getSplashScreen = do
     splashScreen <- windowNew
     set splashScreen [windowDefaultHeight := 200, windowDefaultWidth := 400, windowWindowPosition := WinPosCenter, windowTitle := "Starting Editor"]
