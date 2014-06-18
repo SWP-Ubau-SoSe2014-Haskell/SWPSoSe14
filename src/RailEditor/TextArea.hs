@@ -453,14 +453,14 @@ highlight :: TextArea
   -> IO IP
 highlight _ [] _ _ = return crash
 highlight textArea grid2D ip yOffset = do
-  --print "step"
-  --print $ show ip
+  print "step"
+  print $ show ip
   case ip == crash of
    True -> return ip
    _ -> do
     (lex, parseIP)<- return $ parse grid2D ip
-    --print "parsedIp"
-    --print (show parseIP)
+    print "parsedIp"
+    print (show parseIP)
     case lex of
       Just NOP              -> changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Boom             -> changeColorOfEntryByCoord textArea (xC,yC) blue
@@ -469,7 +469,18 @@ highlight textArea grid2D ip yOffset = do
       Just Output           -> changeColorOfEntryByCoord textArea (xC,yC) blue
       Just IDT.Underflow    -> changeColorOfEntryByCoord textArea (xC,yC) blue
       Just RType            -> changeColorOfEntryByCoord textArea (xC,yC) blue
-      Just (Constant _ )    -> changeColorOfEntryByCoord textArea (xC,yC) green
+      Just (Constant str)    -> do
+        if [(current grid2D parseIP)] == "]" || 
+          [(current grid2D parseIP)] == "["
+        then do
+          colorMoves textArea grid2D (length str+2)
+            (turnaround parseIP) green
+          highlight textArea grid2D (step grid2D parseIP)yOffset
+        else do
+          changeColorOfEntryByCoord textArea (xC,yC) green
+          highlight textArea grid2D (step grid2D parseIP)yOffset
+       
+        return ()
       Just (Push str)-> do
         colorMoves textArea grid2D (length str+2)
           (turnaround parseIP) blue
@@ -502,10 +513,10 @@ highlight textArea grid2D ip yOffset = do
       Just Finish           -> changeColorOfEntryByCoord textArea (xC,yC) gold
       Just (Junction _) -> do
         changeColorOfEntryByCoord textArea (xC,yC) gold
-        (falseIP,trueIP) <- return $ junctionturns grid2D ip
-        --print "junction"
-        --print(show falseIP)
-        --print(show trueIP)
+        (falseIP,trueIP) <- return $ junctionturns grid2D parseIP
+        print "junction"
+        print(show falseIP)
+        print(show trueIP)
         highlight textArea grid2D falseIP yOffset
         highlight textArea grid2D trueIP yOffset
         return ()
@@ -515,8 +526,9 @@ highlight textArea grid2D ip yOffset = do
       Just (Push _) -> return crash
       Just (Pop _) -> return crash
       Just (Call _) -> return crash
+      Just (Constant _) -> return crash 
       _ -> do
-        let nexIP = step grid2D ip
+        let nexIP = step grid2D parseIP
         highlight textArea grid2D nexIP yOffset
     where
       xC = posx ip

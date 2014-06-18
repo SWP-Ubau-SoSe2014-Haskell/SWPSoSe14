@@ -26,7 +26,7 @@ module Lexer (
               -- * Utility functions
               fromAST, toAST,
               -- * Editor functions
-              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs , move , RelDirection(Forward)
+              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs , move , current, RelDirection(Forward)
              )
  where
 
@@ -448,8 +448,8 @@ module Lexer (
    '^' -> (Just (Junction 0), ip)
    '>' -> (Just (Junction 0), ip)
    '<' -> (Just (Junction 0), ip)
-   '[' -> let (string, newip) = readconstant code tempip '[' ']' in (Just (Constant string), newip)
-   ']' -> let (string, newip) = readconstant code tempip ']' '[' in (Just (Constant string), newip)
+   '[' -> let (string, newip) = stepwhile code tempip (/= ']') in (Just (Constant string), newip)
+   ']' -> let (string, newip) = stepwhile code tempip (/= '[') in (Just (Constant string), newip)
    '{' -> let (string, newip) = stepwhile code tempip (/= '}') in (Just (Call string), newip)
    '}' -> let (string, newip) = stepwhile code tempip (/= '{') in (Just (Call string), newip)
    '(' -> let (string, newip) = stepwhile code tempip (/= ')') in (pushpop string, newip)
