@@ -19,7 +19,16 @@ module SemanticalAnalysis (
  
  -- functions --
  process :: IDT.SynAna2SemAna -> IDT.SemAna2InterCode
- process (IDT.ISS input) = IDT.ISI (map check input)
+ process (IDT.ISS input)
+  | nomain input = error EH.strMainMissing
+  | otherwise = IDT.ISI (map check input)
+
+ -- looking for a main function
+ nomain :: [IDT.AST] -> Bool
+ nomain [] = True
+ nomain ((name, _):xs)
+  | name == "main" = False
+	| otherwise = nomain xs
  
  -- this will return the exact same input if it's valid and will error otherwise
  check :: IDT.AST -> IDT.AST
