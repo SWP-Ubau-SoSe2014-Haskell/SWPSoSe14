@@ -113,3 +113,7 @@ here are to be considered (short-lived) feature branches.
     for code optimization.
 - `preproc-lexer`: Contains code for the preprocessor and lexer components.
 - `synsem-analysis`: Contains code for the syntactic/semantic analysis.
+
+## Additional Information
+
+For additional information take a look at our wiki pages: https://github.com/SWP-Ubau-SoSe2014-Haskell/SWPSoSe14/wiki
