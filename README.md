@@ -89,6 +89,21 @@ with the stack implementation, etc. For each input/output value, it puts the
 input into the llvm-binary and compares the actual output with the current
 output. The result will be printed to stdout.
 
+**NOTE:** The expected output is only tested against `stdout`. If you want to test the output
+on `stderr` as well, you can add another section to a test case, separated by a single `%` line:
+
+```
+This is the input.
+#
+This is the expected output on stdout.
+%
+This is the expected output on stderr.
+#
+Another input.
+#
+Another stdout output.
+```
+
 (TODO: do we have to run cabal first manually?)
 
 ## Dependencies / Building the Compiler
