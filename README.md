@@ -73,7 +73,7 @@ corresponding io-file with two test cases could look as follows:
 377
 ```
 
-Note: printed newlines have to be stated explicitly. Consider a hello-world
+**NOTE:** printed newlines have to be stated explicitly. Consider a hello-world
 program printing `Hello World\n` (without any input). The io-file has to look
 as follows:
 
@@ -81,13 +81,6 @@ as follows:
 #
 Hello World\n
 ```
-
-`tests/integration_tests.sh` is a script written in bash. It iterates over all
-rail programs in `passing/`, compiles each of them using the current version of
-our rail compiler and retrieves runnable llvm-code, i.e. it already links it
-with the stack implementation, etc. For each input/output value, it puts the
-input into the llvm-binary and compares the actual output with the current
-output. The result will be printed to stdout.
 
 **NOTE:** The expected output is only tested against `stdout`. If you want to test the output
 on `stderr` as well, you can add another section to a test case, separated by a single `%` line:
@@ -103,6 +96,13 @@ Another input.
 #
 Another stdout output.
 ```
+
+`tests/integration_tests.sh` is a script written in bash. It iterates over all
+rail programs in `passing/`, compiles each of them using the current version of
+our rail compiler and retrieves runnable llvm-code, i.e. it already links it
+with the stack implementation, etc. For each input/output value, it puts the
+input into the llvm-binary and compares the actual output with the current
+output. The result will be printed to stdout.
 
 (TODO: do we have to run cabal first manually?)
 
