@@ -85,6 +85,7 @@ function get_filename {
 function run_one {
   dontrun=false
   filename=$(get_name "$1")
+
   if [ -f "$TESTDIR/$filename$EXT" ]
     then
       readtest "$TESTDIR/$filename$EXT"
