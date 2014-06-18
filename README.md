@@ -60,12 +60,12 @@ corresponding io-file with two test cases could look as follows:
 ```
 3
 5
-\#
+#
 8
-\#
+#
 21
 56
-\#
+#
 377
 ```
 
@@ -74,7 +74,7 @@ program printing `Hello World\n` (without any input). The io-file has to look
 as follows:
 
 ```
-\#
+#
 Hello World\n
 ```
 
