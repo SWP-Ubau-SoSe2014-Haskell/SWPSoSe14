@@ -9,6 +9,7 @@
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
 @err_eof = private unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
+@err_type = private unnamed_addr constant [14 x i8] c"Invalid type!\00"
 
 ; External declarations
 %FILE = type opaque
@@ -290,15 +291,15 @@ type_check_a_float:
   %ftype_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 0
   %ftype_a = load i32* %ftype_a_ptr, align 4
   %is_float_a = icmp eq i32 %ftype_a, 2 
-  br i1 %is_float_a, label %type_check_b_float, label %exit_with_failure
+  br i1 %is_float_a, label %type_check_b_float, label %exit_with_invalid_type
 
 type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_b, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %mult_float, label %exit_with_invalid_type
 
-add_float:
+mult_float:
   ; get new_elem_a.fval that contains the float value
   %fval_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 1
   %fval_a_cast = bitcast %union.anon* %fval_a_ptr to float*
@@ -320,7 +321,12 @@ exit_with_success:
   store i32 0, i32* %func_result
   br label %exit
 
-exit_with_failure:                                     
+exit_with_invalid_type: 
+  call void(i8*)* @push(i8* getelementptr inbounds(
+                                          [14 x i8]* @err_type, i64 0, i64 0))
+  br label %exit_with_failure
+
+exit_with_failure:
   store i32 -1, i32* %func_result
   br label %exit
 
@@ -371,9 +377,9 @@ type_check_b_int:
   %type_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %type_b = load i32* %type_b_ptr, align 4
   %is_int_b = icmp eq i32 %type_b, 1
-  br i1 %is_int_b, label %add_int, label %type_check_a_float
+  br i1 %is_int_b, label %rem_int, label %type_check_a_float
 
-add_int:
+rem_int:
   ; get new_elem_a.ival that contains the casted integer value
   %ival_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 1
   %ival_a_cast = bitcast %union.anon* %ival_a_ptr to i32*
@@ -398,15 +404,15 @@ type_check_a_float:
   %ftype_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 0
   %ftype_a = load i32* %ftype_a_ptr, align 4
   %is_float_a = icmp eq i32 %ftype_a, 2 
-  br i1 %is_float_a, label %type_check_b_float, label %exit_with_failure
+  br i1 %is_float_a, label %type_check_b_float, label %exit_with_invalid_type
 
 type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_b, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %rem_float, label %exit_with_invalid_type
 
-add_float:
+rem_float:
   ; get new_elem_a.fval that contains the float value
   %fval_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 1
   %fval_a_cast = bitcast %union.anon* %fval_a_ptr to float*
@@ -428,7 +434,12 @@ exit_with_success:
   store i32 0, i32* %func_result
   br label %exit
 
-exit_with_failure:                                     
+exit_with_invalid_type: 
+  call void(i8*)* @push(i8* getelementptr inbounds(
+                                          [14 x i8]* @err_type, i64 0, i64 0))
+  br label %exit_with_failure
+
+exit_with_failure:
   store i32 -1, i32* %func_result
   br label %exit
 
@@ -479,9 +490,9 @@ type_check_b_int:
   %type_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %type_b = load i32* %type_b_ptr, align 4
   %is_int_b = icmp eq i32 %type_b, 1
-  br i1 %is_int_b, label %add_int, label %type_check_a_float
+  br i1 %is_int_b, label %sub_int, label %type_check_a_float
 
-add_int:
+sub_int:
   ; get new_elem_a.ival that contains the casted integer value
   %ival_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 1
   %ival_a_cast = bitcast %union.anon* %ival_a_ptr to i64*
@@ -505,15 +516,15 @@ type_check_a_float:
   %ftype_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 0
   %ftype_a = load i32* %ftype_a_ptr, align 4
   %is_float_a = icmp eq i32 %ftype_a, 2 
-  br i1 %is_float_a, label %type_check_b_float, label %exit_with_failure
+  br i1 %is_float_a, label %type_check_b_float, label %exit_with_invalid_type
 
 type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_b, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %sub_float, label %exit_with_invalid_type
 
-add_float:
+sub_float:
   ; get new_elem_a.fval that contains the float value
   %fval_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 1
   %fval_a_cast = bitcast %union.anon* %fval_a_ptr to float*
@@ -535,7 +546,12 @@ exit_with_success:
   store i32 0, i32* %func_result
   br label %exit
 
-exit_with_failure:                                     
+exit_with_invalid_type: 
+  call void(i8*)* @push(i8* getelementptr inbounds(
+                                          [14 x i8]* @err_type, i64 0, i64 0))
+  br label %exit_with_failure
+
+exit_with_failure:
   store i32 -1, i32* %func_result
   br label %exit
 
@@ -612,13 +628,13 @@ type_check_a_float:
   %ftype_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 0
   %ftype_a = load i32* %ftype_a_ptr, align 4
   %is_float_a = icmp eq i32 %ftype_a, 2 
-  br i1 %is_float_a, label %type_check_b_float, label %exit_with_failure
+  br i1 %is_float_a, label %type_check_b_float, label %exit_with_invalid_type
 
 type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_b, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %add_float, label %exit_with_invalid_type
 
 add_float:
   ; get new_elem_a.fval that contains the float value
@@ -642,7 +658,12 @@ exit_with_success:
   store i32 0, i32* %func_result
   br label %exit
 
-exit_with_failure:                                     
+exit_with_invalid_type: 
+  call void(i8*)* @push(i8* getelementptr inbounds(
+                                          [14 x i8]* @err_type, i64 0, i64 0))
+  br label %exit_with_failure
+
+exit_with_failure:
   store i32 -1, i32* %func_result
   br label %exit
 
@@ -709,9 +730,9 @@ type_check_b_int:
   %type_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %type_b = load i32* %type_b_ptr, align 4
   %is_int_b = icmp eq i32 %type_b, 1
-  br i1 %is_int_b, label %add_int, label %type_check_a_float
+  br i1 %is_int_b, label %div_int, label %type_check_a_float
 
-add_int:
+div_int:
   ; get new_elem_a.ival that contains the casted integer value
   %ival_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 1
   %ival_a_cast = bitcast %union.anon* %ival_a_ptr to i32*
@@ -737,15 +758,15 @@ type_check_a_float:
   %ftype_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 0
   %ftype_a = load i32* %ftype_a_ptr, align 4
   %is_float_a = icmp eq i32 %ftype_a, 2 
-  br i1 %is_float_a, label %type_check_b_float, label %exit_with_failure
+  br i1 %is_float_a, label %type_check_b_float, label %exit_with_invalid_type
 
 type_check_b_float:
   %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
   %ftype_b = load i32* %ftype_b_ptr, align 4
   %is_float_b = icmp eq i32 %ftype_b, 2
-  br i1 %is_float_b, label %add_float, label %exit_with_failure
+  br i1 %is_float_b, label %div_float, label %exit_with_invalid_type
 
-add_float:
+div_float:
   ; get new_elem_a.fval that contains the float value
   %fval_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 1
   %fval_a_cast = bitcast %union.anon* %fval_a_ptr to float*
@@ -767,7 +788,12 @@ exit_with_success:
   store i32 0, i32* %func_result
   br label %exit
 
-exit_with_failure:                                     
+exit_with_invalid_type: 
+  call void(i8*)* @push(i8* getelementptr inbounds(
+                                          [14 x i8]* @err_type, i64 0, i64 0))
+  br label %exit_with_failure
+
+exit_with_failure:
   store i32 -1, i32* %func_result
   br label %exit
 
@@ -778,8 +804,8 @@ exit:
 
 
 
-@main.number_a = private unnamed_addr constant [4 x i8] c"5.5\00"
-@main.number_b  = private unnamed_addr constant [4 x i8] c"4.3\00"
+@main.number_a = private unnamed_addr constant [4 x i8] c"5.0\00"
+@main.number_b  = private unnamed_addr constant [4 x i8] c"400\00"
 
 define i32 @main_debug() {
   ; push two numbers on the stack
