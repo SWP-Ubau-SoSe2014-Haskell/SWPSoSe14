@@ -10,6 +10,8 @@
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
 @err_eof = private unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
 @err_type = private unnamed_addr constant [14 x i8] c"Invalid type!\00"
+@err_zero = private unnamed_addr constant [18 x i8] c"Division by zero!\00"
+
 
 ; External declarations
 %FILE = type opaque
@@ -233,9 +235,11 @@ define i32 @mult() {
   %new_elem_b = alloca %struct.stack_elem, align 8
 
   ; get top of stack
+  call void @underflow_assert()
   %number_a = call i8* @pop()
 
   ; get second top of stack
+  call void @underflow_assert()
   %number_b = call i8* @pop()
 
   ; get type of number_a
@@ -345,9 +349,11 @@ define i32 @rem() {
   %new_elem_b = alloca %struct.stack_elem, align 8
 
   ; get top of stack
+  call void @underflow_assert()
   %number_a = call i8* @pop()
 
   ; get second top of stack
+  call void @underflow_assert()
   %number_b = call i8* @pop()
 
   ; get type of number_a
@@ -458,9 +464,11 @@ define i32 @sub() {
   %new_elem_b = alloca %struct.stack_elem, align 8
 
   ; get top of stack
+  call void @underflow_assert()
   %number_a = call i8* @pop()
 
   ; get second top of stack
+  call void @underflow_assert()
   %number_b = call i8* @pop()
 
   ; get type of number_a
@@ -570,9 +578,11 @@ define i32 @add() {
   %new_elem_b = alloca %struct.stack_elem, align 8
 
   ; get top of stack
+  call void @underflow_assert()
   %number_a = call i8* @pop()
 
   ; get second top of stack
+  call void @underflow_assert()
   %number_b = call i8* @pop()
 
   ; get type of number_a
@@ -698,9 +708,11 @@ define i32 @div() {
   %new_elem_b = alloca %struct.stack_elem, align 8
 
   ; get top of stack
+  call void @underflow_assert() 
   %number_a = call i8* @pop()
 
   ; get second top of stack
+  call void @underflow_assert() 
   %number_b = call i8* @pop()
 
   ; get type of number_a
@@ -743,6 +755,11 @@ div_int:
   %ival_b_cast = bitcast %union.anon* %ival_b_ptr to i32*
   %ival_b = load i32* %ival_b_cast, align 4
 
+  ; prevent division by zero
+  %div_by_zero = icmp eq i32 %ival_b, 0
+  br i1 %div_by_zero, label %exit_with_zero, label %div_int_ok
+
+div_int_ok:
   ; divide the two integers and store result on the stack
   %ires = sdiv i32 %ival_a, %ival_b
   %lres = sext i32 %ires to i64
@@ -777,9 +794,14 @@ div_float:
   %fval_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 1
   %fval_b_cast = bitcast %union.anon* %fval_b_ptr to float*
   %fval_b = load float* %fval_b_cast, align 4
-  %fval_b_d = fpext float %fval_b to double
 
-  ; add the two floats and store result on the stack
+  ; prevent division by zero
+  %div_by_zero_f = fcmp oeq float %fval_b, 0.0
+  br i1 %div_by_zero_f, label %exit_with_zero, label %div_float_ok
+
+div_float_ok:
+  ; divide the two floats and store result on the stack
+  %fval_b_d = fpext float %fval_b to double
   %fres= fdiv double %fval_a_d, %fval_b_d
   call void(double)* @push_float(double %fres)
   br label %exit_with_success
@@ -787,6 +809,11 @@ div_float:
 exit_with_success:
   store i32 0, i32* %func_result
   br label %exit
+
+exit_with_zero: 
+  call void(i8*)* @push(i8* getelementptr inbounds(
+                                          [18 x i8]* @err_zero, i64 0, i64 0))
+  br label %exit_with_failure
 
 exit_with_invalid_type: 
   call void(i8*)* @push(i8* getelementptr inbounds(
@@ -804,8 +831,8 @@ exit:
 
 
 
-@main.number_a = private unnamed_addr constant [4 x i8] c"5.0\00"
-@main.number_b  = private unnamed_addr constant [4 x i8] c"400\00"
+@main.number_a = private unnamed_addr constant [4 x i8] c"0.0\00"
+@main.number_b  = private unnamed_addr constant [4 x i8] c"4.0\00"
 
 define i32 @main_debug() {
   ; push two numbers on the stack
@@ -815,7 +842,7 @@ define i32 @main_debug() {
   call void(i8*)* @push(i8* %number0)
   call void(i8*)* @push(i8* %number1)
 
-  call i32 @rem()
+  call i32 @div()
   %result = call i8* @pop()
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]*
               @popped, i32 0, i32 0), i8* %result)
