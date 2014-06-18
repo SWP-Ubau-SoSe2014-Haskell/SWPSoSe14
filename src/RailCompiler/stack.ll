@@ -921,6 +921,20 @@ exit:
   ret void
 }
 
+; Popping a pointer from the stack into a variable
+define void @pop_into(i8** %var_ptr) {
+  %val_ptr = call i8* @pop()
+  store i8* %val_ptr, i8** %var_ptr
+  ret void
+}
+
+; Pushing a pointer from a variable onto the stack
+define void @push_from(i8** %var_ptr) {
+  %val = load i8** %var_ptr
+  call void @push (i8* %val)
+  ret void
+}
+
 ; Function Attrs: nounwind uwtable
 ; Takes a string, determines the type it is representing and returns the
 ; corresponding stack element structure.

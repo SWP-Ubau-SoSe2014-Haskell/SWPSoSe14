@@ -26,6 +26,7 @@ import LLVM.General.AST.IntegerPredicate
 import LLVM.General.AST.Float
 import Data.Char
 import Data.Word
+import Data.List
 import Data.Map hiding (filter, map)
 
 import Control.Monad.State
@@ -102,9 +103,42 @@ generateC (pathID, lex, nextPath) = filter checkCons lex
 checkCons (Constant c) = True
 checkCons _ = False
 
+--------------------------------------------------------------------------------
+-- generate global variables for push and pop form and into variables
+createGlobalVariable :: Lexeme -> Global
+createGlobalVariable (Pop v) = globalVariableDefaults {
+  Global.name = Name v,
+  Global.type' = bytePointerTypeVar,
+  Global.initializer = Just (Undef VoidType)
+}
+
+generateVariables :: [AST] -> [Global]
+generateVariables = map createGlobalVariable . getAllVars
+
+getAllVars :: [AST] -> [Lexeme]
+getAllVars = concatMap generateVars
+
+generateVars :: AST -> [Lexeme]
+generateVars (name, paths) = nub $ concatMap generateV paths --delete duplicates
+
+generateV :: (Int, [Lexeme], Int) -> [Lexeme]
+generateV (pathID, lex, nextPath) = filter checkVars lex
+checkVars (Pop v) = True
+checkVars _ = False
+--------------------------------------------------------------------------------
+
 -- pointer type for i8* used e.g. as "string" pointer
 bytePointerType = PointerType {
   pointerReferent = IntegerType 8,
+  pointerAddrSpace = AddrSpace 0
+}
+
+-- pointer type for i8** used as variable pointer
+bytePointerTypeVar = PointerType {
+  pointerReferent = PointerType {
+    pointerReferent = IntegerType 8,
+    pointerAddrSpace = AddrSpace 0
+  },
   pointerAddrSpace = AddrSpace 0
 }
 
@@ -236,6 +270,20 @@ greater = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- function declaration for pop_into
+popInto = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "pop_into",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter bytePointerTypeVar (UnName 0) [] ], False)
+}
+
+-- function declaration for push_from
+pushFrom = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "push_from",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter bytePointerTypeVar (UnName 0) [] ], False)
+}
+
 -- |Generate an instruction for the 'u'nderflow check command.
 generateInstruction Underflow =
   return [Do LLVM.General.AST.Call {
@@ -266,6 +314,56 @@ generateInstruction (Junction label) = do
     metadata = []
   }]
 
+
+-- generate instruction for pop into a variable
+generateInstruction (Pop name) = do
+  index <- fresh
+  index2 <- fresh
+  index3 <- fresh
+  return [ UnName index := Instruction.Alloca { 
+     allocatedType = bytePointerType,
+     numElements = Nothing, --Just (LocalReference (Name name)),
+     alignment = 4,
+     metadata = []
+  },    
+    UnName index2 := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "pop_into",
+    arguments = [(LocalReference $ UnName index, [])],
+    functionAttributes = [],
+    metadata = []
+  },
+    UnName index3 := Instruction.Store {
+    volatile = False,
+    Instruction.address = ConstantOperand $ GlobalReference $ Name name,
+    value = LocalReference (UnName index),
+    maybeAtomicity = Nothing,
+    alignment = 4,
+    metadata = []
+}]
+
+-- generate instruction for push from a variable
+generateInstruction (Push name) = do
+  index <- fresh
+  index2 <- fresh
+  return [ UnName index := Instruction.Load { 
+     volatile = False,
+     Instruction.address = ConstantOperand $ GlobalReference $ Name name,
+     maybeAtomicity = Nothing,
+     alignment = 4,
+     metadata = []
+  },    
+    UnName index2 := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "push_from",
+    arguments = [(LocalReference $ UnName index, [])],
+    functionAttributes = [],
+    metadata = []
+  }]
 
 
 -- generate instruction for push of a constant
@@ -542,14 +640,21 @@ generateGlobalDefinition index def = GlobalDefinition def {
   Global.hasUnnamedAddr = True
 }
 
+-- TODO find a more elegant way to solve this
+generateGlobalDefinitionVar ::  Integer -> Global -> Definition
+generateGlobalDefinitionVar i def = GlobalDefinition def {
+  Global.initializer = Just (Undef VoidType)
+}
+
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
+process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++
     [ underflowCheck, IntermediateCode.print, crash, finish, inputFunc,
       eofCheck, push, pop, peek, add, sub, mul, div1, streq, strlen, strapp,
-      popInt, greater ] ++ generateFunctionsFoo input
+      popInt, greater, popInto, pushFrom ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
+    variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input
     d = fromList $ zipWith foo [0..] $ getAllCons input
     foo index (Constant s) = (s, (length s, index)) --TODO rename foo to something meaningful e.g. createSymTable
     generateFunctionsFoo input = execGlobalCodegen d $ generateFunctions input
