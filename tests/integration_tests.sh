@@ -82,7 +82,7 @@ function run_one {
   if [ "$dontrun" = false ]; then
     for i in $(eval echo "{1..${#OUT[@]}}"); do
       #Really ugly: bash command substitution eats trailing newlines so we need to add a terminating character and then remove it again.
-      output="$(echo -ne "${IN[$i]}" | do_lli "$TMPDIR/$filename";echo x)"
+      output="$(echo -ne "${IN[$i]}" | do_lli "$TMPDIR/$filename" 2>&1; echo x)"
       output="${output%x}"
       #Convert all actual newlines to \n
       output="${output//$'\n'/\\n}"
