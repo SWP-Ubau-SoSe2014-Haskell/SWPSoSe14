@@ -270,6 +270,12 @@ popInt = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- function declaration for equal
+equal = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "equal",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
 -- function declaration for greater
 greater = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "greater",
@@ -530,17 +536,6 @@ generateInstruction Divide =
     metadata = []
   }]
 
--- |Generate instruction for the streq instruction.
-generateInstruction Equal =
-  return [Do LLVM.General.AST.Call {
-    isTailCall = False,
-    callingConvention = C,
-    returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "streq",
-    arguments = [],
-    functionAttributes = [],
-    metadata = []
-  }]
 
 -- |Generate instruction for the strlen instruction.
 generateInstruction Size =
@@ -565,6 +560,19 @@ generateInstruction Append =
     functionAttributes = [],
     metadata = []
   }]
+
+-- |Generate instruction for the equal instruction.
+generateInstruction Equal =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "equal",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 
 -- |Generate instruction for the greater instruction.
 generateInstruction Greater =
@@ -671,7 +679,7 @@ process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++
     [ underflowCheck, IntermediateCode.print, crash, finish, inputFunc,
       eofCheck, push, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp,
-      popInt, greater, popInto, pushFrom ] ++ generateFunctionsFoo input
+      popInt, equal, greater, popInto, pushFrom ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input

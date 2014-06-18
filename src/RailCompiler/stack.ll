@@ -887,7 +887,7 @@ define i32 @main_div() {
   ret i32 0
 }
 
-define i32 @main_greater() {
+define i32 @main_equal() {
   ; push two numbers on the stack
   %number0 = getelementptr [4 x i8]* @main.number_a, i64 0, i64 0   
   %number1 = getelementptr [4 x i8]* @main.number_b, i64 0, i64 0   
@@ -895,7 +895,7 @@ define i32 @main_greater() {
   call void(i8*)* @push(i8* %number0)
   call void(i8*)* @push(i8* %number1)
 
-  call i32 @greater()
+  call i32 @equal()
   %result = call i8* @pop()
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]*
               @popped, i32 0, i32 0), i8* %result)
@@ -1023,72 +1023,125 @@ define i32 @finish(){
   ret i32 0
 }
 
-; UNTESTED
-; Version for both, integer and float. Below is a version for just integers.
-; Takes the first tow elements of the stack and pushes true(1) if the first
-; element is greater than the second, otherwise false(0).
-define void @greater_float() {
-  %new_elem = alloca %struct.stack_elem, align 8
-  
-  ; call sub function and check if the subtraction was successfull
-  %exit_sub = call i32 @sub()
-  %success_sub = icmp eq i32 0, %exit_sub
-  br i1 %success_sub, label %cmp, label %exit_with_failure
+;##############################################################################
+;                                 equal
+;##############################################################################
 
-cmp:
-  ; if the subtraction was successfull, check for the type of the result (int 
-  ; or float)
+define i32 @equal(){
+  ; return value of this function
+  %func_result = alloca i32, align 4
+
+  %new_elem_a = alloca %struct.stack_elem, align 8
+  %new_elem_b = alloca %struct.stack_elem, align 8
+ 
+  ; get top
   call void @underflow_assert()
-  %number = call i8* @pop()
+  %number_a = call i8* @pop()
 
-  ;check Type of subtraction
-  ;%ret = call i32 @get_stack_elem(i8* %number, %struct.stack_elem* %new_elem)
-  %type_ptr = getelementptr inbounds %struct.stack_elem* %new_elem, i32 0, i32 0
-  %type = load i32* %type_ptr, align 4
-  %is_int = icmp eq i32 %type, 1
-  br i1 %is_int, label %cmp_int, label %cmp_float
-  
-; compare if the result of the subtraction is greater than 0. If so the first 
-; operand is grater then the second.
+  ; get top-1
+  call void @underflow_assert()
+  %number_b = call i8* @pop()
+
+  ; get type of number_a
+  %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
+  %is_zero_a = icmp slt i32 %ret_a, 0
+  br i1 %is_zero_a, label %exit_with_failure, label %get_type_b
+
+get_type_b:
+  ; get type of number_b
+  %ret_b = call i32 @get_stack_elem(i8* %number_b, %struct.stack_elem* %new_elem_b)
+  %is_zero_b = icmp slt i32 %ret_b, 0
+  br i1 %is_zero_b, label %exit_with_failure, label %type_check_a_int
+
+type_check_a_int:
+  ; first, load the new_elem_a.type element. check whether it is 1 (aka INT).
+  %type_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 0
+  %type_a = load i32* %type_a_ptr, align 4
+  %is_int_a = icmp eq i32 %type_a, 1
+  br i1 %is_int_a, label %type_check_b_int, label %type_check_a_float
+
+type_check_b_int:
+  ; first, load the new_elem_b.type element. check whether it is 1 (aka INT).
+  %type_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
+  %type_b = load i32* %type_b_ptr, align 4
+  %is_int_b = icmp eq i32 %type_b, 1
+  br i1 %is_int_b, label %cmp_int, label %type_check_a_float
+
 cmp_int:
-  ; get value of the subtraction
-  %ival_ptr = getelementptr inbounds %struct.stack_elem* %new_elem, i32 0, i32 1
-  %ival_cast = bitcast %union.anon* %ival_ptr to i64*
-  %ival = load i64* %ival_cast, align 4
+  ; get new_elem_a.ival that contains the casted integer value
+  %ival_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 1
+  %ival_a_cast = bitcast %union.anon* %ival_a_ptr to i32*
+  %ival_a = load i32* %ival_a_cast, align 4
 
-  %gt_int = icmp slt i64 %ival, 0
-  br i1 %gt_int, label %is_greater, label %is_less_or_equal
+  ; get new_elem_b.ival that contains the casted integer value
+  %ival_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 1
+  %ival_b_cast = bitcast %union.anon* %ival_b_ptr to i32*
+  %ival_b = load i32* %ival_b_cast, align 4
+
+  ; the actual comparison
+  %equal_int = icmp eq i32 %ival_a, %ival_b 
+  br i1 %equal_int, label %exit_with_true, label %exit_with_false
+
+type_check_a_float:
+  %ftype_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 0
+  %ftype_a = load i32* %ftype_a_ptr, align 4
+  %is_float_a = icmp eq i32 %ftype_a, 2 
+  br i1 %is_float_a, label %type_check_b_float, label %exit_with_invalid_type
+
+type_check_b_float:
+  %ftype_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 0
+  %ftype_b = load i32* %ftype_b_ptr, align 4
+  %is_float_b = icmp eq i32 %ftype_b, 2
+  br i1 %is_float_b, label %cmp_float, label %exit_with_invalid_type
 
 cmp_float:
-  ; get value of the subtraction
-  %fval_ptr = getelementptr inbounds %struct.stack_elem* %new_elem, i32 0, i32 1
-  %fval_cast = bitcast %union.anon* %fval_ptr to float*
-  %fval = load float* %fval_cast, align 4
-  %fval_d = fpext float %fval to double
+  ; get new_elem_a.fval that contains the float value
+  %fval_a_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_a, i32 0, i32 1
+  %fval_a_cast = bitcast %union.anon* %fval_a_ptr to float*
+  %fval_a = load float* %fval_a_cast, align 4
 
-  %gt_float = fcmp olt float %fval, 0.0
-  br i1 %gt_float, label %is_greater, label %is_less_or_equal
+  ; get new_elem_b.fval that contains the float value
+  %fval_b_ptr = getelementptr inbounds %struct.stack_elem* %new_elem_b, i32 0, i32 1
+  %fval_b_cast = bitcast %union.anon* %fval_b_ptr to float*
+  %fval_b = load float* %fval_b_cast, align 4
 
-is_greater:
-  ; if the first operand is greater, push true onto the stack
-  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
-  call void @push(i8* %true)
-  br label %exit
+  ; prevent division by zero
+  %equal_float = fcmp oeq float %fval_a, %fval_b
+  br i1 %equal_float, label %exit_with_true, label %exit_with_false
 
-is_less_or_equal:
-  ; if the second operand is greater or if both are equal, 
-  ; push flase onto the stack
-  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
-  call void @push(i8* %false)
-  br label %exit
 
-;behaviour in case of subtraction failure not yet defined
+exit_with_invalid_type: 
+  call void(i8*)* @push(i8* getelementptr inbounds(
+                                          [14 x i8]* @err_type, i64 0, i64 0))
+  br label %exit_with_failure
+
+exit_with_true: 
+  call void(i8*)* @push(i8* getelementptr inbounds(
+                                          [2 x i8]* @true, i64 0, i64 0))
+  br label %exit_with_success
+
+exit_with_false: 
+  call void(i8*)* @push(i8* getelementptr inbounds(
+                                          [2 x i8]* @false, i64 0, i64 0))
+  br label %exit_with_success
+
 exit_with_failure:
-  ret void
+  store i32 -1, i32* %func_result
+  br label %exit
+
+exit_with_success:
+  store i32 0, i32* %func_result
+  br label %exit
 
 exit:
-  ret void
+  %result = load i32* %func_result
+  ret i32 %result
+
 }
+
+;##############################################################################
+;                                 greater
+;##############################################################################
 
 define i32 @greater(){
   ; return value of this function
@@ -1202,41 +1255,6 @@ exit:
 
 }
 
-; version for integer
-define void @greater_() {
-  ; call sub function and check if the subtraction was successfull
-  %exit_sub = call i32 @sub()
-  %success_sub = icmp eq i32 0, %exit_sub
-  br i1 %success_sub, label %cmp, label %exit_with_failure
-
-cmp:
-  ; if the subtraction was successfull, compare if the result of the subtraction
-  ; ist greater than 0. If so the first operand is grater then the second.
-  %pop_sub_result = call i64()* @pop_int()
-  
-  %gt = icmp slt i64 %pop_sub_result, 0
-  br i1 %gt, label %is_greater, label %is_less_or_equal
-
-is_greater:
-  ; if the first operand is greater, then push true onto the stack
-  %true = getelementptr [2 x i8]* @true, i8 0, i8 0
-  call void @push(i8* %true)
-  br label %exit
-
-is_less_or_equal:
-  ; if the second operand is greater or if both are equal, 
-  ; push flase onto the stack
-  %false = getelementptr [2 x i8]* @false, i8 0, i8 0
-  call void @push(i8* %false)
-  br label %exit
-
-;behaviour in case of subtraction failure not yet defined
-exit_with_failure:
-  ret void
-
-exit:
-  ret void
-}
 
 ; Popping a pointer from the stack into a variable
 define void @pop_into(i8** %var_ptr) {
