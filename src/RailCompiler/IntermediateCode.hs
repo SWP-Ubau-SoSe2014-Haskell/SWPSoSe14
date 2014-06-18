@@ -191,6 +191,13 @@ add = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- |Function declaration for 'rem'.
+rem1 = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "rem",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 -- |Function declaration for 'sub'.
 sub = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "sub",
@@ -474,6 +481,19 @@ generateInstruction Add1 =
     metadata = []
   }]
 
+-- |Generate instruction for the remainder instruction.
+generateInstruction Remainder =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "rem",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+
 -- |Generate instruction for the sub instruction.
 generateInstruction Subtract =
   return [Do LLVM.General.AST.Call {
@@ -650,7 +670,7 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++
     [ underflowCheck, IntermediateCode.print, crash, finish, inputFunc,
-      eofCheck, push, pop, peek, add, sub, mul, div1, streq, strlen, strapp,
+      eofCheck, push, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp,
       popInt, greater, popInto, pushFrom ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
