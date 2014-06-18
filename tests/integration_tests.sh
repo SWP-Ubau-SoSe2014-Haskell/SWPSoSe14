@@ -97,7 +97,9 @@ function run_one {
 
   errormsg=$(dist/build/SWPSoSe14/SWPSoSe14 -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
   	  && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
-	  && chmod +x "$TMPDIR/$filename" || { 
+	  && chmod +x "$TMPDIR/$filename" || {
+      TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
+
       # Check STDOUT first for backward compatibility.
 	    if [[ "$errormsg" == "${STDOUT[0]}" || "$errormsg" == "${STDERR[0]}" ]]; then
 	      echo -e "`$green`Passed`$NC` expected fail \"$filename.rail\"."
@@ -125,7 +127,7 @@ function run_one {
   fi
 
   for i in $(seq 0 $(($UNIT_TESTCASES - 1))); do
-    TOTAL_TESTCASES=$((TOTAL_TESTCASES + 1))
+    TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
 
     # Execute the test!
     echo -ne "${STDIN[$i]}" | do_lli "$TMPDIR/$filename" 1>"$stdoutfile" 2>"$stderrfile"
