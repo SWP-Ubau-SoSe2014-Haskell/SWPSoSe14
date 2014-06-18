@@ -225,8 +225,9 @@ entryInsert area@(TextArea layout current hMap size) x y = do
       Exc.catch (do
         grid2D <- return $ getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
         (xm,ym) <- readIORef size
-        paintItRed area x y xm ym
+        paintItRed area 0 0 xm ym
         changeColorOfCurrentEntry area (Color 65535 0 0)
+        --print"new Lexerturn"
         highlightFcts area grid2D indexes 
         return ()) handler
       return True    
@@ -372,11 +373,14 @@ highlight :: TextArea
   -> IO(IP)
 highlight _ [] _ _ = return crash
 highlight textArea grid2D ip yOffset = do
-  print ip
+  --print "step"
+  --print $ show ip
   case ip == crash of
    True -> return ip
    _ -> do
     (lex, parseIP)<- return $ parse grid2D ip
+    --print "parsedIp"
+    --print (show parseIP)
     case lex of
       Just NOP -> do
         changeColorOfEntryByCoord textArea (xC,yC) blue
@@ -442,6 +446,9 @@ highlight textArea grid2D ip yOffset = do
       Just (Junction _) -> do
         changeColorOfEntryByCoord textArea (xC,yC) gold
         (falseIP,trueIP) <- return $ junctionturns grid2D ip
+        --print "junction"
+        --print(show falseIP)
+        --print(show trueIP)
         highlight textArea grid2D falseIP yOffset
         highlight textArea grid2D trueIP yOffset
         return ()
