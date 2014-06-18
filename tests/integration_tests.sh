@@ -133,6 +133,8 @@ function run_one {
     echo -ne "${STDIN[$i]}" | do_lli "$TMPDIR/$filename" 1>"$stdoutfile" 2>"$stderrfile"
 
     # Read stdout and stderr, while converting all actual newlines to \n.
+    # Really ugly: bash command substitution eats trailing newlines so we
+    # need to add a terminating character and then remove it again.
     stdout=$(cat "$stdoutfile"; echo x)
     stdout=${stdout%x}
     stdout=${stdout//$'\n'/\\n}
