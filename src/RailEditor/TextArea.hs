@@ -13,25 +13,32 @@ import Data.Maybe
 import Data.Either
 
 data EntryMode = LeftToRight | UpToDown | Smart deriving (Eq)
+--textArea is a pointer to: 
 data TextArea = TextArea 
-  Layout (IORef (Int,Int))
-  (IORef (Map.Map (Int,Int) Entry))
-  (IORef (Int,Int))
+  Layout 
+  (IORef (Int,Int)) --pointer to current selected entry
+  (IORef (Map.Map (Int,Int) Entry)) {-pointer to hashmap of entrys with 
+  (x,y) coords as key starting by (0,0)-}
+  (IORef (Int,Int)) --pointer to the  size of the textArea
 
+--returns the layout
 getLayout (TextArea layout _ _ _) = layout
 
+--returns a point to the current selected entry
 getPointerToCurrentInFocus (TextArea _ current _ _) = current
 
+--returns a pointer to hashmap of entrys
 getPointerToEntryMap (TextArea _ _ map _) = map
-
+--returns a pointer to the textArea size
 getPointerToSize (TextArea _ _ _ size) = size
-
+--returns the grid2D from a IDT.IPL grid2D
 getGrid2dFromPreProc2Lexer(IDT.IPL grid2D) = grid2D
 
-textAreaNew :: Layout
-  -> Int
-  -> Int
-  -> IO TextArea
+-- creates a new textArea
+textAreaNew :: Layout  -- the layout which entrys would be placed on
+  -> Int --number of entrys in width
+  -> Int --numer of entry in height
+  -> IO TextArea --A textArea ready for writing
 textAreaNew layout x y = do
   currentInFocus <- newIORef (0,0)
   hashMap <- newIORef Map.empty
@@ -40,20 +47,22 @@ textAreaNew layout x y = do
   createTextArea area x y
   return area
 
-createTextArea :: TextArea
-  -> Int
-  -> Int
+--Subfunction of textAreaNew which invokes the entry-creation
+createTextArea :: TextArea --the empty textArea
+  -> Int --number of entrys in width
+  -> Int --numer of entry in height
   -> IO()
 createTextArea area@(TextArea layout current hmap size) x y = do
   createTextAreaH area 0 (pred x) 0 (pred y)
   writeIORef size (x-1,y-1)
   return ()
 
+--Subfunction of createTextArea. This fct creates the lines of textArea
 createTextAreaH :: TextArea
-  -> Int
-  -> Int
-  -> Int
-  -> Int
+  -> Int--current x coord in textArea
+  -> Int--max x coord in textArea
+  -> Int--current y coord in textArea
+  -> Int--max y coord in textArea
   -> IO()
 createTextAreaH area@(TextArea _ _ _ size) xnr xnrS ynr ynrS = do
   (maxX,maxY) <- readIORef size
@@ -61,13 +70,13 @@ createTextAreaH area@(TextArea _ _ _ size) xnr xnrS ynr ynrS = do
   then entryInsert area xnrS xnrS
   else if xnr == xnrS && ynr < ynrS
   then do
-    entryInsert area  xnr ynr
+    entryInsert area  xnr ynr--inserts the textEntry
     createTextAreaH area 0 xnrS (succ ynr) ynrS
   else do
-    entryInsert area xnr ynr
+    entryInsert area xnr ynr--inserts the textEntry
     createTextAreaH area (succ xnr) xnrS ynr ynrS
 
-
+--function to react on a "Return" keypress
 handleReturn area@(TextArea layout current hMap size)x y = do
   hmap <- readIORef hMap
   let nextEntry = Map.lookup (0,y+1) hmap
@@ -84,6 +93,7 @@ handleReturn area@(TextArea layout current hMap size)x y = do
     widgetGrabFocus nEntry
     return True
 
+--function to react on a "Left-Arrow" keypress
 handleLeft area@(TextArea layout current hMap size)x y = do
   hmap <- readIORef hMap
   let prevEntry = Map.lookup (x-1,y) hmap
@@ -99,6 +109,7 @@ handleLeft area@(TextArea layout current hMap size)x y = do
       return True
     else return False
 
+--function to react on a "Right-Arrow" keypress
 handleRight area@(TextArea layout current hMap size)x y = do
   hmap <- readIORef hMap
   let nextEntry = Map.lookup (x+1,y) hmap
@@ -114,6 +125,7 @@ handleRight area@(TextArea layout current hMap size)x y = do
       return True
     else return False
 
+--function to react on a "Up-Arrow" keypress
 handleUp area@(TextArea layout current hMap size) x y = do
   hmap <- readIORef hMap
   let nextEntry = Map.lookup (x,y-1) hmap
@@ -123,6 +135,7 @@ handleUp area@(TextArea layout current hMap size) x y = do
     return True
   else return False
 
+--function to react on a "Down-Arrow" keypress
 handleDown area@(TextArea layout current hMap size) x y = do
   hmap <- readIORef hMap
   let nextEntry = Map.lookup (x,y+1) hmap
@@ -132,6 +145,7 @@ handleDown area@(TextArea layout current hMap size) x y = do
     return True
   else return False
 
+--function to react on a "Tab" keypress
 handleTab area@(TextArea layout current hMap size)x y = do
   hmap <- readIORef hMap
   let nextEntry = Map.lookup (x+4,y) hmap
@@ -147,7 +161,8 @@ handleTab area@(TextArea layout current hMap size)x y = do
     let nEntry = fromJust nextEntry
     widgetGrabFocus nEntry
     return True
-    
+
+--function to react on a "Backspace" keypress    
 handleBackspace area@(TextArea layout current hMap size) entry x y = do
   hmap <- readIORef hMap
   let prevEntry = Map.lookup (x-1,y) hmap
@@ -170,24 +185,29 @@ handleBackspace area@(TextArea layout current hMap size) entry x y = do
         return True
       else return False
 
+--Inserts a new entry to the textArea and sets up its keypressHandler
 entryInsert :: TextArea
-  -> Int
-  -> Int
+  -> Int --x coord to insert
+  -> Int --y coord to insert
   -> IO()
 entryInsert area@(TextArea layout current hMap size) x y = do
+  --creation and config and insert
   entry <- entryNew
   set entry [entryWidthChars := 1, entryText := " "]
   entrySetMaxLength entry 1
   entrySetHasFrame entry False
-  entry `on` focusInEvent $ tryEvent $ liftIO $ writeIORef current (x,y)
   layoutPut layout entry (x*12) (18*y+20)
   hamp <- readIORef hMap
   let hMapN = Map.insert (x,y) entry hamp
   writeIORef hMap hMapN
+  --Handler setup
+  entry `on` focusInEvent $ tryEvent $ liftIO $ writeIORef current (x,y)
+  --KeyEventHandler gets a anonymus function
   on entry keyPressEvent $ do 
     key <- eventKeyName
     val <- eventKeyVal
     liftIO $ do
+      --Just keyhandling and expanding the entry if full
       if isJust (keyToChar val)
       then do
         set entry [entryText := (
@@ -217,6 +237,7 @@ entryInsert area@(TextArea layout current hMap size) x y = do
           "Up" -> handleUp area x y
           "Down" -> handleDown area x y
           _ -> return False
+      --Syntaxhighlighting starts here
       (code,indexes) <- serializeIt area (0,0) ("",[])
       Exc.catch (do
         let grid2D = getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
@@ -226,23 +247,28 @@ entryInsert area@(TextArea layout current hMap size) x y = do
         --print"new Lexerturn"
         highlightFcts area grid2D indexes 
         return ()) handler
-      return True    
+      return True
+      --Sysntaxhighlighting ends here    
   return ()
 
+--Handler to catch errors from Preprocessor.hs
 handler :: Exc.ErrorCall -> IO ()
 handler _ = putStrLn "No main function"
 
+--this is needed to expand the textArea in x y times(#line times) 
 expandXTextAreaN area oldX oldY n
   | n == 0 = return ()
   | otherwise = do
     expandXTextArea area oldX oldY
     expandXTextAreaN area (succ oldX) oldY (n-1)
 
+--Subfunction of expandXTextAreaN 
 expandXTextArea area@(TextArea layout current hMap size) oldX oldY= do
   expandXTextAreaH area oldX oldY
   (xmax,ymax) <- readIORef size
   writeIORef size (succ xmax,ymax)
 
+--insert the new entrys at the end of a line
 expandXTextAreaH area@(TextArea _ _ hMap _) oldX oldY = 
   if oldY == 0
   then do
@@ -257,12 +283,13 @@ expandXTextAreaH area@(TextArea _ _ hMap _) oldX oldY =
     widgetShow newEntry
     expandXTextAreaH area oldX (pred oldY)
 
-
+--this is needed to expand the textArea in y (newline)
 expandYTextArea area@(TextArea layout current hMap size) oldX oldY= do
   expandYTextAreaH area oldX oldY
   (xmax,ymax) <- readIORef size
   writeIORef size (xmax,succ ymax)
 
+--Insert a new line
 expandYTextAreaH area@(TextArea _ _ hMap _) oldX oldY = 
   if oldX == 0
   then do
@@ -277,8 +304,9 @@ expandYTextAreaH area@(TextArea _ _ hMap _) oldX oldY =
     widgetShow newEntry
     expandYTextAreaH area (pred oldX) oldY
 
+--This overwrites the entry text with "" at (x,y)
 clearEntryByCoord :: TextArea
-  -> (Int,Int)
+  -> (Int,Int)--coord
   -> IO()
 clearEntryByCoord (TextArea _ _ hMap _) (x,y) = do
   hashMap <- readIORef hMap
@@ -288,7 +316,7 @@ clearEntryByCoord (TextArea _ _ hMap _) (x,y) = do
     let entry = fromJust mayEntry
     set entry [entryText := ""]
   else return ()
-
+--This overwrites the current entry text with ""
 clearCurrentEntry :: TextArea -> IO()
 clearCurrentEntry (TextArea _ current hMap _) = do
   currentCoord <- readIORef current
@@ -296,7 +324,11 @@ clearCurrentEntry (TextArea _ current hMap _) = do
   let currentEntry = fromJust $ Map.lookup currentCoord hashMap
   set currentEntry [entryText := ""]
 
-changeColorOfEntryByCoord :: TextArea -> (Int,Int) -> Color -> IO()
+--changes the foreground color of the entry at (x,y) in textArea
+changeColorOfEntryByCoord :: TextArea 
+  -> (Int,Int)--coord
+  -> Color--r g b range from 0 (low -)to 65535 (highest intensity)
+  -> IO()
 changeColorOfEntryByCoord (TextArea _ _ hMap _) (x,y) color = do
   hashMap <- readIORef hMap
   let mayEntry = Map.lookup (x,y) hashMap
@@ -306,7 +338,10 @@ changeColorOfEntryByCoord (TextArea _ _ hMap _) (x,y) color = do
     widgetModifyText entry StateNormal color
   else return ()
 
-changeColorOfCurrentEntry :: TextArea -> Color -> IO()
+--changes the foreground color of the current entry in textArea
+changeColorOfCurrentEntry :: TextArea 
+  -> Color--r g b range from 0 (low -)to 65535 (highest intensity)
+  -> IO()
 changeColorOfCurrentEntry (TextArea _ current hMap _) color = do
   currentCoord <- readIORef current
   hashMap <- readIORef hMap
@@ -316,10 +351,10 @@ changeColorOfCurrentEntry (TextArea _ current hMap _) color = do
 -- colors all entry red in a rect from x,y to xMax,yMax
 -- This function is needed to recolor after editing
 paintItRed :: TextArea 
-  -> Int
-  -> Int
-  -> Int
-  -> Int
+  -> Int-- x coord start
+  -> Int--y coord str
+  -> Int--x coord end
+  -> Int--y coord end
   -> IO()
 paintItRed textArea x y xMax yMax= do
   map <- readIORef $ getPointerToEntryMap textArea
@@ -344,8 +379,8 @@ paintItRed textArea x y xMax yMax= do
   
 -- highlight all rail-functions
 highlightFcts :: TextArea
-  -> [Grid2D]  
-  -> [Int]
+  -> [Grid2D]-- List of funtions in line-representation  
+  -> [Int]-- start indexes of function(y coord of textArea) 
   -> IO IP
 highlightFcts area [] _ = return crash
 highlightFcts area _ [] = return crash
