@@ -873,7 +873,7 @@ cmp_int:
   %ival_cast = bitcast %union.anon* %ival_ptr to i64*
   %ival = load i64* %ival_cast, align 4
 
-  %gt_int = icmp sgt i64 %ival, 0
+  %gt_int = icmp slt i64 %ival, 0
   br i1 %gt_int, label %is_greater, label %is_less_or_equal
 
 cmp_float:
@@ -883,7 +883,7 @@ cmp_float:
   %fval = load float* %fval_cast, align 4
   %fval_d = fpext float %fval to double
 
-  %gt_float = fcmp ogt float %fval, 0.0
+  %gt_float = fcmp olt float %fval, 0.0
   br i1 %gt_float, label %is_greater, label %is_less_or_equal
 
 is_greater:
@@ -908,7 +908,7 @@ exit:
 }
 
 ; version for integer
-define void @greater_int() {
+define void @greater() {
   ; call sub function and check if the subtraction was successfull
   %exit_sub = call i32 @sub()
   %success_sub = icmp eq i32 0, %exit_sub
@@ -919,7 +919,7 @@ cmp:
   ; ist greater than 0. If so the first operand is grater then the second.
   %pop_sub_result = call i64()* @pop_int()
   
-  %gt = icmp sgt i64 %pop_sub_result, 0
+  %gt = icmp slt i64 %pop_sub_result, 0
   br i1 %gt, label %is_greater, label %is_less_or_equal
 
 is_greater:
