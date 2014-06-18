@@ -627,8 +627,8 @@ generateBasicBlock (label, instructions, jumpLabel) = do
     isJunction _ = False
     condbranch junctionLabel i = Do CondBr {
       condition = LocalReference $ UnName i,
-      trueDest = Name $ "l_" ++ show jumpLabel,
-      falseDest = Name $ "l_" ++ show junctionLabel,
+      trueDest = Name $ "l_" ++ show junctionLabel,
+      falseDest = Name $ "l_" ++ show jumpLabel,
       metadata' = []
     }
     branch = Do Br {
