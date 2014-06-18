@@ -96,20 +96,20 @@ function run_one {
   fi
 
   errormsg=$(dist/build/SWPSoSe14/SWPSoSe14 -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
-  	  && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
-	  && chmod +x "$TMPDIR/$filename" || {
+    && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
+    && chmod +x "$TMPDIR/$filename" || {
       TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
 
       # Check STDOUT first for backward compatibility.
-	    if [[ "$errormsg" == "${STDOUT[0]}" || "$errormsg" == "${STDERR[0]}" ]]; then
-	      echo -e "`$green`Passed`$NC` expected fail \"$filename.rail\"."
-	    else
+      if [[ "$errormsg" == "${STDOUT[0]}" || "$errormsg" == "${STDERR[0]}" ]]; then
+        echo -e "`$green`Passed`$NC` expected fail \"$filename.rail\"."
+      else
         fail=true
-	      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg\""
+        echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg\""
       fi
 
       return
-	}
+  }
 
   # Create temporary files for stdout and stderr.
   stdoutfile=$(mktemp --tmpdir="$TMPDIR" swp14_ci_stdout.XXXXX)
@@ -147,7 +147,8 @@ function run_one {
       echo "`$green`Passed`$NC` \"$filename.rail\" with input \"${STDIN[$i]}\""
     else
       fail=true
-      echo "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${STDIN[$i]}\"! Expected \"${STDOUT[$i]}\" on stdin, got \"$stdout\";" \
+      echo "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${STDIN[$i]}\"!" \
+        "Expected \"${STDOUT[$i]}\" on stdin, got \"$stdout\";" \
         "expected \"${STDERR[$i]}\" on stderr, got \"$stderr\"."
     fi
   done
@@ -306,17 +307,17 @@ echo "RAN $TOTAL_TESTCASES TESTCASES IN TOTAL."
 function debugprint {
 echo "STDIN"
 for e in "${STDIN[@]}";do
-	echo "$e"
+  echo "$e"
 done
 
 echo "STDOUT"
 for e in "${STDOUT[@]}";do
-	echo "$e"
+  echo "$e"
 done
 
 echo "STDERR"
 for e in "${STDERR[@]}";do
-	echo "$e"
+  echo "$e"
 done
 }
 
