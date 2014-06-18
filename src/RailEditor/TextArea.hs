@@ -1,7 +1,7 @@
 module TextArea where
 
-import Preprocessor as Pre
 import Lexer
+import Preprocessor as Pre
 import InterfaceDT as IDT
 import Graphics.UI.Gtk
 import Data.Map as Map
@@ -31,6 +31,7 @@ getPointerToCurrentInFocus (TextArea _ current _ _) = current
 getPointerToEntryMap (TextArea _ _ map _) = map
 --returns a pointer to the textArea size
 getPointerToSize (TextArea _ _ _ size) = size
+
 --returns the grid2D from a IDT.IPL grid2D
 getGrid2dFromPreProc2Lexer(IDT.IPL grid2D) = grid2D
 
@@ -238,24 +239,72 @@ entryInsert area@(TextArea layout current hMap size) x y = do
           "Down" -> handleDown area x y
           _ -> return False
       --Syntaxhighlighting starts here
-      (code,indexes) <- serializeIt area (0,0) ("",[])
-      Exc.catch (do
-        let grid2D = getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
-        (xm,ym) <- readIORef size
-        paintItRed area 0 0 xm ym
-        changeColorOfCurrentEntry area (Color 65535 0 0)
-        print"new Lexerturn"
-        highlightFcts area grid2D indexes 
-        return ()) handler
-      return True
-      --Sysntaxhighlighting ends here    
+      syntaxHighlighting area
+      return True   
   return ()
 
 --Handler to catch errors from Preprocessor.hs
 handler :: Exc.ErrorCall -> IO ()
 handler _ = putStrLn "No main function"
 
---this is needed to expand the textArea in x y times(#line times) 
+syntaxHighlighting area@(TextArea layout current hMap size) = do
+  (code,indexes) <- serializeIt area (0,0) ("",[])
+  Exc.catch (do
+    let grid2D = getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
+    (xm,ym) <- readIORef size
+    paintItRed area 0 0 xm ym
+    changeColorOfCurrentEntry area (Color 65535 0 0)
+    --print"new Lexerturn"
+    highlightFcts area grid2D indexes 
+    return ()) handler
+
+-- this is needed to clear the textArea
+clearTextArea area = do
+    hmap <- readIORef $ getPointerToEntryMap area
+    let list = toList hmap
+    mapM_ (\(_,entry) -> set entry [entryText := ""]) list
+    return ()
+
+-- maps string to textArea content
+deserializeTextArea area string = do
+    clearTextArea area
+    expandTextAreaTo area newX newY
+    readStringListInEntryMap (getPointerToEntryMap area) lined (0,0)
+    where newX = maximum $ Prelude.map length lined
+          newY = length lined
+          lined = lines string
+
+-- help function for deserialization
+readStringListInEntryMap _ [] _ = return ()
+readStringListInEntryMap hmap (e:es) (x,y) = do
+    readStringInEntryMap hmap e (0,y)
+    readStringListInEntryMap hmap es (0,(y+1));
+
+-- help function for deserialization
+readStringInEntryMap _ [] _ = return ()
+readStringInEntryMap hmap (s:ss) (x,y) = do
+    entryMap <- readIORef hmap
+    let entry = fromJust $ Map.lookup (x,y) entryMap
+    set entry [entryText := [s]]
+    readStringInEntryMap hmap ss (succ x,y)
+
+-- this is needed to expand the textArea to x y
+expandTextAreaTo area newX newY = do
+    let sizePtr = getPointerToSize area
+    (x,y) <- readIORef sizePtr
+    let xDelta = newX-x
+    let yDelta = newY-y
+    expandXTextAreaN area x y xDelta
+    expandYTextAreaN area x y yDelta
+
+--this is needed to expand the textArea in y n times(#line times) 
+expandYTextAreaN area oldX oldY n
+  | n <= 0 = return ()
+  | otherwise = do
+    expandYTextArea area oldX oldY
+    expandYTextAreaN area oldX (succ oldY) (n-1)
+
+--this is needed to expand the textArea in x n times(#line times) 
 expandXTextAreaN area oldX oldY n
   | n == 0 = return ()
   | otherwise = do
@@ -555,8 +604,11 @@ serializeTextAreaContent area@(TextArea layout current hMap size) = do
           text <- entryGetText (snd $ head list)
           let (x,y) = fst $ head list
           if y > beforeY
-          then listToString (tail list) (head text : '\n' : akku) y
-          else listToString (tail list) (head text : akku) y
+          then listToString (tail list) (headE text : '\n' : akku) y
+          else listToString (tail list) (headE text : akku) y
+
+      headE a | length a == 0 = ' '
+              | otherwise = head a
 
       before :: ((Int,Int),Entry) -> ((Int,Int),Entry) -> Bool
       before ((a,b),_) ((c,d),_) = b < d || (b == d && a <= c)

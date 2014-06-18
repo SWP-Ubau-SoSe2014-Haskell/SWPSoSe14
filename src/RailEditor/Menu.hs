@@ -14,12 +14,12 @@ import Data.List
 Handels the button press and open or saves a file
 -}
 fileChooserEventHandler :: Window 
+  -> TextArea
   -> FileChooserDialog 
-  -> String
   -> ResponseId
   -> String
   -> IO()
-fileChooserEventHandler window fileChooser text response mode
+fileChooserEventHandler window area fileChooser response mode
   |response == ResponseOk = do
     dir <- fileChooserGetFilename fileChooser
     let path = fromJust dir
@@ -27,26 +27,30 @@ fileChooserEventHandler window fileChooser text response mode
     case mode of
       "OpenFile" -> do
         content <- readFile path
-        putStrLn content
+        deserializeTextArea area content
+        syntaxHighlighting area
         widgetDestroy fileChooser
         return()
       "SaveFile" -> do
-        writeFile path text
+        code <- (serializeTextAreaContent area)
+        writeFile path code
         widgetDestroy fileChooser
         return()
   |response == ResponseCancel = do
     widgetDestroy fileChooser
     return ()
   |otherwise = return ()
+  
 --checking for a legal path in window title to save whitout dialog
-saveFile :: Window -> IO Bool
-saveFile window = do 
+saveFile :: Window -> TextArea -> IO Bool
+saveFile window area = do
+  code <- serializeTextAreaContent area 
   dir <- get window windowTitle
   if "/" `isInfixOf` dir && not("/" `isSuffixOf` dir)
   then do
-    writeFile dir "ENTRY-CONTENT-STUB"
+    writeFile dir code
     return True
-  else fileDialog window "ENTRY-CONTENT-STUB" "SaveFile" >> return True
+  else fileDialog window area "SaveFile" >> return True
 
 {-
 TODO Refactor text to an 'link' to the entry text
@@ -54,16 +58,16 @@ for the ability to save files
 Passes the enventhandler for fileDialog and starts it
 -}
 runFileChooser :: Window
-  -> String
+  -> TextArea
   -> FileChooserDialog
   -> String
   -> IO()
-runFileChooser window text fileChooser mode = do
+runFileChooser window area fileChooser mode = do
   on fileChooser response hand
   dialogRun fileChooser
   return()
   where 
-    hand resp = fileChooserEventHandler window fileChooser text resp mode
+    hand resp = fileChooserEventHandler window area fileChooser resp mode
 
 {-
 Setup a file chooser with modes OpenFile and SaveFile
@@ -71,10 +75,10 @@ TODO Refactor text to an 'link' to the entry text
 for the ability to save files
 -}
 fileDialog :: Window
-  -> String
+  -> TextArea
   -> String
   -> IO()
-fileDialog window text mode = do
+fileDialog window area mode = do
   case mode of
     "OpenFile" -> do
       fileChooser <- fileChooserDialogNew 
@@ -82,7 +86,7 @@ fileDialog window text mode = do
         (Just window)
         FileChooserActionOpen
         [("open",ResponseOk),("cancel",ResponseCancel)]
-      runFileChooser window text fileChooser mode
+      runFileChooser window area fileChooser mode
     "SaveFile" -> do
       fileChooser <- fileChooserDialogNew
         (Just mode)
@@ -90,7 +94,7 @@ fileDialog window text mode = do
         FileChooserActionSave
         [("save",ResponseOk),("cancel",ResponseCancel)]
       fileChooserSetDoOverwriteConfirmation fileChooser True
-      runFileChooser window text fileChooser mode
+      runFileChooser window area fileChooser mode
   return ()
   
 
@@ -131,11 +135,11 @@ createMenu window area output= do
   --setting actions for the menu
   on menuOpenItem menuItemActivate (fileDialog 
     window 
-    "ENTRY-CONTENT-STUB"
+    area
     "OpenFile")
-  on menuSaveItem menuItemActivate (saveTextAreaToFile
+  on menuSaveItem menuItemActivate (saveFile
     window
-    area)
+    area >> return())
   on menuCloseItem menuItemActivate mainQuit
   on menuCompileItem menuItemActivate 
     (compileOpenFile window area output >> return ())
@@ -146,20 +150,15 @@ createMenu window area output= do
     liftIO $ case modi of
       [Control] -> case key of
         "q" -> mainQuit >> return True
-        "s" -> saveTextAreaToFile window area  >> return True
+        "s" -> saveFile window area  >> return True
         "o" -> fileDialog
           window
-          "ENTRY-CONTENT-STUB"
+          area
           "OpenFile" >> return True
         "F5" -> compileOpenFile window area output
         _ -> return False
       _ -> return False
   return menuBar
-
-saveTextAreaToFile window area = do
-    areaText <- serializeTextAreaContent area
-    fileDialog window areaText "SaveFile"
-    return ()
 
 compileOpenFile ::Window
   -> TextArea
