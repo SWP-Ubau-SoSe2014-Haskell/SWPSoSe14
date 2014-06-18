@@ -1203,7 +1203,7 @@ exit:
 }
 
 ; version for integer
-define void @greater() {
+define void @greater_() {
   ; call sub function and check if the subtraction was successfull
   %exit_sub = call i32 @sub()
   %success_sub = icmp eq i32 0, %exit_sub
