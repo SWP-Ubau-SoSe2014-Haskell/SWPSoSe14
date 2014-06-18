@@ -92,7 +92,12 @@ output. The result will be printed to stdout.
 - Switch to project folder
 - Run `cabal install --enable-tests` to install all dependencies and build the project
 - `cabal test` to run the tests
-- Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 --compile <Source.rail> output`
+- Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 -c -i <Source.rail> -o output`
+- You still need to link the stack manually if you want to have executables: `llvm-link <compiled.ll> src/RailCompiler/stack.ll -o executable`
+
+## Documentation
+
+You can generate the compiler documentation using `cabal haddock --executables` from the root project directory.
 
 ## Branching model
 
