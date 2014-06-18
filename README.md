@@ -95,6 +95,10 @@ output. The result will be printed to stdout.
 - Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 -c -i <Source.rail> -o output`
 - You still need to link the stack manually if you want to have executables: `llvm-link <compiled.ll> src/RailCompiler/stack.ll -o executable`
 
+## Documentation
+
+You can generate the compiler documentation using `cabal haddock --executables` from the root project directory.
+
 ## Branching model
 
 Currently, there are several (long-lived) team branches and one main development branch,
