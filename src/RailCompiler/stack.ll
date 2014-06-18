@@ -845,7 +845,7 @@ define i32 @finish(){
 ; Version for both, integer and float. Below is a version for just integers.
 ; Takes the first tow elements of the stack and pushes true(1) if the first
 ; element is greater than the second, otherwise false(0).
-define void @greater() {
+define void @greater_float() {
   %new_elem = alloca %struct.stack_elem, align 8
   
   ; call sub function and check if the subtraction was successfull
