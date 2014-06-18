@@ -14,12 +14,13 @@ import Data.List
 Handels the button press and open or saves a file
 -}
 fileChooserEventHandler :: Window 
+  -> TextArea
   -> FileChooserDialog 
   -> String
   -> ResponseId
   -> String
   -> IO()
-fileChooserEventHandler window fileChooser text response mode
+fileChooserEventHandler window area fileChooser text response mode
   |response == ResponseOk = do
     dir <- fileChooserGetFilename fileChooser
     let path = fromJust dir
@@ -27,7 +28,7 @@ fileChooserEventHandler window fileChooser text response mode
     case mode of
       "OpenFile" -> do
         content <- readFile path
-        putStrLn content
+        deserializeTextArea area content
         widgetDestroy fileChooser
         return()
       "SaveFile" -> do
@@ -54,6 +55,7 @@ for the ability to save files
 Passes the enventhandler for fileDialog and starts it
 -}
 runFileChooser :: Window
+  -> TextArea
   -> String
   -> FileChooserDialog
   -> String
@@ -63,7 +65,7 @@ runFileChooser window text fileChooser mode = do
   dialogRun fileChooser
   return()
   where 
-    hand resp = fileChooserEventHandler window fileChooser text resp mode
+    hand resp = fileChooserEventHandler window area fileChooser text resp mode
 
 {-
 Setup a file chooser with modes OpenFile and SaveFile
@@ -71,10 +73,11 @@ TODO Refactor text to an 'link' to the entry text
 for the ability to save files
 -}
 fileDialog :: Window
+  -> TextArea
   -> String
   -> String
   -> IO()
-fileDialog window text mode = do
+fileDialog window area text mode = do
   case mode of
     "OpenFile" -> do
       fileChooser <- fileChooserDialogNew 
@@ -82,7 +85,7 @@ fileDialog window text mode = do
         (Just window)
         FileChooserActionOpen
         [("open",ResponseOk),("cancel",ResponseCancel)]
-      runFileChooser window text fileChooser mode
+      runFileChooser window area text fileChooser mode
     "SaveFile" -> do
       fileChooser <- fileChooserDialogNew
         (Just mode)
@@ -90,7 +93,7 @@ fileDialog window text mode = do
         FileChooserActionSave
         [("save",ResponseOk),("cancel",ResponseCancel)]
       fileChooserSetDoOverwriteConfirmation fileChooser True
-      runFileChooser window text fileChooser mode
+      runFileChooser window area text fileChooser mode
   return ()
   
 
@@ -131,6 +134,7 @@ createMenu window area output= do
   --setting actions for the menu
   on menuOpenItem menuItemActivate (fileDialog 
     window 
+    area
     "ENTRY-CONTENT-STUB"
     "OpenFile")
   on menuSaveItem menuItemActivate (saveTextAreaToFile
@@ -149,6 +153,7 @@ createMenu window area output= do
         "s" -> saveTextAreaToFile window area  >> return True
         "o" -> fileDialog
           window
+          area
           "ENTRY-CONTENT-STUB"
           "OpenFile" >> return True
         "F5" -> compileOpenFile window area output
