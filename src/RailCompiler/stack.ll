@@ -17,10 +17,15 @@
 
 
 ; External declarations
+%FILE = type opaque
+
+@stderr = external global %FILE*
+
 declare signext i32 @atol(i8*)
 declare i64 @strtol(i8*, i8**, i32 )
 declare signext i32 @snprintf(i8*, ...)
 declare signext i32 @printf(i8*, ...)
+declare signext i32 @fprintf(%FILE*, i8*, ...)
 declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
@@ -71,7 +76,7 @@ define void @underflow_check() {
   ret void
 }
 
-; Exit the program if stack is empty
+; Exit the program if stack is empty (prints error to stderr).
 define void @underflow_assert() {
   %stack_size = call i64 @stack_get_size()
   %stack_empty = icmp eq i64 %stack_size, 0
@@ -79,7 +84,8 @@ define void @underflow_assert() {
 
 uas_crash:
   %err = getelementptr [18 x i8]* @err_stack_underflow, i8 0, i8 0
-  call i32(i8*, ...)* @printf(i8* %err)
+  %stderr = load %FILE** @stderr
+  call i32(%FILE*, i8*, ...)* @fprintf(%FILE* %stderr, i8* %err)
   call void @exit(i32 1)
 
   ret void
@@ -100,7 +106,7 @@ define void @print() {
   ret void
 }
 
-; Pop stack, print result string and exit the program.
+; Pop stack, print result string to stderr and exit the program.
 define void @crash(i1 %is_custom_error) {
   ; TODO: Check if the top stack element is a string and crash if it is not.
   call void @underflow_assert()
@@ -118,7 +124,8 @@ raw_error:
 end:
   %fmt = phi i8* [%raw_fmt, %raw_error], [%cust_fmt, %custom_error]
   %val = call i8* @pop()
-  call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
+  %stderr = load %FILE** @stderr
+  call i32(%FILE*, i8*, ...)* @fprintf(%FILE* %stderr, i8* %fmt, i8* %val)
 
   ; Now, crash!
   call void @exit(i32 1)
