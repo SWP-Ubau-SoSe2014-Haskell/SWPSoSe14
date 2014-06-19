@@ -338,7 +338,7 @@ highlightFcts area (x:xs) (y:ys) = do
  main highlighting process which highlights a single rail-function.
  Colors:
    comments : red
-   $ : orange
+   $,#, junctions: orange
    rails : black
    built in function blue
    constans green
