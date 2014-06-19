@@ -1,3 +1,15 @@
+{- |
+Module      : Backend
+Description : Converts the internal LLVM representation into textual LLVM IR.
+Maintainer  : See the AUTHORS file in the root directory of this project for a list
+              of contributors.
+License     : MIT
+
+Uses the LLVM bindings for Haskell to convert the internal LLVM representation
+(provided by the bindings themselves) into the final, textual LLVM IR.
+
+Does not do any linking.
+-}
 module Backend (
                 process   -- main function of the module "Backend"
                )
@@ -16,11 +28,14 @@ import LLVM.General.AST.Global
 
 
 -- functions --
+-- |Converts the internal LLVM representation into textual LLVM IR.
 process :: IDT.CodeOpt2Backend -> IDT.Backend2Output
 process input = output
   where
     output = IDT.IBO $ generateOutput input
 
+-- |Uses the Haskell LLVM bindings to convert the internal LLVM
+-- representation into textual LLVM IR.
 generateOutput :: IDT.CodeOpt2Backend -> IO String
 generateOutput (IDT.ICB mod) = do
   s <- withContext $ \context ->

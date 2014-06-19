@@ -8,6 +8,7 @@
 @to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
+@write_mode = global [2 x i8] c"w\00"
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 @crash_cust_str_fmt = private unnamed_addr constant [24 x i8] c"Crash: Custom error: %s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
@@ -19,12 +20,13 @@
 ; External declarations
 %FILE = type opaque
 
-@stderr = external global %FILE*
+@stderr = global %FILE* undef
 
 declare signext i32 @atol(i8*)
 declare i64 @strtol(i8*, i8**, i32 )
 declare signext i32 @snprintf(i8*, ...)
 declare signext i32 @printf(i8*, ...)
+declare %FILE* @fdopen(i32, i8*)
 declare signext i32 @fprintf(%FILE*, i8*, ...)
 declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
@@ -947,7 +949,7 @@ entry:
   %len_result_3 = trunc i64 %len_result_2 to i16
   %result = call i8* @malloc(i16 %len_result_3)
 
-  ; copy first string
+  ; copy first string into result
   br label %loop1
 loop1:
   %i = phi i64 [0, %entry], [ %next_i, %loop1 ]
@@ -959,7 +961,7 @@ loop1:
   %cond = icmp eq i8 %c, 0
   br i1 %cond, label %finished, label %loop1
 finished:
-  ; copy second string
+  ; copy second string into result
   br label %loop2
 loop2:
   %j = phi i64 [0, %finished], [ %next_j, %loop2 ]
@@ -976,12 +978,60 @@ finished2:
   ret void
 }
 
+define void @strcut() {
+entry:
+  %indx = call i64()* @pop_int()
+  %str = call i8*()* @pop()
+
+  ; allocate space for result strings
+  %len1_1 = add i64 %indx, 1
+  %len1 = trunc i64 %len1_1 to i16
+  call void(i8*)* @push(i8* %str)
+  call void()* @strlen()
+  %len_str = call i64()* @pop_int()
+  %len2_1 = sub i64 %len_str, %indx
+  %len2_2 = add i64 %len2_1, 1
+  %len2 = trunc i64 %len2_2 to i16
+  %result1 = call i8* @malloc(i16 %len1)
+  %result2 = call i8* @malloc(i16 %len2)
+
+  ; fill result1 string
+  br label %loop1
+loop1:
+  %i = phi i64 [0, %entry], [ %next_i, %loop1 ]
+  %next_i = add i64 %i, 1
+  %addr = getelementptr i8* %str, i64 %i
+  %c = load i8* %addr
+  %result_addr = getelementptr i8* %result1, i64 %i
+  store i8 %c, i8* %result_addr
+  %cond = icmp eq i8 %c, 0
+  br i1 %cond, label %finished, label %loop1
+finished:
+  ; fill result2 string
+  br label %loop2
+loop2:
+  %j = phi i64 [0, %finished], [ %next_j, %loop2 ]
+  %next_j = add i64 %i, 1
+  %k = add i64 %j, %indx
+  %addr2 = getelementptr i8* %str, i64 %k
+  %c2 = load i8* %addr2
+  %result_addr2 = getelementptr i8* %result2, i64 %i
+  store i8 %c2, i8* %result_addr2
+  %cond2 = icmp eq i8 %c, 0
+  br i1 %cond2, label %finished2, label %loop2
+finished2: 
+  call void(i8*)* @push(i8* %result1)
+  call void(i8*)* @push(i8* %result2)
+  ret void
+}
+
 define void @strlen() {
 entry:
+  call void @underflow_assert() 
   %str = call i8*()* @pop()
   br label %loop
 loop:
-  %i = phi i64 [1, %entry ], [ %next_i, %loop ]
+  %i = phi i64 [0, %entry ], [ %next_i, %loop ]
   %next_i = add i64 %i, 1
   %addr = getelementptr i8* %str, i64 %i
   %c = load i8* %addr
@@ -994,7 +1044,9 @@ finished:
 
 define void @streq() {
 entry:
+  call void @underflow_assert() 
   %str1 = call i8*()* @pop()
+  call void @underflow_assert() 
   %str2 = call i8*()* @pop()
   br label %loop
 loop:
@@ -1265,6 +1317,7 @@ exit:
 
 ; Popping a pointer from the stack into a variable
 define void @pop_into(i8** %var_ptr) {
+  call void @underflow_assert()
   %val_ptr = call i8* @pop()
   store i8* %val_ptr, i8** %var_ptr
   ret void
@@ -1392,6 +1445,18 @@ define i32 @main_() {
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
 
  ret i32 0
+}
+
+;##############################################################################
+;                                  init
+;##############################################################################
+define void @start() {
+
+  %write_mode = getelementptr [2 x i8]* @write_mode, i64 0, i64 0
+  %stderr = call %FILE* @fdopen(i32 2, i8* %write_mode)
+  store %FILE* %stderr, %FILE** @stderr
+
+  ret void
 }
 
 ; vim:sw=2 ts=2 et

@@ -30,7 +30,7 @@ main = do
     TCodeOpt.testModule ++
     TBackend.testModule
     )
-  testexit <- system "tests/integration_tests.sh"
+  testexit <- system "tests/integration_tests"
   exitWith $ addexits testexit $ getExitCode counts
 
 addexits :: ExitCode -> ExitCode -> ExitCode

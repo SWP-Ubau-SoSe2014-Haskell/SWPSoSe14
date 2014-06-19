@@ -72,7 +72,7 @@ corresponding io-file with two test cases could look as follows:
 377
 ```
 
-**NOTE:** printed newlines have to be stated explicitly. Consider a hello-world
+**NOTE 1:** printed newlines have to be stated explicitly. Consider a hello-world
 program printing `Hello World\n` (without any input). The io-file has to look
 as follows:
 
@@ -81,7 +81,7 @@ as follows:
 Hello World\n
 ```
 
-**NOTE:** The expected output is only tested against `stdout`. If you want to test the output
+**NOTE 2:** The expected output is only tested against `stdout`. If you want to test the output
 on `stderr` as well, you can add another section to a test case, separated by a single `%` line:
 
 ```
@@ -95,6 +95,9 @@ Another input.
 #
 Another stdout output.
 ```
+
+**NOTE 3:** Lines containing only a single `%` or `#` character always delimit sections as
+described above. There is no way to escape them, sorry.
 
 `tests/integration_tests.sh` is a script written in bash. It iterates over all
 rail programs in `passing/`, compiles each of them using the current version of
@@ -115,11 +118,13 @@ output. The result will be printed to stdout.
 - Run `cabal install --enable-tests` to install all dependencies and build the project
 - `cabal test` to run the tests
 - Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 -c -i <Source.rail> -o output`
-- You still need to link the stack manually if you want to have executables: `llvm-link <compiled.ll> src/RailCompiler/stack.ll -o executable`
+- You still need to link the stack manually if you want to have executables:
+  `llvm-link <compiled.ll> src/RailCompiler/stack.ll -o executable`
 
 ## Documentation
 
-You can generate the compiler documentation using `cabal haddock --executables` from the root project directory.
+You can generate the compiler documentation using `cabal haddock --executables
+--haddock-options --ignore-all-exports` from the root project directory.
 
 ## Branching model
 
