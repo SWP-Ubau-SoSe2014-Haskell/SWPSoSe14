@@ -90,7 +90,7 @@ function run_one {
     then
       readtest "$TESTDIR/$filename$EXT"
     else
-      fail=true
+      fail=$(($fail + 1))
       echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". $EXT-file is missing."
       return
   fi
@@ -102,9 +102,14 @@ function run_one {
 
       # Check STDOUT first for backward compatibility.
       if [[ "$errormsg" == "${STDOUT[0]}" || "$errormsg" == "${STDERR[0]}" ]]; then
-        echo -e "`$green`Passed`$NC` expected fail \"$filename.rail\"."
+        [ $verbotisty -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
+	if [ $verbotisty -gt 1 ]; then
+          echo "  The error message was: \"$errormsg\""
+        else
+          echo -ne "\n"
+        fi
       else
-        fail=true
+        fail=$(($fail + 1))
         echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg\""
       fi
 
@@ -115,14 +120,14 @@ function run_one {
   stdoutfile=$(mktemp --tmpdir="$TMPDIR" swp14_ci_stdout.XXXXX)
   if [ $? -gt 0 ]; then
     echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stdout."
-    fail=true
+    fail=$(($fail + 1))
     return
   fi
 
   stderrfile=$(mktemp --tmpdir="$TMPDIR" swp14_ci_stderr.XXXXX)
   if [ $? -gt 0 ]; then
     echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stderr."
-    fail=true
+    fail=$(($fail + 1))
     return
   fi
 
@@ -144,9 +149,14 @@ function run_one {
     stderr=${stderr//$'\n'/\\n}
 
     if [[ "$stdout" == "${STDOUT[$i]}" && "$stderr" == "${STDERR[$i]}" ]]; then
-      echo "`$green`Passed`$NC` \"$filename.rail\" with input \"${STDIN[$i]}\""
+      [ $verbosity -gt 0 ] && echo -n "`$green`Passed`$NC` \"$filename.rail\" with input \"${STDIN[$i]}\""
+	if [ $verbotisty -gt 1 ]; then
+          echo "  Got output: \"$stdout\". Stderr: \"$stderr\"."
+        else
+          echo -ne "\n"
+        fi
     else
-      fail=true
+      fail=$(($fail + 1))
       echo "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${STDIN[$i]}\"!" \
         "Expected \"${STDOUT[$i]}\" on stdin, got \"$stdout\";" \
         "expected \"${STDERR[$i]}\" on stderr, got \"$stderr\"."
@@ -279,7 +289,7 @@ fi
 
 TMPDIR=tests/tmp
 mkdir -p $TMPDIR
-fail=false
+fail=0
 if [ -n "$test" ];then
   if [ "${test##*.}" == "rail" ]; then
     # Set the TESTDIR to the directory the .rail file is in.
@@ -303,6 +313,12 @@ echo
 echo "RAN $TOTAL_TESTCASES TESTCASES IN TOTAL."
 
 
+if [ ! $fail -eq 0 ];then
+  echo "`$red`FAILED`$NC` $fail test cases."
+  exit 1
+fi
+echo "All testcases `$green` PASSED`$NC`."
+
 ### DEBUGGING:
 function debugprint {
 echo "STDIN"
@@ -323,8 +339,5 @@ done
 
 #debugprint
 
-if [ "$fail" = true ];then
-  exit 1
-fi
 
 # vim:ts=2 sw=2 et
