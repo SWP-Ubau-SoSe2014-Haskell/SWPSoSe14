@@ -117,14 +117,14 @@ function run_one {
   }
 
   # Create temporary files for stdout and stderr.
-  stdoutfile=$(mktemp --tmpdir="$TMPDIR" swp14_ci_stdout.XXXXX)
+  stdoutfile=$(mktemp -t swp14_ci_stdout.XXXXX)
   if [ $? -gt 0 ]; then
     echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stdout."
     fail=$(($fail + 1))
     return
   fi
 
-  stderrfile=$(mktemp --tmpdir="$TMPDIR" swp14_ci_stderr.XXXXX)
+  stderrfile=$(mktemp -t swp14_ci_stderr.XXXXX)
   if [ $? -gt 0 ]; then
     echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stderr."
     fail=$(($fail + 1))
@@ -287,8 +287,9 @@ if [ -n "$list" ]; then
   exit 0
 fi
 
-TMPDIR=tests/tmp
+export TMPDIR=tests/tmp
 mkdir -p $TMPDIR
+
 fail=0
 if [ -n "$test" ];then
   if [ "${test##*.}" == "rail" ]; then
@@ -307,7 +308,8 @@ if [ -n "$test" ];then
 else
   run_all
 fi
-rm -r tests/tmp
+
+rm -rf tests/tmp
 
 echo
 echo "RAN $TOTAL_TESTCASES TESTCASES IN TOTAL."
