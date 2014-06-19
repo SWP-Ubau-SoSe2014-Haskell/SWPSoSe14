@@ -596,11 +596,23 @@ generateInstruction Greater =
 
 -- |Generate instruction for finish instruction
 generateInstruction Finish =
-    return [Do LLVM.General.AST.Call {
+  return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "finish",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for function call
+generateInstruction (IDT.Call functionName) =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name functionName,
     arguments = [],
     functionAttributes = [],
     metadata = []
