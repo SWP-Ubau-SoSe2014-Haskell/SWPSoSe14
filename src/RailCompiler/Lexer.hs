@@ -356,7 +356,7 @@ module Lexer (
 
  -- returns insturction pointers turned for (Lambda, Reflected)
  lambdadirs :: IP -> (IP, IP)
- lambdadirs ip = addpath $ (ip, turnaround ip)
+ lambdadirs ip = addpath (ip, turnaround ip)
 
  -- make a 180° turn on instruction pointer
  turnaround :: IP -> IP
