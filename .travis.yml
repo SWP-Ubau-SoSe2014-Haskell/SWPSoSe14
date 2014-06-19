@@ -11,4 +11,4 @@ install:
         - sudo cabal install --package-db=/var/lib/ghc/package.conf.d --only-dependencies --enable-tests
 before_script: hlint src/RailCompiler
 script:
-        - cabal configure --with-compiler=/usr/bin/ghc --package-db=/var/lib/ghc/package.conf.d --enable-tests && cabal build && cabal test && tests/integration_tests.sh
+        - cabal configure --with-compiler=/usr/bin/ghc --package-db=/var/lib/ghc/package.conf.d --enable-tests && cabal build && cabal test

@@ -50,29 +50,54 @@ Integration tests are stored in `integration-tests` in three subdirectories:
    in the future
 
 Each test consists of two files. A rail program `[test-name].rail` and an
-io-file `[test-name].io`. The io-file specifies test cases, i.e. a set of inputs
-with the expected corresponding outputs of the rail-program. Input and output
-are separated as well as the test cases themselfes by a hash tag. If an input
-has more than one value, they are separated by a newline. Consider a rail
-program adding two numbers and printing the result (without any newlines). A
+io-file `[test-name].io`.
+
+The io-file specifies test cases, i.e. a set of inputs
+with the expected corresponding outputs of the rail-program.
+
+Input and output as well as the test cases themselves are separated by a hash
+tag. If an input has more than one value, they are separated by a newline. Consider
+a rail program adding two numbers and printing the result (without any newlines). A
 corresponding io-file with two test cases could look as follows:
 
->>3
->>5
->>#
->>8
->>#
->>121
->>256
->>#
->>377
+```
+3
+5
+#
+8
+#
+21
+56
+#
+377
+```
 
-Note: printed newlines have to be stated explicitly. Consider a hello-world
+**NOTE 1:** printed newlines have to be stated explicitly. Consider a hello-world
 program printing `Hello World\n` (without any input). The io-file has to look
 as follows:
 
->>#
->>Hello World\n
+```
+#
+Hello World\n
+```
+
+**NOTE 2:** The expected output is only tested against `stdout`. If you want to test the output
+on `stderr` as well, you can add another section to a test case, separated by a single `%` line:
+
+```
+This is the input.
+#
+This is the expected output on stdout.
+%
+This is the expected output on stderr.
+#
+Another input.
+#
+Another stdout output.
+```
+
+**NOTE 3:** Lines containing only a single `%` or `#` character always delimit sections as
+described above. There is no way to escape them, sorry.
 
 `tests/integration_tests.sh` is a script written in bash. It iterates over all
 rail programs in `passing/`, compiles each of them using the current version of
@@ -92,7 +117,14 @@ output. The result will be printed to stdout.
 - Switch to project folder
 - Run `cabal install --enable-tests` to install all dependencies and build the project
 - `cabal test` to run the tests
-- Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 --compile <Source.rail> output`
+- Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 -c -i <Source.rail> -o output`
+- You still need to link the stack manually if you want to have executables:
+  `llvm-link <compiled.ll> src/RailCompiler/stack.ll -o executable`
+
+## Documentation
+
+You can generate the compiler documentation using `cabal haddock --executables
+--haddock-options --ignore-all-exports` from the root project directory.
 
 ## Branching model
 
@@ -113,3 +145,7 @@ here are to be considered (short-lived) feature branches.
     for code optimization.
 - `preproc-lexer`: Contains code for the preprocessor and lexer components.
 - `synsem-analysis`: Contains code for the syntactic/semantic analysis.
+
+## Additional Information
+
+For additional information take a look at our wiki pages: https://github.com/SWP-Ubau-SoSe2014-Haskell/SWPSoSe14/wiki

@@ -1,2 +1,2 @@
 #
-Crash!
+RailCompiler: Invalid movement.

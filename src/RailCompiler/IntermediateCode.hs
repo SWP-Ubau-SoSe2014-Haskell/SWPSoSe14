@@ -4,6 +4,11 @@ Description :  Intermediate code generation
 Copyright   :  (c) AUTHORS
 License     :  MIT
 Stability   :  unstable
+
+IntemediateCode.hs takes the output from the SemanticalAnalysis module
+(which is a list of paths) and generates LLVM IR code.
+It turns every path of the form (PathID, [Lexeme], PathID) into a basic block.
+
 -}
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -11,24 +16,25 @@ Stability   :  unstable
 module IntermediateCode(process) where
 
 -- imports --
-import InterfaceDT as IDT
 import ErrorHandling as EH
+import InterfaceDT as IDT
 
+import Control.Applicative
+import Control.Monad.State
+import Data.Char
+import Data.List
+import Data.Map hiding (filter, map)
+import Data.Word
 import LLVM.General.AST
-import qualified LLVM.General.AST.Global as Global
+import LLVM.General.AST.AddrSpace
 import LLVM.General.AST.CallingConvention
 import LLVM.General.AST.Constant as Constant
-import LLVM.General.AST.Linkage
-import LLVM.General.AST.AddrSpace
-import LLVM.General.AST.Operand
-import LLVM.General.AST.Instruction as Instruction
 import LLVM.General.AST.Float
-import Data.Char
-import Data.Word
-import Data.Map hiding (filter, map)
-
-import Control.Monad.State
-import Control.Applicative
+import LLVM.General.AST.Instruction as Instruction
+import LLVM.General.AST.IntegerPredicate
+import LLVM.General.AST.Linkage
+import LLVM.General.AST.Operand
+import qualified LLVM.General.AST.Global as Global
 
 data CodegenState = CodegenState {
   blocks :: [BasicBlock],
@@ -101,10 +107,50 @@ generateC (pathID, lex, nextPath) = filter checkCons lex
 checkCons (Constant c) = True
 checkCons _ = False
 
+--------------------------------------------------------------------------------
+-- generate global variables for push and pop form and into variables
+createGlobalVariable :: Lexeme -> Global
+createGlobalVariable (Pop v) = globalVariableDefaults {
+  Global.name = Name v,
+  Global.type' = bytePointerTypeVar,
+  Global.initializer = Just (Undef VoidType)
+}
+
+generateVariables :: [AST] -> [Global]
+generateVariables = map createGlobalVariable . getAllVars
+
+getAllVars :: [AST] -> [Lexeme]
+getAllVars = concatMap generateVars
+
+generateVars :: AST -> [Lexeme]
+generateVars (name, paths) = nub $ concatMap generateV paths --delete duplicates
+
+generateV :: (Int, [Lexeme], Int) -> [Lexeme]
+generateV (pathID, lex, nextPath) = filter checkVars lex
+checkVars (Pop v) = True
+checkVars _ = False
+--------------------------------------------------------------------------------
+
 -- pointer type for i8* used e.g. as "string" pointer
 bytePointerType = PointerType {
   pointerReferent = IntegerType 8,
   pointerAddrSpace = AddrSpace 0
+}
+
+-- pointer type for i8** used as variable pointer
+bytePointerTypeVar = PointerType {
+  pointerReferent = PointerType {
+    pointerReferent = IntegerType 8,
+    pointerAddrSpace = AddrSpace 0
+  },
+  pointerAddrSpace = AddrSpace 0
+}
+
+-- |Function declaration for 'underflow_check'.
+start = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "start",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
 }
 
 -- |Function declaration for 'underflow_check'.
@@ -124,6 +170,13 @@ print = GlobalDefinition $ Global.functionDefaults {
 -- |Function declaration for 'crash'.
 crash = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "crash",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter (IntegerType 1) (Name "is_custom_error") [] ], False)
+}
+
+-- |Function declaration for 'finish'.
+finish = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "finish",
   Global.returnType = VoidType,
   Global.parameters = ([], False)
 }
@@ -145,6 +198,13 @@ eofCheck = GlobalDefinition $ Global.functionDefaults {
 -- |Function declaration for 'add'.
 add = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "add",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'rem'.
+rem1 = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "rem",
   Global.returnType = VoidType,
   Global.parameters = ([], False)
 }
@@ -214,6 +274,47 @@ strapp = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- function declaration for strcut
+strcut = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "strcut",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for pop_int
+popInt = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "pop_int",
+  Global.returnType = IntegerType 64,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for equal
+equal = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "equal",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+-- function declaration for greater
+greater = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "greater",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- function declaration for pop_into
+popInto = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "pop_into",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter bytePointerTypeVar (UnName 0) [] ], False)
+}
+
+-- function declaration for push_from
+pushFrom = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "push_from",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter bytePointerTypeVar (UnName 0) [] ], False)
+}
+
 -- |Generate an instruction for the 'u'nderflow check command.
 generateInstruction Underflow =
   return [Do LLVM.General.AST.Call {
@@ -225,6 +326,76 @@ generateInstruction Underflow =
     functionAttributes = [],
     metadata = []
   }]
+
+generateInstruction (Junction label) = do
+  index <- fresh
+  index2 <- fresh
+  return [ UnName index := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "pop_int",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }, UnName index2 := LLVM.General.AST.ICmp {
+    LLVM.General.AST.iPredicate = LLVM.General.AST.IntegerPredicate.EQ,
+    LLVM.General.AST.operand0 = LocalReference (UnName index),
+    LLVM.General.AST.operand1 = ConstantOperand $ Int 64 0,
+    metadata = []
+  }]
+
+
+-- generate instruction for pop into a variable
+generateInstruction (Pop name) = do
+  index <- fresh
+  index2 <- fresh
+  index3 <- fresh
+  return [ UnName index := Instruction.Alloca {
+     allocatedType = bytePointerType,
+     numElements = Nothing, --Just (LocalReference (Name name)),
+     alignment = 4,
+     metadata = []
+  },
+    UnName index2 := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "pop_into",
+    arguments = [(LocalReference $ UnName index, [])],
+    functionAttributes = [],
+    metadata = []
+  },
+    UnName index3 := Instruction.Store {
+    volatile = False,
+    Instruction.address = ConstantOperand $ GlobalReference $ Name name,
+    value = LocalReference (UnName index),
+    maybeAtomicity = Nothing,
+    alignment = 4,
+    metadata = []
+}]
+
+-- generate instruction for push from a variable
+generateInstruction (Push name) = do
+  index <- fresh
+  index2 <- fresh
+  return [ UnName index := Instruction.Load {
+     volatile = False,
+     Instruction.address = ConstantOperand $ GlobalReference $ Name name,
+     maybeAtomicity = Nothing,
+     alignment = 4,
+     metadata = []
+  },
+    UnName index2 := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "push_from",
+    arguments = [(LocalReference $ UnName index, [])],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 
 -- generate instruction for push of a constant
 -- access to our push function definied in stack.ll??
@@ -293,7 +464,7 @@ generateInstruction Boom =
     callingConvention = C,
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "crash",
-    arguments = [],
+    arguments = [(ConstantOperand $ Int 1 1, [])],
     functionAttributes = [],
     metadata = []
   }]
@@ -334,6 +505,19 @@ generateInstruction Add1 =
     metadata = []
   }]
 
+-- |Generate instruction for the remainder instruction.
+generateInstruction Remainder =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "rem",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+
 -- |Generate instruction for the sub instruction.
 generateInstruction Subtract =
   return [Do LLVM.General.AST.Call {
@@ -370,17 +554,6 @@ generateInstruction Divide =
     metadata = []
   }]
 
--- |Generate instruction for the streq instruction.
-generateInstruction Equal =
-  return [Do LLVM.General.AST.Call {
-    isTailCall = False,
-    callingConvention = C,
-    returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "streq",
-    arguments = [],
-    functionAttributes = [],
-    metadata = []
-  }]
 
 -- |Generate instruction for the strlen instruction.
 generateInstruction Size =
@@ -406,34 +579,105 @@ generateInstruction Append =
     metadata = []
   }]
 
+-- |Generate instruction for the strcut instruction.
+generateInstruction Cut =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "strcut",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
--- do nothing?
---generateInstruction Start =
---  undefined
+-- |Generate instruction for the equal instruction.
+generateInstruction Equal =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "equal",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
--- return void?
---generateInstruction Finish = undefined
+
+-- |Generate instruction for the greater instruction.
+generateInstruction Greater =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "greater",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for start instruction
+generateInstruction Start =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "start",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for finish instruction
+generateInstruction Finish =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "finish",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for function call
+generateInstruction (IDT.Call functionName) =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name functionName,
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
 
 -- noop
 generateInstruction _ = return [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
 
-isUsefulInstruction Start = False
-isUsefulInstruction _ = True
-
--- removes Lexemes without meaning to us
-filterInstrs = filter isUsefulInstruction
-
 generateBasicBlock :: (Int, [Lexeme], Int) -> Codegen BasicBlock
 generateBasicBlock (label, instructions, 0) = do
-  tmp <- mapM generateInstruction $ filterInstrs instructions
+  tmp <- mapM generateInstruction instructions
   return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ terminator 0
 generateBasicBlock (label, instructions, jumpLabel) = do
-  tmp <- mapM generateInstruction $ filterInstrs instructions
-  return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) branch
-  where branch = Do Br {
-    dest = Name $ "l_" ++ show jumpLabel,
-    metadata' = []
-  }
+  tmp <- mapM generateInstruction instructions
+  i <- gets count
+  case filter isJunction instructions of
+    [Junction junctionLabel] -> return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ condbranch junctionLabel i
+    [] -> return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) branch
+  where
+    isJunction (Junction a) = True
+    isJunction _ = False
+    condbranch junctionLabel i = Do CondBr {
+      condition = LocalReference $ UnName i,
+      trueDest = Name $ "l_" ++ show junctionLabel,
+      falseDest = Name $ "l_" ++ show jumpLabel,
+      metadata' = []
+    }
+    branch = Do Br {
+      dest = Name $ "l_" ++ show jumpLabel,
+      metadata' = []
+    }
 
 
 generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen [BasicBlock]
@@ -467,13 +711,21 @@ generateGlobalDefinition index def = GlobalDefinition def {
   Global.hasUnnamedAddr = True
 }
 
+-- TODO find a more elegant way to solve this
+generateGlobalDefinitionVar ::  Integer -> Global -> Definition
+generateGlobalDefinitionVar i def = GlobalDefinition def {
+  Global.initializer = Just (Undef VoidType)
+}
+
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++
-    [underflowCheck, IntermediateCode.print, crash, inputFunc, eofCheck, push, pop, peek, add, sub, mul, div1, streq, strlen, strapp] ++
-    generateFunctionsFoo input
+process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++
+    [ underflowCheck, IntermediateCode.print, crash, start, finish, inputFunc,
+      eofCheck, push, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
+      popInt, equal, greater, popInto, pushFrom ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
+    variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input
     d = fromList $ zipWith foo [0..] $ getAllCons input
     foo index (Constant s) = (s, (length s, index)) --TODO rename foo to something meaningful e.g. createSymTable
     generateFunctionsFoo input = execGlobalCodegen d $ generateFunctions input

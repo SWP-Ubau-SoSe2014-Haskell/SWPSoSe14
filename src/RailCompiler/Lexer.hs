@@ -26,7 +26,7 @@ module Lexer (
               -- * Utility functions
               fromAST, toAST,
               -- * Editor functions
-              step, parse, IP(IP), posx, posy, start, crash, junctionturns, lambdadirs
+              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs , move , current, RelDirection(Forward)
              )
  where
 
@@ -64,7 +64,11 @@ module Lexer (
 			-- |Determines if the instruction pointer is on a left or right path of a Junction
 			path :: RelDirection
     }
-  deriving (Eq, Show)
+  deriving (Show)
+
+ instance Eq IP
+  where
+   (==) ipl ipr = posx ipl == posx ipr && posy ipl == posy ipr && dir ipl == dir ipr
  
  -- functions --
 
@@ -222,7 +226,7 @@ module Lexer (
  moveable code ip reldir
    | null code = False
    | newy < 0 || newy >= length code = False
-   | newx < 0 || newx >= length line = False
+   | dir ip `elem` [W, E] && (newx < 0 || newx >= length line) = False
    | otherwise = True
   where
    (newy, newx) = posdir ip reldir
@@ -238,6 +242,7 @@ module Lexer (
  readconstant code ip startchar endchar
     | curchar == startchar  = error EH.strNestedOpenBracket
     | curchar == endchar    = ("", ip)
+    | not (moveable code ip Forward) = error EH.strMissingClosingBracket
     | otherwise             = (newchar:resstring, resip)
   where
     curchar                 = current code ip
@@ -296,6 +301,10 @@ module Lexer (
      -> Char -- ^'Char' at the current IP position.
  current code ip = charat code (posy ip, posx ip)
 
+ -- |Get the 'Char' at the next position of the instruction pointer
+ next :: IDT.Grid2D -> IP -> Char
+ next code ip = current code $ move ip Forward
+
  -- |Get adjacent (left secondary, primary, right secondary)
  -- symbols for the current IP position.
  adjacent :: IDT.Grid2D -- ^Line representation of the current function.
@@ -307,26 +316,32 @@ module Lexer (
 
  -- returns instruction pointers turned for (False, True)
  junctionturns :: IDT.Grid2D -> IP -> (IP, IP)
- junctionturns code ip = addpath $ turning (current code ip) ip
+ junctionturns code ip = tuplecheck $ tuplemove $ addpath $ turning (current code ip) ip
   where
+   tuplecheck (ipl, ipr) = (if current code ipl == primary ipl then ipl else crash, if current code ipr == primary ipr then ipr else crash)
+   tuplemove (ipl, ipr) = (move ipl Forward, move ipr Forward)
    addpath (ipl, ipr) = (ipl{path = Lexer.Left}, ipr{path = Lexer.Right})
    turning char ip
     | char == '<' = case dir ip of
        E -> (ip{dir = NE}, ip{dir = SE})
-       SW -> (ip{dir = NE}, ip{dir = W})
+       SW -> (ip{dir = SE}, ip{dir = W})
        NW -> (ip{dir = W}, ip{dir = NE})
+       _ -> (crash, crash)
     | char == '>' = case dir ip of
        W -> (ip{dir = SW}, ip{dir = NW})
        SE -> (ip{dir = E}, ip{dir = SW})
        NE -> (ip{dir = NW}, ip{dir = E})
+       _ -> (crash, crash)
     | char == '^' = case dir ip of
        S -> (ip{dir = SE}, ip{dir = SW})
        NE -> (ip{dir = N}, ip{dir = SE})
        NW -> (ip{dir = SW}, ip{dir = N})
+       _ -> (crash, crash)
     | char == 'v' = case dir ip of
        N -> (ip{dir = NW}, ip{dir = NE})
-       SE -> (ip{dir = NW}, ip{dir = S})
-       SW -> (ip{dir = S}, ip{dir = NE})
+       SE -> (ip{dir = NE}, ip{dir = S})
+       SW -> (ip{dir = S}, ip{dir = NW})
+       _ -> (crash, crash)
     | otherwise = (ip, ip)
 
  -- returns insturction pointers turned for (Lambda, Reflected)
@@ -395,7 +410,7 @@ module Lexer (
     -> IP -- ^Current instruction pointer.
     -> (Maybe IDT.Lexeme, IP) -- ^Resulting lexeme (if any) and
                               -- the new instruction pointer.
- parse code ip = case current code ip of
+ parse code ip = junctioncheck $ case current code ip of
    'b' -> (Just Boom, ip)
    'e' -> (Just EOF, ip)
    'i' -> (Just Input, ip)
@@ -442,6 +457,16 @@ module Lexer (
    ')' -> let (string, newip) = stepwhile code tempip (/= '(') in (pushpop string, newip)
    _ -> (Nothing, turn (current code ip) ip)
   where
+   junctioncheck (Nothing, ip)
+     | current code ip `elem` "+x*" && next code ip `elem` "v^<>" = (Nothing, crash)
+     | forward == ' ' && (left == current code ip || right == current code ip) = (Nothing, crash)
+     | forward == ' ' && (left `elem` "v^<>+x*" || right `elem` "v^<>+x*") = (Nothing, crash)
+     | otherwise = (Nothing, ip)
+    where
+     (left, forward, right) = adjacent code ip
+   junctioncheck (lexeme, ip)
+    | next code ip `elem` "v^<>" = (lexeme, crash)
+    | otherwise = (lexeme, ip)
    turn '@' ip = turnaround ip
    turn '|' ip
     | dir ip `elem` [NW, N, NE] = ip{dir = N}
@@ -490,6 +515,15 @@ module Lexer (
  crash :: IP
  crash = IP 0 (-1) (-1) NW Forward
 
+ -- what is the primary rail for the given direction?
+ -- mainly used to check if junctions turn away correctly
+ primary :: IP -> Char
+ primary ip
+  | dir ip `elem` [N, S] = '|'
+  | dir ip `elem` [E, W] = '-'
+  | dir ip `elem` [NE, SW] = '/'
+  | dir ip `elem` [NW, SE] = '\\'
+
  -- |Return valid chars for movement depending on the current direction.
  valids :: IDT.Grid2D -- ^Line representation of current function.
     -> IP -- ^Current instruction pointer.
@@ -498,7 +532,7 @@ module Lexer (
                                 --     * Valid characters for movement to the (relative) left.
                                 --     * Valid characters for movement in the (relative) forward direction.
                                 --     * Valid characters for movement to the (relative) right.
- valids code ip = tripleinvert (dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
+ valids code ip = tripleinvert (commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
   where
    tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
    finvalid ip = dirinvalid ip ++ crossinvalid ip -- illegal to move forward
@@ -512,12 +546,16 @@ module Lexer (
     | dir ip `elem` [N, E, S, W] = "x"
     | otherwise = "+"
    cur = current code ip
-   everything = "+\\/x|-"++always
-   always = "^v<>abcdefgimnopqrstuz*@#:~0123456789{}[]()?"
+   everything = "+\\/x|-" ++ always
+   always = "^v<>*@{}[]()" ++ commandchars
+ 
+ -- list of chars that are commands in rail
+ commandchars :: String
+ commandchars = "abcdefgimnopqrstuz:~0123456789?#"
 
  -- list of chars which do not allow any turning
  turnblocked :: String
- turnblocked = "*+x"
+ turnblocked = "$*+x" ++ commandchars
 
  -- |Convert a graph/AST into a portable text representation.
  -- See also 'fromGraph'.
@@ -589,8 +627,8 @@ module Lexer (
    fromLexeme Finish = "#"
    fromLexeme (Junction _) = "v"
    fromLexeme NOP = "."
-   optional (Junction follow) = ',' : show follow
-   optional _ = ",0"
+   optional (Junction follow) = ';' : show follow
+   optional _ = ";0"
 
  -- |Split a portable text representation of multiple function graphs (a forest) into separate
  -- text representations of each function graph.
@@ -609,11 +647,13 @@ module Lexer (
     where
      (id, other) = span (/=';') ln
      (lex, ip) = parse [other] $ IP 0 1 0 E Forward
+     (follower, attribute) = span (/=';') (drop (2 + posx ip) other)
      fixedlex
-      | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
+      | isJunction lex = Junction (read $ tail attribute)
       | otherwise = fromJust lex
      fromJust Nothing = error $ printf EH.shrLineNoLexeme ln
      fromJust (Just x) = x
-     follower = takeWhile (/=',') $ dropWhile (`notElem` "0123456789") $ drop (posx ip) other
+     isJunction (Just (Junction _)) = True
+     isJunction _ = False
 
 -- vim:ts=2 sw=2 et

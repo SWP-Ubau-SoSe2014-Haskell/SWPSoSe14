@@ -1,2 +1,2 @@
 #
-todo
+RailCompiler: No 'main' Method found.

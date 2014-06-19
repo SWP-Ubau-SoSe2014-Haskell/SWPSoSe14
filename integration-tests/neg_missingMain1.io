@@ -1,2 +1,2 @@
 #
-some crash error msg (todo)
+RailCompiler: Function without name found.

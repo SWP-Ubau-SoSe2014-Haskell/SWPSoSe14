@@ -1,2 +1,2 @@
 #
-SWPSoSe14: Nested opening bracket in string constant.
+RailCompiler: Nested opening bracket in string constant.
