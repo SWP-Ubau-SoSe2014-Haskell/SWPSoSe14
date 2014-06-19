@@ -9,5 +9,5 @@ compile :: Window --Main Window which contain the path to the open File
   -> IO (ExitCode,String,String)
 compile window = do
   path <- get window windowTitle
-  readProcessWithExitCode "dist/build/SWPSoSe14/SWPSoSe14" 
+  readProcessWithExitCode "dist/build/RailCompiler/RailCompiler" 
     ["-c","-i",path,"-o",((reverse.(takeWhile(/='/')).reverse)path)] ""

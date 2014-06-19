@@ -1,2 +1,2 @@
 #
-SWPSoSe14: No 'main' Method found.
+RailCompiler: No 'main' Method found.

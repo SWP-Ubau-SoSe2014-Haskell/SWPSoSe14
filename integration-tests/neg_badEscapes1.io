@@ -1,3 +1,3 @@
 #
 %
-SWPSoSe14: Non-symmetric escape sequence in string constant.
+RailCompiler: Non-symmetric escape sequence in string constant.
