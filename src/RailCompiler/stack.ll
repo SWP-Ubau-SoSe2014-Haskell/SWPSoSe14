@@ -1044,7 +1044,9 @@ finished:
 
 define void @streq() {
 entry:
+  call void @underflow_assert() 
   %str1 = call i8*()* @pop()
+  call void @underflow_assert() 
   %str2 = call i8*()* @pop()
   br label %loop
 loop:
