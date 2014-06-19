@@ -1265,6 +1265,7 @@ exit:
 
 ; Popping a pointer from the stack into a variable
 define void @pop_into(i8** %var_ptr) {
+  call void @underflow_assert()
   %val_ptr = call i8* @pop()
   store i8* %val_ptr, i8** %var_ptr
   ret void
