@@ -102,11 +102,11 @@ function run_one {
 
       # Check STDOUT first for backward compatibility.
       if [[ "$errormsg" == "${STDOUT[0]}" || "$errormsg" == "${STDERR[0]}" ]]; then
-        [ $verbotisty -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
-	if [ $verbotisty -gt 1 ]; then
+        [ $verbose -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
+	if [ $verbose -gt 1 ]; then
           echo "  The error message was: \"$errormsg\""
         else
-          echo -ne "\n"
+          [ $verbose -gt 0 ] && echo -ne "\n"
         fi
       else
         fail=$(($fail + 1))
@@ -149,11 +149,11 @@ function run_one {
     stderr=${stderr//$'\n'/\\n}
 
     if [[ "$stdout" == "${STDOUT[$i]}" && "$stderr" == "${STDERR[$i]}" ]]; then
-      [ $verbosity -gt 0 ] && echo -n "`$green`Passed`$NC` \"$filename.rail\" with input \"${STDIN[$i]}\""
-	if [ $verbotisty -gt 1 ]; then
+      [ $verbose -gt 0 ] && echo -n "`$green`Passed`$NC` \"$filename.rail\" with input \"${STDIN[$i]}\""
+	if [ $verbose -gt 1 ]; then
           echo "  Got output: \"$stdout\". Stderr: \"$stderr\"."
         else
-          echo -ne "\n"
+          [ $verbose -gt 0 ] && echo -ne "\n"
         fi
     else
       fail=$(($fail + 1))
@@ -317,7 +317,7 @@ if [ ! $fail -eq 0 ];then
   echo "`$red`FAILED`$NC` $fail test cases."
   exit 1
 fi
-echo "All testcases `$green` PASSED`$NC`."
+echo "All testcases `$green`PASSED`$NC`."
 
 ### DEBUGGING:
 function debugprint {
