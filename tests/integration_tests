@@ -158,7 +158,7 @@ function run_one {
     else
       fail=$(($fail + 1))
       echo "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${STDIN[$i]}\"!" \
-        "Expected \"${STDOUT[$i]}\" on stdin, got \"$stdout\";" \
+        "Expected \"${STDOUT[$i]}\" on stdout, got \"$stdout\";" \
         "expected \"${STDERR[$i]}\" on stderr, got \"$stderr\"."
     fi
   done
