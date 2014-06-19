@@ -470,29 +470,22 @@ highlight textArea grid2D ip yOffset = do
       Just IDT.Underflow    -> changeColorOfEntryByCoord textArea (xC,yC) blue
       Just RType            -> changeColorOfEntryByCoord textArea (xC,yC) blue
       Just (Constant str)    -> do
-        if [(current grid2D parseIP)] == "]" || 
-          [(current grid2D parseIP)] == "["
-        then do
-          colorMoves textArea grid2D (length str+2)
-            (turnaround parseIP) green
-          highlight textArea grid2D (step grid2D parseIP)yOffset
-        else do
-          changeColorOfEntryByCoord textArea (xC,yC) green
-          highlight textArea grid2D (step grid2D parseIP)yOffset
-       
+        colorMoves textArea grid2D (turnaround ip)
+          (turnaround parseIP) green
+        highlight textArea grid2D (step grid2D parseIP)yOffset
         return ()
       Just (Push str)-> do
-        colorMoves textArea grid2D (length str+2)
+        colorMoves textArea grid2D (turnaround ip)
           (turnaround parseIP) blue
         highlight textArea grid2D (step grid2D parseIP)yOffset
         return ()
       Just (Pop str) -> do
-        colorMoves textArea grid2D (length str+4)
+        colorMoves textArea grid2D (turnaround ip)
           (turnaround parseIP) blue
         highlight textArea grid2D (step grid2D parseIP)yOffset
         return ()
       Just (Call str) -> do
-        colorMoves textArea grid2D (length str+2)
+        colorMoves textArea grid2D (turnaround ip)
           (turnaround parseIP) blue
         highlight textArea grid2D (step grid2D parseIP)yOffset
         return ()
@@ -538,14 +531,18 @@ highlight textArea grid2D ip yOffset = do
       gold = Color 65535 30430 0
       black = Color 0 0 0
       {- moves the grid and colors the entrys used to handel Push Pop
-        and Call
+        Constant and Call
       -}
-      colorMoves :: TextArea -> Grid2D -> Int -> IP -> Color -> IO IP
-      colorMoves _ _ 0  _ _ = return crash
-      colorMoves area grid2D stepsBack ip color = do
-        changeColorOfEntryByCoord area (posx ip,posy ip+yOffset) color
-        colorMoves area grid2D (stepsBack-1) (move ip Forward) color
-        return crash
+      colorMoves :: TextArea -> Grid2D -> IP -> IP -> Color -> IO IP
+      colorMoves area grid2D endIP curIP color = do
+        if endIP == curIP
+        then do
+          changeColorOfEntryByCoord area (posx curIP,posy curIP+yOffset) color
+          return crash
+        else do
+          changeColorOfEntryByCoord area (posx curIP,posy curIP+yOffset) color
+          colorMoves area grid2D endIP (move curIP Forward) color
+          return crash
         
 
 

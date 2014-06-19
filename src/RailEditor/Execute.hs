@@ -10,4 +10,4 @@ compile :: Window --Main Window which contain the path to the open File
 compile window = do
   path <- get window windowTitle
   readProcessWithExitCode "dist/build/SWPSoSe14/SWPSoSe14" 
-    ["-c","-i",path,"-o",((reverse.(takeWhile(/='/')).reverse)path)] ""
+    ["-c","-i",path,"-o",((((takeWhile(/='.')).reverse.(takeWhile(/='/')).reverse)path)++".ll")] ""
