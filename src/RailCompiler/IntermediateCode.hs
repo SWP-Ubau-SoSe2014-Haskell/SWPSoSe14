@@ -16,26 +16,25 @@ It turns every path of the form (PathID, [Lexeme], PathID) into a basic block.
 module IntermediateCode(process) where
 
 -- imports --
-import InterfaceDT as IDT
 import ErrorHandling as EH
+import InterfaceDT as IDT
 
-import LLVM.General.AST
-import qualified LLVM.General.AST.Global as Global
-import LLVM.General.AST.CallingConvention
-import LLVM.General.AST.Constant as Constant
-import LLVM.General.AST.Linkage
-import LLVM.General.AST.AddrSpace
-import LLVM.General.AST.Operand
-import LLVM.General.AST.Instruction as Instruction
-import LLVM.General.AST.IntegerPredicate
-import LLVM.General.AST.Float
+import Control.Applicative
+import Control.Monad.State
 import Data.Char
-import Data.Word
 import Data.List
 import Data.Map hiding (filter, map)
-
-import Control.Monad.State
-import Control.Applicative
+import Data.Word
+import LLVM.General.AST
+import LLVM.General.AST.AddrSpace
+import LLVM.General.AST.CallingConvention
+import LLVM.General.AST.Constant as Constant
+import LLVM.General.AST.Float
+import LLVM.General.AST.Instruction as Instruction
+import LLVM.General.AST.IntegerPredicate
+import LLVM.General.AST.Linkage
+import LLVM.General.AST.Operand
+import qualified LLVM.General.AST.Global as Global
 
 data CodegenState = CodegenState {
   blocks :: [BasicBlock],
@@ -345,12 +344,12 @@ generateInstruction (Pop name) = do
   index <- fresh
   index2 <- fresh
   index3 <- fresh
-  return [ UnName index := Instruction.Alloca { 
+  return [ UnName index := Instruction.Alloca {
      allocatedType = bytePointerType,
      numElements = Nothing, --Just (LocalReference (Name name)),
      alignment = 4,
      metadata = []
-  },    
+  },
     UnName index2 := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -373,13 +372,13 @@ generateInstruction (Pop name) = do
 generateInstruction (Push name) = do
   index <- fresh
   index2 <- fresh
-  return [ UnName index := Instruction.Load { 
+  return [ UnName index := Instruction.Load {
      volatile = False,
      Instruction.address = ConstantOperand $ GlobalReference $ Name name,
      maybeAtomicity = Nothing,
      alignment = 4,
      metadata = []
-  },    
+  },
     UnName index2 := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -610,13 +609,9 @@ generateInstruction Greater =
     metadata = []
   }]
 
--- do nothing?
---generateInstruction Start =
---  undefined
-
 -- |Generate instruction for finish instruction
 generateInstruction Finish =
-    return [Do LLVM.General.AST.Call {
+  return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
@@ -626,22 +621,27 @@ generateInstruction Finish =
     metadata = []
   }]
 
+-- |Generate instruction for function call
+generateInstruction (IDT.Call functionName) =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name functionName,
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 -- noop
 generateInstruction _ = return [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
 
-isUsefulInstruction Start = False
-isUsefulInstruction _ = True
-
--- removes Lexemes without meaning to us
-filterInstrs = filter isUsefulInstruction
-
-
 generateBasicBlock :: (Int, [Lexeme], Int) -> Codegen BasicBlock
 generateBasicBlock (label, instructions, 0) = do
-  tmp <- mapM generateInstruction $ filterInstrs instructions
+  tmp <- mapM generateInstruction instructions
   return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ terminator 0
 generateBasicBlock (label, instructions, jumpLabel) = do
-  tmp <- mapM generateInstruction $ filterInstrs instructions
+  tmp <- mapM generateInstruction instructions
   i <- gets count
   case filter isJunction instructions of
     [Junction junctionLabel] -> return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ condbranch junctionLabel i
