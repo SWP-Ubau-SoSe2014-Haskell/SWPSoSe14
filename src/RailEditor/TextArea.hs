@@ -453,14 +453,10 @@ highlight :: TextArea
   -> IO IP
 highlight _ [] _ _ = return crash
 highlight textArea grid2D ip yOffset = do
-  print "step"
-  print $ show ip
   case ip == crash of
    True -> return ip
    _ -> do
     (lex, parseIP)<- return $ parse grid2D ip
-    print "parsedIp"
-    print (show parseIP)
     case lex of
       Just NOP              -> changeColorOfEntryByCoord textArea (xC,yC) blue
       Just Boom             -> changeColorOfEntryByCoord textArea (xC,yC) blue
@@ -507,9 +503,6 @@ highlight textArea grid2D ip yOffset = do
       Just (Junction _) -> do
         changeColorOfEntryByCoord textArea (xC,yC) gold
         (falseIP,trueIP) <- return $ junctionturns grid2D parseIP
-        print "junction"
-        print(show falseIP)
-        print(show trueIP)
         highlight textArea grid2D falseIP yOffset
         highlight textArea grid2D trueIP yOffset
         return ()
