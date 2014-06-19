@@ -590,10 +590,6 @@ generateInstruction Greater =
     metadata = []
   }]
 
--- do nothing?
---generateInstruction Start =
---  undefined
-
 -- |Generate instruction for finish instruction
 generateInstruction Finish =
   return [Do LLVM.General.AST.Call {
