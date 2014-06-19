@@ -147,6 +147,13 @@ bytePointerTypeVar = PointerType {
 }
 
 -- |Function declaration for 'underflow_check'.
+start = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "start",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for 'underflow_check'.
 underflowCheck = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "underflow_check",
   Global.returnType = VoidType,
@@ -609,6 +616,18 @@ generateInstruction Greater =
     metadata = []
   }]
 
+-- |Generate instruction for start instruction
+generateInstruction Start =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "start",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 -- |Generate instruction for finish instruction
 generateInstruction Finish =
   return [Do LLVM.General.AST.Call {
@@ -701,7 +720,7 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++
-    [ underflowCheck, IntermediateCode.print, crash, finish, inputFunc,
+    [ underflowCheck, IntermediateCode.print, crash, start, finish, inputFunc,
       eofCheck, push, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
       popInt, equal, greater, popInto, pushFrom ] ++ generateFunctionsFoo input
   where

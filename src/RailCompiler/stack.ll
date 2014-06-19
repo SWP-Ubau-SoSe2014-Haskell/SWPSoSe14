@@ -8,6 +8,7 @@
 @to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @true = global [2 x i8] c"1\00"
 @false = global [2 x i8] c"0\00"
+@write_mode = global [2 x i8] c"w\00"
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 @crash_cust_str_fmt = private unnamed_addr constant [24 x i8] c"Crash: Custom error: %s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
@@ -19,12 +20,13 @@
 ; External declarations
 %FILE = type opaque
 
-@stderr = external global %FILE*
+@stderr = global %FILE* undef
 
 declare signext i32 @atol(i8*)
 declare i64 @strtol(i8*, i8**, i32 )
 declare signext i32 @snprintf(i8*, ...)
 declare signext i32 @printf(i8*, ...)
+declare %FILE* @fdopen(i32, i8*)
 declare signext i32 @fprintf(%FILE*, i8*, ...)
 declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
@@ -1028,7 +1030,7 @@ entry:
   %str = call i8*()* @pop()
   br label %loop
 loop:
-  %i = phi i64 [1, %entry ], [ %next_i, %loop ]
+  %i = phi i64 [0, %entry ], [ %next_i, %loop ]
   %next_i = add i64 %i, 1
   %addr = getelementptr i8* %str, i64 %i
   %c = load i8* %addr
@@ -1439,6 +1441,18 @@ define i32 @main_() {
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
 
  ret i32 0
+}
+
+;##############################################################################
+;                                  init
+;##############################################################################
+define void @start() {
+
+  %write_mode = getelementptr [2 x i8]* @write_mode, i64 0, i64 0
+  %stderr = call %FILE* @fdopen(i32 2, i8* %write_mode)
+  store %FILE* %stderr, %FILE** @stderr
+
+  ret void
 }
 
 ; vim:sw=2 ts=2 et
