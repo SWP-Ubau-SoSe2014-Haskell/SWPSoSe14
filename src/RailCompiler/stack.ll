@@ -1027,6 +1027,7 @@ finished2:
 
 define void @strlen() {
 entry:
+  call void @underflow_assert() 
   %str = call i8*()* @pop()
   br label %loop
 loop:
