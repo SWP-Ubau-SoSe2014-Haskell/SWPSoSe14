@@ -621,19 +621,12 @@ generateInstruction (IDT.Call functionName) =
 -- noop
 generateInstruction _ = return [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
 
-isUsefulInstruction Start = False
-isUsefulInstruction _ = True
-
--- removes Lexemes without meaning to us
-filterInstrs = filter isUsefulInstruction
-
-
 generateBasicBlock :: (Int, [Lexeme], Int) -> Codegen BasicBlock
 generateBasicBlock (label, instructions, 0) = do
-  tmp <- mapM generateInstruction $ filterInstrs instructions
+  tmp <- mapM generateInstruction instructions
   return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ terminator 0
 generateBasicBlock (label, instructions, jumpLabel) = do
-  tmp <- mapM generateInstruction $ filterInstrs instructions
+  tmp <- mapM generateInstruction instructions
   i <- gets count
   case filter isJunction instructions of
     [Junction junctionLabel] -> return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ condbranch junctionLabel i
