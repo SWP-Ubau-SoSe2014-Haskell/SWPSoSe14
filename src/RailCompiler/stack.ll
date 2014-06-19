@@ -932,7 +932,9 @@ define i8* @pop() {
 ; TODO: free alloated space of input strings
 define void @strapp() {
 entry:
+  call void @underflow_assert() 
   %str2 = call i8*()* @pop()
+  call void @underflow_assert() 
   %str1 = call i8*()* @pop()
 
   ; compute length of input strings (TODO: maybe isolate strlen function for this purpose)
@@ -980,7 +982,9 @@ finished2:
 
 define void @strcut() {
 entry:
+  call void @underflow_assert() 
   %indx = call i64()* @pop_int()
+  call void @underflow_assert() 
   %str = call i8*()* @pop()
 
   ; allocate space for result strings
@@ -1004,24 +1008,26 @@ loop1:
   %c = load i8* %addr
   %result_addr = getelementptr i8* %result1, i64 %i
   store i8 %c, i8* %result_addr
-  %cond = icmp eq i8 %c, 0
+  %cond = icmp eq i64 %i, %indx
   br i1 %cond, label %finished, label %loop1
 finished:
+  %end_addr = getelementptr i8* %result1, i64 %indx
+  store i8 0, i8* %end_addr
   ; fill result2 string
   br label %loop2
 loop2:
   %j = phi i64 [0, %finished], [ %next_j, %loop2 ]
-  %next_j = add i64 %i, 1
+  %next_j = add i64 %j, 1
   %k = add i64 %j, %indx
   %addr2 = getelementptr i8* %str, i64 %k
   %c2 = load i8* %addr2
-  %result_addr2 = getelementptr i8* %result2, i64 %i
+  %result_addr2 = getelementptr i8* %result2, i64 %j
   store i8 %c2, i8* %result_addr2
-  %cond2 = icmp eq i8 %c, 0
+  %cond2 = icmp eq i8 %c2, 0
   br i1 %cond2, label %finished2, label %loop2
 finished2: 
-  call void(i8*)* @push(i8* %result1)
   call void(i8*)* @push(i8* %result2)
+  call void(i8*)* @push(i8* %result1)
   ret void
 }
 
