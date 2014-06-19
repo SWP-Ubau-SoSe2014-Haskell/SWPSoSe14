@@ -627,8 +627,8 @@ module Lexer (
    fromLexeme Finish = "#"
    fromLexeme (Junction _) = "v"
    fromLexeme NOP = "."
-   optional (Junction follow) = ',' : show follow
-   optional _ = ",0"
+   optional (Junction follow) = ';' : show follow
+   optional _ = ";0"
 
  -- |Split a portable text representation of multiple function graphs (a forest) into separate
  -- text representations of each function graph.
@@ -647,11 +647,13 @@ module Lexer (
     where
      (id, other) = span (/=';') ln
      (lex, ip) = parse [other] $ IP 0 1 0 E Forward
+     (follower, attribute) = span (/=';') (drop (2 + posx ip) other)
      fixedlex
-      | other!!2 `elem` "v^<>" = Junction (read $ tail $ dropWhile (/=',') other)
+      | isJunction lex = Junction (read $ tail attribute)
       | otherwise = fromJust lex
      fromJust Nothing = error $ printf EH.shrLineNoLexeme ln
      fromJust (Just x) = x
-     follower = takeWhile (/=',') $ dropWhile (`notElem` "0123456789") $ drop (posx ip) other
+     isJunction (Just (Junction _)) = True
+     isJunction _ = False
 
 -- vim:ts=2 sw=2 et
