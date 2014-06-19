@@ -268,6 +268,13 @@ strapp = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- function declaration for strcut
+strcut = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "strcut",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([], False)
+}
+
 -- function declaration for pop_int
 popInt = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "pop_int",
@@ -566,6 +573,18 @@ generateInstruction Append =
     metadata = []
   }]
 
+-- |Generate instruction for the strcut instruction.
+generateInstruction Cut =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "strcut",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 -- |Generate instruction for the equal instruction.
 generateInstruction Equal =
   return [Do LLVM.General.AST.Call {
@@ -683,7 +702,7 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++
     [ underflowCheck, IntermediateCode.print, crash, finish, inputFunc,
-      eofCheck, push, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp,
+      eofCheck, push, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
       popInt, equal, greater, popInto, pushFrom ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
