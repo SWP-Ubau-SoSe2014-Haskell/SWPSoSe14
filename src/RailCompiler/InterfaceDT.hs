@@ -1,3 +1,16 @@
+{- |
+Module      : InterfaceDT.hs
+Description : .
+Maintainer  : Nicolas Lehmann
+License     : MIT
+
+Defining algebraic data types for all compiler stages. Each module in the
+pipeline has two corresponding algebraic data types, one defining the input and
+the other defining the output. The output data type of a compiler stage is the
+input data type of the following compiler stage. The algebraic data types ensure
+a clean interface between the modules.
+
+-}
 module InterfaceDT where
 
   import qualified LLVM.General.AST as LAST
