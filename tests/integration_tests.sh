@@ -18,29 +18,54 @@ EOF
 
 ### Function for reading in-/output files
 function readtest {
+  unset STDIN
+  unset STDOUT
+  unset STDERR
+
   FILE=$1
-  i=1
-  modeIn=true
-  unset IN
-  unset OUT
-  IN[1]=""
-  OUT[1]=""
-  while IFS= read -r line; do
-    if [[ $line == "#" ]]; then
-      if [ "$modeIn" = true ]; then
-        modeIn=false
-      else
-   	i=$(($i+1))
-        modeIn=true
+  i=0
+  # 0=STDIN, 1=STDOUT, 2=STDERR
+  mode=0
+
+  while read -r line; do
+    if [ "$line" = "#" ]; then
+      # Next test case OR the stdout/stderr section of a test case.
+      if [ $mode -gt 0 ]; then
+        # Next test case.
+        i=$(($i + 1))
+        mode=0
+        continue
       fi
-    else
-      if [ "$modeIn" = true ];then
-        IN[$i]="${IN[$i]}""$line"
-      else
-        OUT[$i]="${OUT[$i]}""$line"
-      fi
+
+      # Else $mode is 0. This means we are now reading the
+      # stdout/stderr section of a test case. It consists
+      # of two sections (for stdout and stderr), delimited
+      # by a line containg a single percent symbol (%). The second
+      # section (for stderr) and its leading "percent symbol line"
+      # are optional for backward compatibility.
+      mode=1
+      continue
+    elif [ "$line" = "%" ]; then
+      # Now comes the stderr section.
+      mode=2
+      continue
     fi
+
+    # Else this is a normal input/output line.
+    case "$mode" in
+      0)
+        STDIN[$i]="${STDIN[$i]}${line}"
+        ;;
+      1)
+        STDOUT[$i]="${STDOUT[$i]}${line}"
+        ;;
+      2)
+        STDERR[$i]="${STDERR[$i]}${line}"
+        ;;
+    esac
    done < "$FILE"
+
+   UNIT_TESTCASES=$(($i + 1))
 }
 
 ### Function to get the correct test name for a file.
@@ -60,40 +85,70 @@ function get_filename {
 function run_one {
   dontrun=false
   filename=$(get_name "$1")
+
   if [ -f "$TESTDIR/$filename$EXT" ]
     then
       readtest "$TESTDIR/$filename$EXT"
     else
       fail=true
-      dontrun=true
       echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". $EXT-file is missing."
+      return
   fi
+
   errormsg=$(dist/build/SWPSoSe14/SWPSoSe14 -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
   	  && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
-	  && chmod +x "$TMPDIR/$filename" || { 
-            dontrun=true
-	    if [[ "$errormsg" == "${OUT[1]}" ]]; then
+	  && chmod +x "$TMPDIR/$filename" || {
+      TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
+
+      # Check STDOUT first for backward compatibility.
+	    if [[ "$errormsg" == "${STDOUT[0]}" || "$errormsg" == "${STDERR[0]}" ]]; then
 	      echo -e "`$green`Passed`$NC` expected fail \"$filename.rail\"."
 	    else
-              fail=true
-	      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg\""
-            fi
-	}
-  if [ "$dontrun" = false ]; then
-    for i in $(eval echo "{1..${#OUT[@]}}"); do
-      #Really ugly: bash command substitution eats trailing newlines so we need to add a terminating character and then remove it again.
-      output="$(echo -ne "${IN[$i]}" | do_lli "$TMPDIR/$filename";echo x)"
-      output="${output%x}"
-      #Convert all actual newlines to \n
-      output="${output//$'\n'/\\n}"
-      if [[ "$output" == "${OUT[$i]}" ]]; then
-        echo "`$green`Passed`$NC` \"$filename.rail\" with input \"${IN[$i]}\""
-      else
         fail=true
-        echo -e "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${IN[$i]}\"! Expected: \"${OUT[$i]}\" got \"$output\""
+	      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg\""
       fi
-    done
+
+      return
+	}
+
+  # Create temporary files for stdout and stderr.
+  stdoutfile=$(mktemp --tmpdir swp14_ci_stdout.XXXXX)
+  if [ $? -gt 0 ]; then
+    echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stdout."
+    fail=true
+    return
   fi
+
+  stderrfile=$(mktemp --tmpdir swp14_ci_stderr.XXXXX)
+  if [ $? -gt 0 ]; then
+    echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stderr."
+    fail=true
+    return
+  fi
+
+  for i in $(seq 0 $(($UNIT_TESTCASES - 1))); do
+    TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
+
+    # Execute the test!
+    echo -ne "${STDIN[$i]}" | do_lli "$TMPDIR/$filename" 1>"$stdoutfile" 2>"$stderrfile"
+
+    # Read stdout and stderr, while converting all actual newlines to \n.
+    stdout=$(cat "$stdoutfile"; echo x)
+    stdout=${stdout%x}
+    stdout=${stdout//$'\n'/\\n}
+
+    stderr=$(cat "$stderrfile"; echo x)
+    stderr=${stderr%x}
+    stderr=${stderr//$'\n'/\\n}
+
+    if [[ "$stdout" == "${STDOUT[$i]}" && "$stderr" == "${STDERR[$i]}" ]]; then
+      echo "`$green`Passed`$NC` \"$filename.rail\" with input \"${STDIN[$i]}\""
+    else
+      fail=true
+      echo -e "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${STDIN[$i]}\"! Expected \"${STDOUT[$i]}\" on stdin, got \"$stdout\";" \
+        "expected \"${STDERR[$i]}\" on stderr, got \"$stderr\"."
+    fi
+  done
 }
 
 ### Function to compile and run all .rail files
@@ -108,6 +163,7 @@ function run_all {
     fi
   done
 }
+
 ### Function to correctly call the LLVM interpreter
 function do_lli {
   # On some platforms, the LLVM IR interpreter is not called "lli", but
@@ -188,6 +244,8 @@ if (( $count > 1 )); then
 fi
 
 ### Main function.
+TOTAL_TESTCASES=0
+
 if [ "$reverse" = true ]; then
   TESTDIR="integration-tests"
 else
@@ -238,16 +296,25 @@ else
 fi
 rm -r tests/tmp
 
+echo
+echo "RAN $TOTAL_TESTCASES TESTCASES IN TOTAL."
+
 
 ### DEBUGGING:
 function debugprint {
-echo "IN"
-for e in "${IN[@]}";do
-	echo $e
+echo "STDIN"
+for e in "${STDIN[@]}";do
+	echo "$e"
 done
-echo "OUT"
-for e in "${OUT[@]}";do
-	echo $e
+
+echo "STDOUT"
+for e in "${STDOUT[@]}";do
+	echo "$e"
+done
+
+echo "STDERR"
+for e in "${STDERR[@]}";do
+	echo "$e"
 done
 }
 
@@ -256,3 +323,5 @@ done
 if [ "$fail" = true ];then
   exit 1
 fi
+
+# vim:ts=2 sw=2 et

@@ -51,7 +51,7 @@ getFieldVisited (Field _ visited) = visited
 getFunctionFields :: Function -> [[Field]]
 getFunctionFields (Function _ fields) = fields
 
-getFunctionName :: Function -> [Char]
+getFunctionName :: Function -> String
 getFunctionName (Function name _) = name
 --end: Function operations
 
@@ -70,28 +70,28 @@ fromAllowed (Allowed coord) = coord
 --end: Move operations
 
 --begin: Operations for converting code - Strings to the ADT 'Programm'
-codeToProgramm :: [[Char]] -> Programm
+codeToProgramm :: [String] -> Programm
 codeToProgramm content = Programm $ map getFunctionByContentChunk $ splitContentInChunks content
 
-splitContentInChunks :: [[Char]] -> [[[Char]]]
+splitContentInChunks :: [String] -> [[String]]
 splitContentInChunks content = filterEmptyElements $ (split . keepDelimsL . whenElt) isStartSymbol content
-    where isStartSymbol line | length line == 0 = False
+    where isStartSymbol line | null line = False
                              | otherwise = (\(x:xs) -> x == '$') line
 
-filterEmptyElements :: [[[Char]]] -> [[[Char]]]
-filterEmptyElements = (map (filter (/=""))).(filter (/=[]))
+filterEmptyElements :: [[String]] -> [[String]]
+filterEmptyElements = map (filter (/="")).filter (/=[])
 
-getFunctionByContentChunk :: [[Char]] -> Function
+getFunctionByContentChunk :: [String] -> Function
 getFunctionByContentChunk functionCode@(x:xs) = Function functioName $ readFunctionCodeToAdtFunction functionCode 0
-    where functioName = (splitWhen (=='\'') x) !! 1
+    where functioName = splitWhen (=='\'') x !! 1
 
-readFunctionCodeToAdtFunction :: [[Char]] -> Int -> [[Field]]
+readFunctionCodeToAdtFunction :: [String] -> Int -> [[Field]]
 readFunctionCodeToAdtFunction [] _ = []
-readFunctionCodeToAdtFunction (e:es) lineCount = (readStringToFieldList e (0,lineCount)) :  (readFunctionCodeToAdtFunction es $ succ lineCount)
+readFunctionCodeToAdtFunction (e:es) lineCount = readStringToFieldList e (0,lineCount) :  readFunctionCodeToAdtFunction es (succ lineCount)
 
-readStringToFieldList :: [Char] -> (Int,Int) -> [Field]
+readStringToFieldList :: String -> (Int,Int) -> [Field]
 readStringToFieldList [] _ = []
-readStringToFieldList (e:es) (x,y) = (Field (Undefined e) False) : readStringToFieldList es (succ x,y)
+readStringToFieldList (e:es) (x,y) = Field (Undefined e) False : readStringToFieldList es (succ x,y)
 --end: Operations for converting code - Strings to the ADT 'Programm'
 --begin: Operations for modify and access 'Field' in a structure
 getFieldByCoord :: [[Field]] -> (Int,Int) -> Field
@@ -103,13 +103,13 @@ isVisited (x,y) (Function _ fields) = b
 
 
 markAsVisited :: (Int,Int) -> Function -> Function
-markAsVisited (x,y) (Function n fields) = Function n $ up ++ ((left ++ [Field e True] ++ (tail right)) : (tail down))
+markAsVisited (x,y) (Function n fields) = Function n $ up ++ ((left ++ [Field e True] ++ tail right) : tail down)
            where (up,down) = splitAt y fields
                  (left,right) = splitAt x (head down)
                  (Field e _) = head right
 
 setFieldAt :: Move -> Function -> Field -> Function
-setFieldAt (Allowed (x,y)) (Function n fields) field = Function n $ up ++ ((left ++ [field] ++ (tail right)) : (tail down))
+setFieldAt (Allowed (x,y)) (Function n fields) field = Function n $ up ++ ((left ++ [field] ++ tail right) : tail down)
            where (up,down) = splitAt y fields
                  (left,right) = splitAt x (head down)
 
@@ -223,11 +223,11 @@ getSouthEastMove (x,y) fields includeSecondaryBranch
         | otherwise = Forbidden (x,y)
            where x' = succ x
                  y' = succ y
-                 primary | length fields <= y' || (length (fields !! y')) <= x' = ' '
+                 primary | length fields <= y' || length (fields !! y') <= x' = ' '
                          | otherwise = getFieldChar $ getFieldByCoord fields (x',y')
                  secondary = secondaryChar == '-'
                  secondary2 = secondaryChar2 == '|'
-                 secondaryChar | (length (fields !! y)) <= x' = ' '
+                 secondaryChar | length (fields !! y) <= x' = ' '
                                | otherwise = getFieldChar $ getFieldByCoord fields (x',y)
                  secondaryChar2 | length fields <= y' || (length (fields !! y') <= x) = ' '
                                 | otherwise = getFieldChar $ getFieldByCoord fields (x,y')
@@ -259,7 +259,7 @@ getNewDirection newChar oldDir
 
 --end: Functions to decide how the train will move
 xor :: Bool -> Bool -> Bool
-xor a b = not $ a == b
+xor a b = a /= b
 
 goStep :: Move -> Function -> Direction -> (Move,Function,Direction)
 goStep (Forbidden a) function dir  = (Forbidden a,function,dir)

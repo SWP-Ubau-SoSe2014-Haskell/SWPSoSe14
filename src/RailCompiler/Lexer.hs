@@ -26,7 +26,7 @@ module Lexer (
               -- * Utility functions
               fromAST, toAST,
               -- * Editor functions
-              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs , move , RelDirection(Forward)
+              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs , move , current, RelDirection(Forward)
              )
  where
 
@@ -226,7 +226,7 @@ module Lexer (
  moveable code ip reldir
    | null code = False
    | newy < 0 || newy >= length code = False
-   | newx < 0 || newx >= length line = False
+   | dir ip `elem` [W, E] && (newx < 0 || newx >= length line) = False
    | otherwise = True
   where
    (newy, newx) = posdir ip reldir
@@ -242,6 +242,7 @@ module Lexer (
  readconstant code ip startchar endchar
     | curchar == startchar  = error EH.strNestedOpenBracket
     | curchar == endchar    = ("", ip)
+    | not (moveable code ip Forward) = error EH.strMissingClosingBracket
     | otherwise             = (newchar:resstring, resip)
   where
     curchar                 = current code ip

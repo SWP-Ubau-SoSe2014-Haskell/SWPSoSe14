@@ -26,6 +26,7 @@ Rom
 1
 \n
 #
+%
 At EOF!\n
 #
 1
@@ -38,4 +39,5 @@ a\na
 a\na
 #
 #
+%
 At EOF!\n

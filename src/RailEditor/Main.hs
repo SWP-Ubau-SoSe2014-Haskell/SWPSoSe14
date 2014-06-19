@@ -112,7 +112,7 @@ main = do
 
     table <- tableNew 5 1 False
 
-    menuBar <- createMenu window textArea
+    menuBar <- createMenu window textArea bufferOut
     extraBar <- createExtraBar
 
     vSepa <- hSeparatorNew
@@ -177,7 +177,7 @@ textViewWindowShow textBuffer title = do
     widgetShowAll window
     return ()
 
-getSplashScreen :: IO(Window)
+getSplashScreen :: IO Window
 getSplashScreen = do
     splashScreen <- windowNew
     set splashScreen [windowDefaultHeight := 200, windowDefaultWidth := 400, windowWindowPosition := WinPosCenter, windowTitle := "Starting Editor"]
