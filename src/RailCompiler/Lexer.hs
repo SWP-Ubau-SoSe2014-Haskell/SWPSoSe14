@@ -74,6 +74,7 @@ module Lexer (
 
  -- |Process preprocessor output into a list of function ASTs.
  --
+ --
  -- Raises 'error's on invalid input; see 'ErrorHandling' for a list of error messages.
  process :: IDT.PreProc2Lexer -- ^Preprocessor output (a list of lists of strings; i. e. a list of functions
                               -- in their line representation).
@@ -139,18 +140,19 @@ module Lexer (
    helper code list ip (Just lexeme)
      | knownat > 0 = (update list (path ip) knownat, crash)
      | lexeme == Finish = (newlist, crash)
-     | isjunction lexeme = (merge final, crash)
+     | isattributed lexeme = (merge final, crash)
      | otherwise = (newlist, ip{count = 0})
     where
      knownat = visited list ip
      newnode = sum (map length list) + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)) `prepend` update list (path ip) newnode
      prepend newx (x:xs) = (newx:x):xs
-     isjunction (Junction _) = True
-     isjunction _ = False
+     isattributed (Junction _) = True
+     isattributed (Lambda _) = True
+     isattributed _ = False
      final = fst $ nodes code ([]:temp) trueip
      temp = fst $ nodes code ([]:newlist) falseip
-     (falseip, trueip) = junctionturns code ip
+     (falseip, trueip) = if current code ip == '&' then lambdadirs ip else junctionturns code ip
  
 
  -- |Shift a node by the given amount. May be positive or negative.
@@ -173,15 +175,17 @@ module Lexer (
     -> Int -- ^ID of new follower to set for the first node in the list.
     -> [[PreLexNode]] -- ^Resulting graph.
  update list@(x:xs) dir following
-  | null x && startsjunction xs && dir == Lexer.Left = helpera list following
-  | null x && not (null xs) && startsjunction (tail xs) && dir == Lexer.Right = x:head xs:helper (head (tail xs)) following:tail (tail xs)
+  | null x && startsattributed xs && dir == Lexer.Left = helpera list following
+  | null x && not (null xs) && startsattributed (tail xs) && dir == Lexer.Right = x:head xs:helper (head (tail xs)) following:tail (tail xs)
   | null x = list
   | otherwise = helper x following:xs
    where
     helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
-    helpera (x:(((node, _, following, location):xs):xss)) attribute = x:(((node, Junction attribute, following, location):xs):xss)
-    startsjunction (((_, Junction _, _, _):_):_) = True
-    startsjunction _ = False
+    helpera (x:(((node, Junction _, following, location):xs):xss)) attribute = x:(((node, Junction attribute, following, location):xs):xss)
+    helpera (x:(((node, Lambda _, following, location):xs):xss)) attribute = x:(((node, Lambda attribute, following, location):xs):xss)
+    startsattributed (((_, Junction _, _, _):_):_) = True
+    startsattributed (((_, Lambda _, _, _):_):_) = True
+    startsattributed _ = False
 
  -- merges splitted graphs (e.g. Junction)
  -- x3 is the graph until the special node appeared
@@ -314,13 +318,19 @@ module Lexer (
   | current code ip `elem` turnblocked = (' ', charat code (posdir ip Forward), ' ')
   | otherwise = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
 
+ -- moves both pointers one step
+ tuplemove :: (IP, IP) -> (IP, IP)
+ tuplemove (ipl, ipr) = (move ipl Forward, move ipr Forward)
+
+ -- saves path information in instruction pointers
+ addpath :: (IP, IP) -> (IP, IP)
+ addpath (ipl, ipr) = (ipl{path = Lexer.Left}, ipr{path = Lexer.Right})
+
  -- returns instruction pointers turned for (False, True)
  junctionturns :: IDT.Grid2D -> IP -> (IP, IP)
  junctionturns code ip = tuplecheck $ tuplemove $ addpath $ turning (current code ip) ip
   where
    tuplecheck (ipl, ipr) = (if current code ipl == primary ipl then ipl else crash, if current code ipr == primary ipr then ipr else crash)
-   tuplemove (ipl, ipr) = (move ipl Forward, move ipr Forward)
-   addpath (ipl, ipr) = (ipl{path = Lexer.Left}, ipr{path = Lexer.Right})
    turning char ip
     | char == '<' = case dir ip of
        E -> (ip{dir = NE}, ip{dir = SE})
@@ -346,7 +356,7 @@ module Lexer (
 
  -- returns insturction pointers turned for (Lambda, Reflected)
  lambdadirs :: IP -> (IP, IP)
- lambdadirs ip = (ip, turnaround ip)
+ lambdadirs ip = addpath $ (ip, turnaround ip)
 
  -- make a 180° turn on instruction pointer
  turnaround :: IP -> IP
@@ -449,6 +459,7 @@ module Lexer (
    '^' -> (Just (Junction 0), ip)
    '>' -> (Just (Junction 0), ip)
    '<' -> (Just (Junction 0), ip)
+   '&' -> (Just (Lambda 0), ip)
    '[' -> let (string, newip) = readconstant code tempip '[' ']' in (Just (Constant string), newip)
    ']' -> let (string, newip) = readconstant code tempip ']' '[' in (Just (Constant string), newip)
    '{' -> let (string, newip) = stepwhile code tempip (/= '}') in (Just (Call string), newip)
@@ -551,7 +562,7 @@ module Lexer (
  
  -- list of chars that are commands in rail
  commandchars :: String
- commandchars = "abcdefgimnopqrstuz:~0123456789?#"
+ commandchars = "abcdefgimnopqrstuz:~0123456789?#&"
 
  -- list of chars which do not allow any turning
  turnblocked :: String
@@ -626,8 +637,10 @@ module Lexer (
    fromLexeme Start = "$"
    fromLexeme Finish = "#"
    fromLexeme (Junction _) = "v"
+   fromLexeme (Lambda _) = "&"
    fromLexeme NOP = "."
    optional (Junction follow) = ';' : show follow
+   optional (Lambda follow) = ';' : show follow
    optional _ = ";0"
 
  -- |Split a portable text representation of multiple function graphs (a forest) into separate
@@ -650,10 +663,13 @@ module Lexer (
      (follower, attribute) = span (/=';') (drop (2 + posx ip) other)
      fixedlex
       | isJunction lex = Junction (read $ tail attribute)
+      | isLambda lex = Lambda (read $ tail attribute)
       | otherwise = fromJust lex
      fromJust Nothing = error $ printf EH.shrLineNoLexeme ln
      fromJust (Just x) = x
      isJunction (Just (Junction _)) = True
      isJunction _ = False
+     isLambda (Just (Lambda _)) = True
+     isLambda _ = False
 
 -- vim:ts=2 sw=2 et
