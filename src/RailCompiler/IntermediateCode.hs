@@ -338,12 +338,12 @@ generateInstruction (Pop name) = do
   index <- fresh
   index2 <- fresh
   index3 <- fresh
-  return [ UnName index := Instruction.Alloca { 
+  return [ UnName index := Instruction.Alloca {
      allocatedType = bytePointerType,
      numElements = Nothing, --Just (LocalReference (Name name)),
      alignment = 4,
      metadata = []
-  },    
+  },
     UnName index2 := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -366,13 +366,13 @@ generateInstruction (Pop name) = do
 generateInstruction (Push name) = do
   index <- fresh
   index2 <- fresh
-  return [ UnName index := Instruction.Load { 
+  return [ UnName index := Instruction.Load {
      volatile = False,
      Instruction.address = ConstantOperand $ GlobalReference $ Name name,
      maybeAtomicity = Nothing,
      alignment = 4,
      metadata = []
-  },    
+  },
     UnName index2 := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
