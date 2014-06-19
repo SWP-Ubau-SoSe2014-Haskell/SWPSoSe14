@@ -721,7 +721,7 @@ entry:
   %len_result_3 = trunc i64 %len_result_2 to i16
   %result = call i8* @malloc(i16 %len_result_3)
 
-  ; copy first string
+  ; copy first string into result
   br label %loop1
 loop1:
   %i = phi i64 [0, %entry], [ %next_i, %loop1 ]
@@ -733,7 +733,7 @@ loop1:
   %cond = icmp eq i8 %c, 0
   br i1 %cond, label %finished, label %loop1
 finished:
-  ; copy second string
+  ; copy second string into result
   br label %loop2
 loop2:
   %j = phi i64 [0, %finished], [ %next_j, %loop2 ]
@@ -747,6 +747,53 @@ loop2:
   br i1 %cond2, label %finished2, label %loop2
 finished2:
   call void(i8*)* @push(i8* %result)
+  ret void
+}
+
+define void @strcut() {
+entry:
+  %indx = call i64()* @pop_int()
+  %str = call i8*()* @pop()
+
+  ; allocate space for result strings
+  %len1_1 = add i64 %indx, 1
+  %len1 = trunc i64 %len1_1 to i16
+  call void(i8*)* @push(i8* %str)
+  call void()* @strlen()
+  %len_str = call i64()* @pop_int()
+  %len2_1 = sub i64 %len_str, %indx
+  %len2_2 = add i64 %len2_1, 1
+  %len2 = trunc i64 %len2_2 to i16
+  %result1 = call i8* @malloc(i16 %len1)
+  %result2 = call i8* @malloc(i16 %len2)
+
+  ; fill result1 string
+  br label %loop1
+loop1:
+  %i = phi i64 [0, %entry], [ %next_i, %loop1 ]
+  %next_i = add i64 %i, 1
+  %addr = getelementptr i8* %str, i64 %i
+  %c = load i8* %addr
+  %result_addr = getelementptr i8* %result1, i64 %i
+  store i8 %c, i8* %result_addr
+  %cond = icmp eq i8 %c, 0
+  br i1 %cond, label %finished, label %loop1
+finished:
+  ; fill result2 string
+  br label %loop2
+loop2:
+  %j = phi i64 [0, %finished], [ %next_j, %loop2 ]
+  %next_j = add i64 %i, 1
+  %k = add i64 %j, %indx
+  %addr2 = getelementptr i8* %str, i64 %k
+  %c2 = load i8* %addr2
+  %result_addr2 = getelementptr i8* %result2, i64 %i
+  store i8 %c2, i8* %result_addr2
+  %cond2 = icmp eq i8 %c, 0
+  br i1 %cond2, label %finished2, label %loop2
+finished2: 
+  call void(i8*)* @push(i8* %result1)
+  call void(i8*)* @push(i8* %result2)
   ret void
 }
 
