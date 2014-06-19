@@ -14,6 +14,9 @@ build-type:          Simple
 extra-source-files:  README.md, tests/integration_tests, src/RailCompiler/stack.ll
 cabal-version:       >=1.10
 
+source-repository head
+  type: git
+  location: https://github.com/SWP-Ubau-SoSe2014-Haskell/SWPSoSe14.git
 
 executable RailCompiler
   main-is: Main.hs
