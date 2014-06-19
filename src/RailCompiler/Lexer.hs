@@ -627,8 +627,8 @@ module Lexer (
    fromLexeme Finish = "#"
    fromLexeme (Junction _) = "v"
    fromLexeme NOP = "."
-   optional (Junction follow) = ',' : show follow
-   optional _ = ",0"
+   optional (Junction follow) = ';' : show follow
+   optional _ = ";0"
 
  -- |Split a portable text representation of multiple function graphs (a forest) into separate
  -- text representations of each function graph.
