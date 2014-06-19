@@ -16,26 +16,25 @@ It turns every path of the form (PathID, [Lexeme], PathID) into a basic block.
 module IntermediateCode(process) where
 
 -- imports --
-import InterfaceDT as IDT
 import ErrorHandling as EH
+import InterfaceDT as IDT
 
-import LLVM.General.AST
-import qualified LLVM.General.AST.Global as Global
-import LLVM.General.AST.CallingConvention
-import LLVM.General.AST.Constant as Constant
-import LLVM.General.AST.Linkage
-import LLVM.General.AST.AddrSpace
-import LLVM.General.AST.Operand
-import LLVM.General.AST.Instruction as Instruction
-import LLVM.General.AST.IntegerPredicate
-import LLVM.General.AST.Float
+import Control.Applicative
+import Control.Monad.State
 import Data.Char
-import Data.Word
 import Data.List
 import Data.Map hiding (filter, map)
-
-import Control.Monad.State
-import Control.Applicative
+import Data.Word
+import LLVM.General.AST
+import LLVM.General.AST.AddrSpace
+import LLVM.General.AST.CallingConvention
+import LLVM.General.AST.Constant as Constant
+import LLVM.General.AST.Float
+import LLVM.General.AST.Instruction as Instruction
+import LLVM.General.AST.IntegerPredicate
+import LLVM.General.AST.Linkage
+import LLVM.General.AST.Operand
+import qualified LLVM.General.AST.Global as Global
 
 data CodegenState = CodegenState {
   blocks :: [BasicBlock],
