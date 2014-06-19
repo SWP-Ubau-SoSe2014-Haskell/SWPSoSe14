@@ -11,7 +11,7 @@ maintainer:  borgers@mi.fu-berlin.de
 -- copyright:
 category:            Language
 build-type:          Simple
-extra-source-files:  README.md, tests/integration-tests
+extra-source-files:  README.md, tests/integration_tests
 cabal-version:       >=1.10
 
 
