@@ -18,5 +18,7 @@ module TextArea (
     import qualified KeyHandler as KH
 
     -- functions --
+    
+    -- loads content from the TeaxtAreaContent-data structure
     --loadContent :: ?
     loadContent = undefined   -- TODO: implement this functions

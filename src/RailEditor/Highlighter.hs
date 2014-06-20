@@ -18,5 +18,7 @@ module Highlighter (
 
 
     -- functions --
+
+    -- highlights all entries saved in the data structur of the TextAreaCotent-module
     --highlight :: ?
     highlight = undefined   -- TODO: implement this functions

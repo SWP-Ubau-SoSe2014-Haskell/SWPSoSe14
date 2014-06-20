@@ -19,5 +19,7 @@ module Editor (
     import qualified TextAreaContent as TAC
     
     -- functions --
+    
+    -- main-function calling the editor
     main :: IO()
     main = undefined -- TODO: implement this functions

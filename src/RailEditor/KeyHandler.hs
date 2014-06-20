@@ -18,5 +18,7 @@ module KeyHandler (
     -- other modules that depict editor-functions should be imported here
 
     -- functions --
+
+    -- handles keypress-events
     --handleKey :: ?
     handleKey = undefined   -- TODO: implement this functions
