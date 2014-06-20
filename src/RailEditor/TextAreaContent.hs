@@ -21,8 +21,7 @@ module TextAreaContent (
   where
     
     -- imports --
-    import qualified Highlighter as HL
-    import qualified RedoUndo
+    
 
     -- functions --
     --init :: ?  

@@ -14,6 +14,7 @@ module Highlighter (
   where
     
     -- imports --
+    import qualified TextAreaContent as TAC
 
 
     -- functions --

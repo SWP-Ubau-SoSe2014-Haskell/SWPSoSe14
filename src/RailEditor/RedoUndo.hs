@@ -15,7 +15,7 @@ module RedoUndo (
   where
     
     -- imports --
-    
+    import qualified TextAreaContent as TAC
 
     -- functions --
     redo :: ?
