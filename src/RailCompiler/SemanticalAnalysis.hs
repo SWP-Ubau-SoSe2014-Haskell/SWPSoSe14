@@ -30,7 +30,7 @@ module SemanticalAnalysis (
  validfollowers ast = null subset
   where
    (ids, followers) = getids ast
-   subset = (nub followers) \\ ids
+   subset = nub followers \\ ids
 
  -- gets a tuple of (ids, followers) to check if there are unknown followers
  getids :: [IDT.AST] -> ([Int], [Int])
