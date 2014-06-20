@@ -16,12 +16,30 @@ module SemanticalAnalysis (
  -- imports --
  import InterfaceDT as IDT
  import ErrorHandling as EH
+ import Data.List
  
  -- functions --
  process :: IDT.SynAna2SemAna -> IDT.SemAna2InterCode
  process (IDT.ISS input)
   | nomain input = error EH.strMainMissing
+  | not (validfollowers input) = error EH.strUnknownNode
   | otherwise = IDT.ISI (map check input)
+
+ -- checks if there are unknown followers
+ validfollowers :: [IDT.AST] -> Bool
+ validfollowers ast = null subset
+  where
+   (ids, followers) = getids ast
+   subset = (nub followers) \\ ids
+
+ -- gets a tuple of (ids, followers) to check if there are unknown followers
+ getids :: [IDT.AST] -> ([Int], [Int])
+ getids [] = ([0], [])
+ getids ((_, nodes):xs) = tuplemerge (unzip (getnodeids nodes)) (getids xs)
+  where
+   getnodeids [] = []
+   getnodeids ((id, _, follow):xs) = (id, follow):getnodeids xs
+   tuplemerge (lhs1, rhs1) (lhs2, rhs2) = (lhs1 ++ lhs2, rhs1 ++ rhs2)
 
  -- looking for a main function
  nomain :: [IDT.AST] -> Bool
