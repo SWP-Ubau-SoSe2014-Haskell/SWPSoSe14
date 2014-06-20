@@ -6,7 +6,7 @@ License     :  MIT
 
 Stability   :  experimental
 
-The KeyHandler-module contains allows to react on keypress-events in the editor.
+The KeyHandler-module allows to react on keypress-events in the editor.
 -}
 module KeyHandler (
                    handleKey   -- handles keypress-events

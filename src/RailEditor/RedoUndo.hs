@@ -18,8 +18,8 @@ module RedoUndo (
     import qualified TextAreaContent as TAC
 
     -- functions --
-    redo :: ?
+    --redo :: ?
     redo = undefined   -- TODO: implement this functions
 
-    undo :: ?
+    --undo :: ?
     undo = undefined   -- TODO: implement this functions
