@@ -1,7 +1,7 @@
 {- |
 Module      :  SyntacticalAnalysis.hs
 Description :  .
-Copyright   :  (c) Kristin Knorr, Marcus Hoffmann
+Maintainer  :  (c) Kristin Knorr, Marcus Hoffmann
 License     :  MIT
 
 Stability   :  stable
