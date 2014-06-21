@@ -64,4 +64,6 @@ module SemanticalAnalysis (
  -- this will return the exact same input if it's valid and will error otherwise
  checklexeme :: Lexeme -> Lexeme
  checklexeme (Junction 0) = error EH.strInvalidMovement
+ checklexeme (Push "") = error EH.strInvalidVarName
+ checklexeme (Pop "") = error EH.strInvalidVarName
  checklexeme lexeme = lexeme
