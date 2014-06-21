@@ -38,8 +38,11 @@ module SemanticalAnalysis (
  getids ((_, nodes):xs) = tuplemerge (unzip (getnodeids nodes)) (getids xs)
   where
    getnodeids [] = []
-   getnodeids ((id, _, follow):xs) = (id, follow):getnodeids xs
+   getnodeids ((id, nodes, follow):xs) = (0, junctionattribute nodes):(id, follow):getnodeids xs
    tuplemerge (lhs1, rhs1) (lhs2, rhs2) = (lhs1 ++ lhs2, rhs1 ++ rhs2)
+   junctionattribute nodes = case last nodes of
+    (Junction attribute) -> attribute
+    _ -> 0
 
  -- looking for a main function
  nomain :: [IDT.AST] -> Bool
