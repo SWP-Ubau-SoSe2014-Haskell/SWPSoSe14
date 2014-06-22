@@ -32,7 +32,7 @@ module SemanticalAnalysis (
   where
    lambdafuncs offset
     | offset > maximum (fst (getids func)) = []
-    | islambda offset = (funcname ++ "!" ++ (show offset), (1, [NOP], offset):tail lexemes):lambdafuncs (offset + 1)
+    | islambda offset = (funcname ++ "!" ++ show offset, (1, [NOP], offset):tail lexemes):lambdafuncs (offset + 1)
     | otherwise = lambdafuncs (offset + 1)
    islambda x = any (\(_, lex, _) -> Lambda x `elem` lex) lexemes
 
