@@ -79,15 +79,15 @@ module Lexer (
  process :: IDT.PreProc2Lexer -- ^Preprocessor output (a list of lists of strings; i. e. a list of functions
                               -- in their line representation).
     -> IDT.Lexer2SynAna -- ^A list of ASTs, each describing a single function.
- process (IDT.IPL input) = IDT.ILS $ concatMap processfn input
+ process (IDT.IPL input) = IDT.ILS $ map processfn input
 
  -- |Process a single function.
  processfn :: IDT.Grid2D -- ^The lines representing the function.
-    -> [IDT.Graph] -- ^A graph of nodes representing the function.
+    -> IDT.Graph -- ^A graph of nodes representing the function.
                    -- There may be more functions because of lambdas.
- processfn [x] = [(funcname x, [(1, Start, 0)])] -- oneliners are illegal; follower == 0 will
+ processfn [x] = (funcname x, [(1, Start, 0)]) -- oneliners are illegal; follower == 0 will
                                                  -- lead to a crash, which is what we want.
- processfn code@(x:xs) = if head x /= '$' then [(funcname x, [(1, Start, 0)])] else [(funcname x, finalize (head nxs) [])]
+ processfn code@(x:xs) = if head x /= '$' then (funcname x, [(1, Start, 0)]) else (funcname x, finalize (head nxs) [])
   where
     (nxs, _) = nodes code [[(1, Start, 0, (0, 0, SE))]] start
 
@@ -99,8 +99,10 @@ module Lexer (
                     -- e. g. @$ \'main\'@.
     -> String -- ^The function name.
  funcname line
-  | null line || length (elemIndices '\'' line) < 2 = error EH.strFunctionNameMissing
-  | otherwise = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
+   | null line || length (elemIndices '\'' line) < 2 = error EH.strFunctionNameMissing
+   | not $ null $ fn `intersect` "'{}()!" = error EH.strInvalidFuncName
+   | otherwise = fn
+  where fn = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
 
  -- |Get the nodes for the given function.
  nodes :: IDT.Grid2D  -- ^Lines representing the function.
@@ -217,6 +219,7 @@ module Lexer (
  stepwhile code ip fn
    | not (fn curchar) = ("", ip)
    | not (moveable code ip Forward) = error EH.strMissingClosingBracket
+   | curchar `elem` "'{}()" = error EH.strInvalidVarName
    | otherwise = (curchar:resstring, resip)
   where
    curchar = current code ip
@@ -462,8 +465,8 @@ module Lexer (
    '&' -> (Just (Lambda 0), ip)
    '[' -> let (string, newip) = readconstant code tempip '[' ']' in (Just (Constant string), newip)
    ']' -> let (string, newip) = readconstant code tempip ']' '[' in (Just (Constant string), newip)
-   '{' -> let (string, newip) = stepwhile code tempip (/= '}') in (Just (Call string), newip)
-   '}' -> let (string, newip) = stepwhile code tempip (/= '{') in (Just (Call string), newip)
+   '{' -> let (string, newip) = stepwhile code tempip (/= '}') in (Just (Call $ checkstring string), newip)
+   '}' -> let (string, newip) = stepwhile code tempip (/= '{') in (Just (Call $ checkstring string), newip)
    '(' -> let (string, newip) = stepwhile code tempip (/= ')') in (pushpop string, newip)
    ')' -> let (string, newip) = stepwhile code tempip (/= '(') in (pushpop string, newip)
    _ -> (Nothing, turn (current code ip) ip)
@@ -493,10 +496,11 @@ module Lexer (
     | dir ip `elem` [E, SE, S] = ip{dir = SE}
    turn _ ip = ip
    tempip = move ip Forward
+   checkstring string = if '!' `elem` string then error EH.strInvalidVarName else string
    pushpop string
-    | string == "" = Just (Push string)
-    | head string == '!' && last string == '!' = Just (Pop (tail $ init string))
-		| otherwise = Just (Push string)
+    | length string < 2 = Just (Push $ checkstring string)
+    | head string == '!' && last string == '!' = Just (Pop (checkstring $ tail $ init string))
+		| otherwise = Just (Push $ checkstring string)
 
  -- |Get ID of the node that has been already visited using the current IP
  -- (direction and coordinates).
