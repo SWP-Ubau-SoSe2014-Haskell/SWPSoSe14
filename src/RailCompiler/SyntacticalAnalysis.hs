@@ -46,8 +46,10 @@ module SyntacticalAnalysis (
  -- 1 as functionstart; conditional jmp; indegree > 1
  startNodes :: [IDT.LexNode] -> [Int]
  startNodes [] = []
- startNodes xs = 1:[x | x <- [2..(length xs)], isJunct0 x xs || (inDeg x xs > 1) || isJunct1 x xs]
+ startNodes xs = 1:[x | x <- [2..(length xs)], isLambda x xs || isJunct0 x xs || (inDeg x xs > 1) || isJunct1 x xs]
     where
+        isLambda :: Int -> [IDT.LexNode] -> Bool
+        isLambda x = any (\y -> Lambda x == snd' y)
         isJunct0 :: Int -> [IDT.LexNode] -> Bool
         isJunct0 x = any (\y -> Junction x == snd' y)
         isJunct1 :: Int -> [IDT.LexNode] -> Bool

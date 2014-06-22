@@ -21,25 +21,34 @@ module SemanticalAnalysis (
  -- functions --
  process :: IDT.SynAna2SemAna -> IDT.SemAna2InterCode
  process (IDT.ISS input)
+  | null input = error EH.strEmptyProgram
   | nomain input = error EH.strMainMissing
-  | not (validfollowers input) = error EH.strUnknownNode
-  | otherwise = IDT.ISI (map check input)
+  | not (all validfollowers input) = error EH.strUnknownNode
+  | otherwise = IDT.ISI (concatMap splitlambda $ map check input)
+
+ -- splits lambdas into own functions
+ splitlambda :: IDT.AST -> [IDT.AST]
+ splitlambda func@(funcname, lexemes) = func : lambdafuncs 1
+  where
+   lambdafuncs offset
+    | offset > maximum (fst (getids func)) = []
+    | islambda offset = (funcname ++ "!" ++ (show offset), (1, [NOP], offset):tail lexemes):lambdafuncs (offset + 1)
+    | otherwise = lambdafuncs (offset + 1)
+   islambda x = any (\(_, lex, _) -> Lambda x `elem` lex) lexemes
 
  -- checks if there are unknown followers
- validfollowers :: [IDT.AST] -> Bool
+ validfollowers :: IDT.AST -> Bool
  validfollowers ast = null subset
   where
    (ids, followers) = getids ast
    subset = nub followers \\ ids
 
  -- gets a tuple of (ids, followers) to check if there are unknown followers
- getids :: [IDT.AST] -> ([Int], [Int])
- getids [] = ([0], [])
- getids ((_, nodes):xs) = tuplemerge (unzip (getnodeids nodes)) (getids xs)
+ getids :: IDT.AST -> ([Int], [Int])
+ getids (_, nodes) = unzip (getnodeids nodes)
   where
    getnodeids [] = []
    getnodeids ((id, nodes, follow):xs) = (0, junctionattribute nodes):(id, follow):getnodeids xs
-   tuplemerge (lhs1, rhs1) (lhs2, rhs2) = (lhs1 ++ lhs2, rhs1 ++ rhs2)
    junctionattribute nodes = case last nodes of
     (Junction attribute) -> attribute
     _ -> 0
