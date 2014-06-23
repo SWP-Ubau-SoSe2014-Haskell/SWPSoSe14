@@ -11,6 +11,7 @@ import System.IO
 import Data.IORef
 import Data.Maybe
 import Data.Either
+import qualified Highlighter
 
 data EntryMode = LeftToRight | UpToDown | Smart deriving (Eq)
 --textArea is a pointer to: 
