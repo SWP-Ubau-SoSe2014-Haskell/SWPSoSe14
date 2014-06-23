@@ -96,7 +96,7 @@ function run_one {
   fi
 
   errormsg=$(dist/build/RailCompiler/RailCompiler -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
-    && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
+    && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll src/RailCompiler/string.ll > "$TMPDIR/$filename" \
     && chmod +x "$TMPDIR/$filename" || {
       TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
 
