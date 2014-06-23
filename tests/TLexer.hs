@@ -28,7 +28,7 @@ module TLexer (
 
  -- helper functions
  run :: IDT.Grid2D -> IDT.Lexer2SynAna
- run grid = Lexer.process (IDT.IPL ["$ 'main'":grid])
+ run grid = Lexer.process (IDT.IPL [("$ 'main'":grid, 0)])
 
  res :: [Lexeme] -> IDT.Lexer2SynAna
  res lexeme = IDT.ILS [("main", (1, Start, 2):nodes 2 lexeme)]

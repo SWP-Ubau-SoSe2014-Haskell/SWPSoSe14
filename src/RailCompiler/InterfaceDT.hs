@@ -17,7 +17,8 @@ module InterfaceDT where
 
   -- type definitions --
   type Grid2D  = [String]
-
+  -- Int gives the line on which the function starts
+  type PositionedGrid = (Grid2D, Int)
   -- |(NodeID (start: 1), Lexeme of Node, NodeID of following Node (0 if none))
   type LexNode = (Int, Lexeme, Int)
   -- |(FunctionID, Graph of Function as adjacency list)
@@ -35,7 +36,7 @@ module InterfaceDT where
 
   -- interface datatypes --
   data Input2PreProc     = IIP String   deriving (Eq, Show)
-  data PreProc2Lexer     = IPL [Grid2D] deriving (Eq, Show)
+  data PreProc2Lexer     = IPL [PositionedGrid] deriving (Eq, Show)
   data Lexer2SynAna      = ILS [Graph]  deriving (Eq, Show)
   data SynAna2SemAna     = ISS [AST]    deriving (Eq, Show)
   data SemAna2InterCode  = ISI [AST]    deriving (Eq, Show)

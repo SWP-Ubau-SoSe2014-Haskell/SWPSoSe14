@@ -82,12 +82,12 @@ module Lexer (
  process (IDT.IPL input) = IDT.ILS $ map processfn input
 
  -- |Process a single function.
- processfn :: IDT.Grid2D -- ^The lines representing the function.
+ processfn :: IDT.PositionedGrid -- ^The lines representing the function.
     -> IDT.Graph -- ^A graph of nodes representing the function.
                    -- There may be more functions because of lambdas.
- processfn [x] = (funcname x, [(1, Start, 0)]) -- oneliners are illegal; follower == 0 will
+ processfn ([x], _) = (funcname x, [(1, Start, 0)]) -- oneliners are illegal; follower == 0 will
                                                  -- lead to a crash, which is what we want.
- processfn code@(x:xs) = if head x /= '$' then (funcname x, [(1, Start, 0)]) else (funcname x, finalize (head nxs) [])
+ processfn (code@(x:xs), _) = if head x /= '$' then (funcname x, [(1, Start, 0)]) else (funcname x, finalize (head nxs) [])
   where
     (nxs, _) = nodes code [[(1, Start, 0, (0, 0, SE))]] start
 

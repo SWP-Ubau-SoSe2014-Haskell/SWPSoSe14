@@ -19,7 +19,6 @@ module Preprocessor (
  -- imports --
  import InterfaceDT as IDT
  import ErrorHandling as EH 
- import Data.List
  
  -- functions --
  process :: IDT.Input2PreProc -> IDT.PreProc2Lexer
@@ -33,14 +32,19 @@ module Preprocessor (
  
  -- |Removes all leading strings from list until first string begins with a
  -- dollar sign.
- removeLines :: Grid2D -> Grid2D
+ removeLines :: Grid2D -> (Grid2D, Int)
  removeLines grid
-  | null result = error noStartSymbolFound
-  | otherwise = result
+  | null $ fst $ result grid 0 = error noStartSymbolFound
+  | otherwise = result grid 0
    where
-   result = dropWhile notStartingWithDollar grid
+    result grid n
+     | not $ notStartingWithDollar $ head grid = (grid, n)
+     | otherwise = result (tail grid) (n + 1)
 
  -- |Puts every rail function/program into its on grid such that the dollar
  -- sign is the first character in the first line.
- groupFunctionsToGrid2Ds :: Grid2D -> [Grid2D]
- groupFunctionsToGrid2Ds = groupBy (\_ y -> notStartingWithDollar y)
+ groupFunctionsToGrid2Ds :: (Grid2D, Int) -> [(Grid2D, Int)]
+ groupFunctionsToGrid2Ds ([], _) = []
+ groupFunctionsToGrid2Ds (grid, offset) = (head grid:func, offset):groupFunctionsToGrid2Ds (other, offset + 1 + length func)
+  where
+   (func, other) = span notStartingWithDollar $ tail grid
