@@ -15,8 +15,7 @@ module Editor (
   where
     
     -- imports --
-    import qualified TextArea as TA
-    import qualified TextAreaContent as TAC
+    import qualified MainWindow as MW
     
     -- functions --
     
