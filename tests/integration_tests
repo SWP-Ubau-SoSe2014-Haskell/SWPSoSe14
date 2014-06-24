@@ -211,9 +211,9 @@ NC="tput sgr 0" # No Color
 
 ### Parse commandline options.
 verbose=0
-test=""
-enable=""
-disable=""
+test=""    # The test to run.
+enable=""  # The test to enable.
+disable="" # The test to disable.
 
 OPTIND=1
 while getopts "hvlre:d:" opt; do
@@ -246,6 +246,10 @@ done
 shift "$((OPTIND-1))" # Shift off the options and optional --.
 test="$1"
 
+# -r implies -v
+[[ -n $reverse && $verbose -eq 0 ]] && verbose=1
+echo $verbose
+
 ### Checking for incompatible options.
 count=0
 [[ -n $list ]] && count=$(($count + 1))
@@ -255,6 +259,7 @@ if (( $count > 1 )); then
   echo "Only specify one of -l, -e, -d."
   exit 1
 fi
+
 
 ### Main function.
 TOTAL_TESTCASES=0
