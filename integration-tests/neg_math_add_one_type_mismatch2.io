@@ -1,3 +1,2 @@
 #
-%
 Invalid type!
