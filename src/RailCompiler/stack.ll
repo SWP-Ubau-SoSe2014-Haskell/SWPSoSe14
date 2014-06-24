@@ -1,3 +1,13 @@
+; Module      : LLVM backend - stack implementation (and some misc. functions)
+; Description : Contains our stack implementation in LLVM and also some functions
+;               which have not yet been split out into their own modules.
+; Maintainers : Tilman Blumenbach, Sascha Zinke, Maximilian Claus, Tudor Soroceanu,
+;               Philipp Borgers, Lyudmila Vaseva, Marcus Hoffmann, Michal Ajchman
+; License     : MIT
+;
+; These functions are used by our LLVM backend and most of them operate directly on
+; the stack. Many also directly crash (in Rail terms: properly exit) the program.
+
 @stack = global [1000 x i8*] undef ; stack containing pointers to i8
 @sp = global i64 0 ; global stack pointer (or rather: current number of elements)
 @lookahead = global i32 -1  ; current lookahead for input from stdin.

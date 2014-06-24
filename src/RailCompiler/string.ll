@@ -1,3 +1,11 @@
+; Module      : LLVM backend - string functions
+; Description : Contains LLVM functions for operations on strings (e. g. concatenation).
+; Maintainers : Maximilian Claus
+; License     : MIT
+;
+; These functions are used by our LLVM backend and most of them operate
+; directly on the stack -- see stack.ll.
+
 @true = external global i8
 @false = external global i8
 

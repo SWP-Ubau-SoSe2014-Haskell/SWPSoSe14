@@ -1,3 +1,11 @@
+; Module      : LLVM backend - general math functions
+; Description : Contains LLVM functions for mathematical operations like addition etc.
+; Maintainers : Sascha Zinke
+; License     : MIT
+;
+; These functions are used by our LLVM backend and operate directly on the stack --
+; see stack.ll.
+
 @err_type = external global [14 x i8]
 @err_zero = external global [18 x i8]
 @popped = external global [13 x i8]
