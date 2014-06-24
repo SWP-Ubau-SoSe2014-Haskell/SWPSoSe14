@@ -13,6 +13,7 @@ When a test name is given then run this test.
 -r         Run all not enabled tests.
 -v         Verbose mode. Can be used multiple times for increased
            verbotisty.
+-c         Use C++ compiler/runtime system.
 EOF
 }
 
@@ -85,7 +86,7 @@ function get_filename {
 function run_one {
   dontrun=false
   filename=$(get_name "$1")
-
+  unset compilefail
   if [ -f "$TESTDIR/$filename$EXT" ]
     then
       readtest "$TESTDIR/$filename$EXT"
@@ -94,28 +95,31 @@ function run_one {
       echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". $EXT-file is missing."
       return
   fi
-
-  errormsg=$(dist/build/RailCompiler/RailCompiler -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
-    && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
-    && chmod +x "$TMPDIR/$filename" || {
-      TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
-
-      # Check STDOUT first for backward compatibility.
-      if [[ "$errormsg" == "${STDOUT[0]}" || "$errormsg" == "${STDERR[0]}" ]]; then
-        [ $verbose -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
-	if [ $verbose -gt 1 ]; then
-          echo "  The error message was: \"$errormsg\""
-        else
-          [ $verbose -gt 0 ] && echo -ne "\n"
-        fi
+  if [ -z $cpp ]; then
+    # Run Haskell compiler and llvm-linker.
+    errormsg=$(dist/build/RailCompiler/RailCompiler -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
+      && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
+      && chmod +x "$TMPDIR/$filename" || compilefail=true
+  else
+    # Run C++ compiler.
+    errormsg=$($CPPCOMPILER -q -i "$1" -o "$TMPDIR/$filename.class" 2>&1) || compilefail=true
+  fi
+  if [ -n "$compilefail" ]; then
+    TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
+    # Check STDOUT first for backward compatibility.
+    if [[ "$errormsg" == "${STDOUT[0]}" || "$errormsg" == "${STDERR[0]}" ]]; then
+      [ $verbose -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
+      if [ $verbose -gt 1 ]; then
+        echo "  The error message was: \"$errormsg\""
       else
-        fail=$(($fail + 1))
-        echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg\""
+        [ $verbose -gt 0 ] && echo -ne "\n"
       fi
-
-      return
-  }
-
+    else
+      fail=$(($fail + 1))
+      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg\""
+    fi
+    return
+  fi
   # Create temporary files for stdout and stderr.
   stdoutfile=$(mktemp -t swp14_ci_stdout.XXXXX)
   if [ $? -gt 0 ]; then
@@ -135,7 +139,7 @@ function run_one {
     TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
 
     # Execute the test!
-    echo -ne "${STDIN[$i]}" | do_lli "$TMPDIR/$filename" 1>"$stdoutfile" 2>"$stderrfile"
+    echo -ne "${STDIN[$i]}" | run_compiled "$filename" 1>"$stdoutfile" 2>"$stderrfile"
 
     # Read stdout and stderr, while converting all actual newlines to \n.
     # Really ugly: bash command substitution eats trailing newlines so we
@@ -177,17 +181,21 @@ function run_all {
   done
 }
 
-### Function to correctly call the LLVM interpreter
-function do_lli {
+### Function to correctly call the LLVM/java interpreter
+function run_compiled {
   # On some platforms, the LLVM IR interpreter is not called "lli", but
   # something like "lli-x.y", where x.y is the LLVM version -- there may be
   # multiple such binaries for different LLVM versions.
   # Instead of trying to find the right version, we currently assume that
   # such platforms use binfmt_misc to execute LLVM IR files directly (e. g. Ubuntu).
-  if command -v lli >/dev/null; then
-      lli "$@"
+  if [ -z $cpp ]; then
+    if command -v lli >/dev/null; then
+        lli "$TMPDIR/$@"
+    else
+        "$TMPDIF/$@"
+    fi
   else
-      "$@"
+    java -cp "$TMPDIR/" "$@"
   fi
 }
 
@@ -216,7 +224,7 @@ enable=""  # The test to enable.
 disable="" # The test to disable.
 
 OPTIND=1
-while getopts "hvlre:d:" opt; do
+while getopts "hvclre:d:" opt; do
   case "$opt" in
     h)
       show_help
@@ -227,6 +235,9 @@ while getopts "hvlre:d:" opt; do
       ;;
     l)
       list=true
+      ;;
+    c)
+      cpp=true
       ;;
     r)
       reverse=true
@@ -262,6 +273,7 @@ fi
 
 ### Main function.
 TOTAL_TESTCASES=0
+CPPCOMPILER=dist/build/RailCompiler/cppRail
 
 if [ "$reverse" = true ]; then
   TESTDIR="integration-tests"
