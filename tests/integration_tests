@@ -248,7 +248,6 @@ test="$1"
 
 # -r implies -v
 [[ -n $reverse && $verbose -eq 0 ]] && verbose=1
-echo $verbose
 
 ### Checking for incompatible options.
 count=0
