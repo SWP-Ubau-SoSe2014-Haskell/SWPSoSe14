@@ -99,7 +99,7 @@ function run_one {
   if [[ -z $cpp && -z $interpreter ]]; then
     # Run Haskell compiler and llvm-linker.
     errormsg=$(dist/build/RailCompiler/RailCompiler -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
-      && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/stack.ll > "$TMPDIR/$filename" \
+      && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/*.ll > "$TMPDIR/$filename" \
       && chmod +x "$TMPDIR/$filename" || compilefail=true
   elif [ -n "$cpp" ]; then
     # Run C++ compiler.
