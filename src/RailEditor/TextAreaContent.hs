@@ -9,15 +9,27 @@ Stability   :  experimental
 This TextAreaContent-module stores two data structures that saves all entries for the editor.
 The first data structur saves the text-entries, the second data structure saves the color-entries.
 -}
+
+
 module TextAreaContent (
-                        TextAreaContent.init,   -- initializes both data structures
-                        serialize,   -- serializes both data structures
-                        deserialize,   -- deserializes both data structures
-                        putValue,   -- sets the text-entry for a certian point in the data structure
-                        putColor,   -- sets the color for a certian point in the data structure
-                        getCell,   -- reads the data form both datastructures (text and color)
-                        TextAreaContent.size
-                       ) where
+-- * Detail
+--
+-- | 'TextAreaContent' is a model to be used in combination with 'TextArea' as view.
+
+-- * Types
+  TextAreaContent,
+
+-- * Constructors
+  TextAreaContent.init,   -- initializes both data structures
+
+-- * Methods
+  serialize,
+  deserialize,
+  putValue,
+  putColor,
+  getCell,
+  TextAreaContent.size
+  ) where
 
 import Graphics.UI.Gtk
 import Data.Map as Map
@@ -39,24 +51,37 @@ black = (Color 0 0 0)
 defaultColor = black
 defaultChar = ' '
 
-init :: Int -> Int -> IO (TextAreaContent)
+
+--------------------
+-- Constructors
+
+-- | creates a new TextAreaContent
+init :: Int -- ^ x-size
+  -> Int -- ^ y-size
+  -> IO (TextAreaContent)
 init x y = do
-    size <- newIORef (x,y)
-    hmapR <- newIORef hmap
-    cmapR <- newIORef cmap
-    let colorMap  = CoMap cmapR size
-    let charMap = ChMap hmapR size
-    return (charMap,colorMap)
-        where hmap = fillMapWith (Map.empty) defaultChar x y x y
-              cmap = fillMapWith (Map.empty) defaultColor x y x y
+  size <- newIORef (x,y)
+  hmapR <- newIORef hmap
+  cmapR <- newIORef cmap
+  let colorMap  = CoMap cmapR size
+  let charMap = ChMap hmapR size
+  return (charMap,colorMap)
+    where
+      hmap = fillMapWith (Map.empty) defaultChar x y x y
+      cmap = fillMapWith (Map.empty) defaultColor x y x y
 
+--------------------
+-- Methods
 
+--fills a map with a specified content
 fillMapWith :: Map.Map (Int,Int) a -> a -> Int -> Int -> Int -> Int -> Map.Map (Int,Int) a
 fillMapWith map content _ _ 0 0 = Map.insert (0,0) content map
 fillMapWith map content xBound yBound 0 y = fillMapWith (Map.insert (0,y) content map) content xBound yBound xBound (pred y)
 fillMapWith map content xBound yBound x y = fillMapWith (Map.insert (x,y) content map) content xBound yBound (pred x) y
 
-serialize :: TextAreaContent -> IO (String)
+-- | creates a string by a TextAreaContent
+serialize :: TextAreaContent
+  -> IO (String)
 serialize ((ChMap hMap size),_) = do
   hmap <- readIORef hMap
   let list = toList hmap
@@ -81,49 +106,54 @@ serialize ((ChMap hMap size),_) = do
       before :: ((Int,Int),Char) -> ((Int,Int),Char) -> Bool
       before ((a,b),_) ((c,d),_) = b < d || (b == d && a <= c)
 
-deserialize :: String -> IO (TextAreaContent)
+-- | creates a TextAreaContent by a string
+deserialize :: String
+  -> IO (TextAreaContent)
 deserialize stringContent = do
-    areaContent@((ChMap charMap _),_) <- TextAreaContent.init newX newY
-    readStringListInEntryMap charMap lined (0,0)
-    return areaContent
-        where newX = maximum $ Prelude.map length lined
-              newY = length lined
-              lined = lines stringContent
+  areaContent@((ChMap charMap _),_) <- TextAreaContent.init newX newY
+  readStringListInEntryMap charMap lined (0,0)
+  return areaContent
+    where
+      newX = maximum $ Prelude.map length lined
+      newY = length lined
+      lined = lines stringContent
 
+--subfunction for deserialization
 readStringListInEntryMap _ [] _ = return ()
 readStringListInEntryMap hmap (e:es) (x,y) = do
-    readStringInEntryMap hmap e (0,y)
-    readStringListInEntryMap hmap es (0,(y+1));
+  readStringInEntryMap hmap e (0,y)
+  readStringListInEntryMap hmap es (0,(y+1));
 
--- help function for deserialization
+--subfunction for deserialization
 readStringInEntryMap _ [] _ = return ()
 readStringInEntryMap hmap (s:ss) (x,y) = do
-    entryMap <- readIORef hmap
-    let entryMap = Map.insert (x,y) s entryMap
-    writeIORef hmap entryMap
-    readStringInEntryMap hmap ss (succ x,y)
+  entryMap <- readIORef hmap
+  let entryMap = Map.insert (x,y) s entryMap
+  writeIORef hmap entryMap
+  readStringInEntryMap hmap ss (succ x,y)
 
--- quadruples the size of the TextAreaContent-Map
+--quadruples the size of the TextAreaContent
 resize :: TextAreaContent -> IO ()
 resize area@((ChMap charMap size),_)  = do
-    (xm,ym) <- readIORef size
-    expandXTextAreaN area (xm,ym) xm
-    (xm,ym) <- readIORef size
-    expandYTextAreaN area (xm,ym) ym
+  (xm,ym) <- readIORef size
+  expandXTextAreaN area (xm,ym) xm
+  (xm,ym) <- readIORef size
+  expandYTextAreaN area (xm,ym) ym
 
+--subfunction for resize
 expandXTextAreaN area (oldX,oldY) n
   | n == 0 = return ()
   | otherwise = do
     expandXTextArea area (oldX,oldY)
     expandXTextAreaN area ((succ oldX),oldY) (n-1)
 
---Subfunction of expandXTextAreaN 
+--subfunction for expandXTextAreaN
 expandXTextArea area@((ChMap hMap size),_) (oldX,oldY)= do
   expandXTextAreaH area (oldX,oldY)
   (xmax,ymax) <- readIORef size
   writeIORef size (succ xmax,ymax)
 
---insert the new content at the end of a line
+--subfunction for expandXTextArea
 expandXTextAreaH area@(ChMap hMap _,CoMap colorMap _) (oldX,oldY) = 
   if oldY == 0
   then do
@@ -142,18 +172,20 @@ expandXTextAreaH area@(ChMap hMap _,CoMap colorMap _) (oldX,oldY) =
     writeIORef colorMap cmap
     expandXTextAreaH area (oldX,(pred oldY))
 
+--subfunction for resize
 expandYTextAreaN area (oldX,oldY) n
   | n <= 0 = return ()
   | otherwise = do
     expandYTextArea area (oldX,oldY)
     expandYTextAreaN area (oldX,(succ oldY)) (n-1)
 
+--subfunction for expandYTextAreaN
 expandYTextArea area@(ChMap hMap size,_) (oldX,oldY)= do
   expandYTextAreaH area (oldX,oldY)
   (xmax,ymax) <- readIORef size
   writeIORef size (xmax,succ ymax)
 
---Insert a new line
+--subfunction for expandYTextArea
 expandYTextAreaH area@(ChMap hMap _,CoMap colorMap _) (oldX,oldY) = 
   if oldX == 0
   then do
@@ -172,29 +204,41 @@ expandYTextAreaH area@(ChMap hMap _,CoMap colorMap _) (oldX,oldY) =
     writeIORef colorMap cmap
     expandXTextAreaH area ((pred oldX),oldY)
 
--- sets given value for the specified coordinates
-putValue :: TextAreaContent  -> (Int,Int) -> Char -> IO ()
+-- | sets the character for a cell identified by a coordinate
+putValue :: TextAreaContent
+  -> (Int,Int) -- ^ coordinates of the required cell
+  -> Char -- ^ character
+  -> IO ()
 putValue (ChMap charMap _,_) coord character = do
-    hmap <- readIORef charMap
-    let hmap = Map.insert coord character hmap
-    writeIORef charMap hmap
+  hmap <- readIORef charMap
+  let hmap = Map.insert coord character hmap
+  writeIORef charMap hmap
 
-putColor :: TextAreaContent -> (Int,Int) -> Color -> IO ()
+-- | sets the color of a cell identified by 
+putColor :: TextAreaContent
+  -> (Int,Int) -- ^ coordinates of the required cell
+  -> Color -- ^ color to put
+  -> IO ()
 putColor (_,CoMap colorMap _) coord color = do
-    cmap <- readIORef colorMap
-    let cmap = Map.insert coord color cmap
-    writeIORef colorMap cmap
+  cmap <- readIORef colorMap
+  let cmap = Map.insert coord color cmap
+  writeIORef colorMap cmap
 
-getCell :: TextAreaContent -> (Int,Int) -> IO (Char,Color)
+-- | returns the character and the color of a cell
+getCell :: TextAreaContent 
+  -> (Int,Int) -- ^ coordinates of the required cell
+  -> IO (Char,Color)
 getCell (ChMap charMap _,CoMap colorMap _) coord = do
-    hmap <- readIORef charMap
-    cmap <- readIORef colorMap
-    let value = fromJust $ Map.lookup coord hmap
-    let color = fromJust $ Map.lookup coord cmap
-    return (value,color)
+  hmap <- readIORef charMap
+  cmap <- readIORef colorMap
+  let value = fromJust $ Map.lookup coord hmap
+  let color = fromJust $ Map.lookup coord cmap
+  return (value,color)
 
-size :: TextAreaContent -> IO (Int,Int)
+-- | returns the size of a TextAreaContent.
+size :: TextAreaContent
+  -> IO (Int,Int) -- ^ size of the TextAreaContent
 size (ChMap _ size, _) = do
-    areaSize <- readIORef size
-    return areaSize
+  areaSize <- readIORef size
+  return areaSize
 
