@@ -16,7 +16,7 @@ declare i32 @get_stack_elem(i8*, %struct.stack_elem*)
 @main.number_a = private unnamed_addr constant [4 x i8] c"-57\00"
 @main.number_b  = private unnamed_addr constant [4 x i8] c"-58\00"
 
-define i32 @main() {
+define i32 @main_math() {
   ; push two numbers on the stack
   %number0 = getelementptr [4 x i8]* @main.number_a, i64 0, i64 0   
   %number1 = getelementptr [4 x i8]* @main.number_b, i64 0, i64 0   
