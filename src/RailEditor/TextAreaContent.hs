@@ -16,7 +16,14 @@ module TextAreaContent (
                         putValue,   -- sets the text-entry for a certian point in the data structure
                         putColor,   -- sets the color for a certian point in the data structure
                         getCell,   -- reads the data form both datastructures (text and color)
-                        TextAreaContent.size
+                        red,
+                        blue,
+                        green,
+                        gold,
+                        black,
+                        defaultColor,
+                        TextAreaContent.size,
+                        TextAreaContent
                        ) where
 
 import Graphics.UI.Gtk

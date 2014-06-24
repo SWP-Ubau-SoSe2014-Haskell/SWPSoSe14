@@ -16,44 +16,48 @@ module Highlighter (
   where
 
 import InterfaceDT as IDT
-import Preprocessor as Pre
+import Preprocessor as PRE
 import Lexer
 import qualified TextAreaContent as TAC
-import qualified Control.Exception as Exc
+import qualified Control.Exception as EXC
+import Graphics.UI.Gtk.Abstract.Widget
 import System.IO
 import Data.IORef
 import Data.Maybe
 
+--returns the grid2D from a IDT.IPL grid2D
+getGrid2dFromPreProc2Lexer(IDT.IPL grid2D) = grid2D
+
 -- highlights all entries saved in the data structur of the TextAreaCotent-module
 highlight :: TAC.TextAreaContent -> IO()
-highlight (chars, colors) = do
-  code <- serialize (chars, colors)
-  Exc.catch (do
-    let (grid2D,indexes) = getGrid2dFromPreProc2Lexer $ Pre.process  (IIP code)
-    (xm,ym) <- readIORef size chars
-    paintItRed 0 0 xm ym colors --TODO Do it efficient using redo/undo to get the current pressed entry
-    highlightFcts grid2D indexes colors
+highlight textAC = do
+  code <- TAC.serialize textAC
+  EXC.catch (do
+    let (grid2D,indexes) =  (getGrid2dFromPreProc2Lexer $ PRE.process  (IIP code))
+    (xm,ym) <- readIORef TAC.size textAC
+    paintItRed 0 0 xm ym textAC --TODO Do it efficient using redo/undo to get the current pressed entry
+    highlightFcts grid2D indexes textAC
     return ()
     ) handleErrors
 
 --Handels errors and prints them out used in context of Lexer and Preprocessor
-handleErrors :: Exc.ErrorCall -> IO ()
+handleErrors :: EXC.ErrorCall -> IO ()
 handleErrors e 
   | excep == Nothing = return ()
   | otherwise = putStrLn $ fromJust excep
   where
-    excep = fromException e
+    excep = EXC.fromException e
 
 -- highlight all rail-functions
 highlightFcts ::  [Grid2D]-- List of funtions in line-representation  
   -> [Int]                -- start indexes of function(y coord of textArea) 
-  -> ColorMap             -- Char coloring information
+  -> TAC.TextAreaContent             -- Char coloring information
   -> IO IP
 highlightFcts [] _ _ = return crash
 highlightFcts _ [] _ = return crash
-highlightFcts (x:xs) (y:ys) colors = do
-  highlightFct x start y colors
-  highlightFcts xs ys colors
+highlightFcts (x:xs) (y:ys) textAC = do
+  highlightFct x start y textAC
+  highlightFcts xs ys textAC
   
   {-
  main highlighting process which highlights a single rail-function.
@@ -66,36 +70,35 @@ highlightFcts (x:xs) (y:ys) colors = do
  parseIP returns the current lexeme and IP. In case of constants IP
  is at the closing char.
 -}
---putColor :: TextAreaContent -> (Int,Int) -> Color -> IO ()
 highlightFct :: Grid2D
   -> IP
   -> Int
-  -> ColorMap
+  -> TAC.TextAreaContent
   -> IO IP
 highlightFct _ crash _ _ = return crash
-highlightFct grid2D ip yOffset colors = do
+highlightFct grid2D ip yOffset textAC = do
   case lex of
-    Nothing -> putColor (emptyCharMap,colors) (xC,yC) TAC.black
+    Nothing -> TAC.putColor textAC (xC,yC) TAC.black
     Just (Junction _) -> do
-      putColor (emptyCharMap,colors) (xC,yC) TAC.gold
+      TAC.putColor textAC (xC,yC) TAC.gold
       let (falseIP,trueIP) = junctionturns grid2D parseIP
-      highlightFct textArea grid2D falseIP yOffset colors
-      highlightFct textArea grid2D trueIP yOffset colors
+      highlightFct grid2D falseIP yOffset textAC
+      highlightFct grid2D trueIP yOffset textAC
       return ()
     Just (Constant str)   -> do
       if [(current grid2D parseIP)] == "]" || 
          [(current grid2D parseIP)] == "["
       then colorStrCommand str TAC.green
       else do
-        putColor (emptyCharMap,colors) (xC,yC) TAC.green
-        highlightFct grid2D (step grid2D parseIP)yOffset colors
+        TAC.putColor textAC (xC,yC) TAC.green
+        highlightFct grid2D (step grid2D parseIP)yOffset textAC
       return ()
     Just (Push str)-> colorStrCommand str TAC.blue
     Just (Pop str) -> colorStrCommand str TAC.green
     Just (Call str) -> colorStrCommand str TAC.green
     _ -> do
       cBlue
-      highlightFct grid2D nextIP yOffset colors
+      highlightFct grid2D nextIP yOffset textAC
     where
       (lex, parseIP) = parse grid2D ip
       nextIP = step grid2D parseIP
@@ -104,25 +107,24 @@ highlightFct grid2D ip yOffset colors = do
       -- colors rail-builtins blue
       cBlue :: IO ()
       cBlue | elem (fromJust lex) [NOP,Boom,EOF,Input,Output,IDT.Underflow,
-        RType,Add1,Divide,Multiply,Subtract,Remainder,Cut,Append,Size,Nil,
-        Cons,Breakup,Greater,Equal] = putColor (emptyCharMap,colors) (xC,yC) TAC.blue
+              RType,Add1,Divide,Multiply,Subtract,Remainder,Cut,Append,Size,Nil,
+              Cons,Breakup,Greater,Equal] = TAC.putColor textAC (xC,yC) TAC.blue
+            |otherwise = return()
       --function to color commands with strings like [], {}
       colorStrCommand :: String -> Color -> IO ()
       colorStrCommand str color = do
         colorMoves grid2D (turnaround ip)
-          (turnaround parseIP) color colors
-        highlightFct grid2D (step grid2D parseIP) yOffset colors
+          (turnaround parseIP) color textAC
+        highlightFct grid2D (step grid2D parseIP) yOffset textAC
         return ()
       --steps the IP to the beginning of an constant, call or pop
       colorMoves :: Grid2D -> IP -> IP -> Color -> IO IP
       colorMoves grid2D endIP curIP color  
-        | endIP == curIP = putColor (emptyCharMap,colors) (posx curIP,posy curIP+yOffset) color
+        | endIP == curIP = TAC.putColor textAC (posx curIP,posy curIP+yOffset) color
         | otherwise = do
-          putColor (emptyCharMap,colors)(posx curIP,posy curIP+yOffset) color
-          colorMoves grid2D endIP (move curIP Forward) color colors
+          TAC.putColor textAC (posx curIP,posy curIP+yOffset) color
+          colorMoves grid2D endIP (move curIP Forward) color textAC
           return crash
-
-emptyCharMap = TAC.ChM((newIORef empty) newIORef((0,0)))
 
 -- colors all entry red in a rect from x,y to xMax,yMax
 -- This function is needed to recolor after editing
@@ -130,9 +132,9 @@ paintItRed :: Int-- x coord start
   -> Int--y coord str
   -> Int--x coord end
   -> Int--y coord end
-  -> colors
+  -> TAC.TextAreaContent
   -> IO()
-paintItRed x y xMax yMax colors = do
-  xs <- [x..xmax]
-  ys <- [y..ymax]
-  putColor (emptyCharMap,colors) (xs,ys) TAC.red
+paintItRed x y xMax yMax textAC = do
+  xs <- [x..xMax]
+  ys <- [y..yMax]
+  TAC.putColor textAC (xs,ys) TAC.red
