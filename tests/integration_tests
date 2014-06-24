@@ -192,7 +192,7 @@ function run_compiled {
     if command -v lli >/dev/null; then
         lli "$TMPDIR/$@"
     else
-        "$TMPDIF/$@"
+        "$TMPDIR/$@"
     fi
   else
     java -cp "$TMPDIR/" "$@"
