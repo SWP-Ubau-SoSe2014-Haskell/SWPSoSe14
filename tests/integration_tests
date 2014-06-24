@@ -192,7 +192,7 @@ function run {
   if [ -n "$cpp" ]; then
     java -cp "$TMPDIR/" "$@"
   elif [ -n "$interpreter" ]; then
-    dist/build/RailCompiler/rail_interpreter "$TESTDIR/$@.rail"
+    "$INTERPRETER" "$TESTDIR/$@.rail"
   else
     if command -v lli >/dev/null; then
         lli "$TMPDIR/$@"
@@ -282,6 +282,7 @@ fi
 ### Main function.
 TOTAL_TESTCASES=0
 CPPCOMPILER=dist/build/RailCompiler/cppRail
+INTERPRETER=dist/build/RailCompiler/rail_interpreter
 
 if [ "$reverse" = true ]; then
   TESTDIR="integration-tests"
