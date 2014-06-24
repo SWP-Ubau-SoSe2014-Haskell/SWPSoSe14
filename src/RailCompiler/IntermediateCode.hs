@@ -1,7 +1,8 @@
 {- |
 Module      :  IntermediateCode.hs
 Description :  Intermediate code generation
-Copyright   :  (c) AUTHORS
+Maintainers :  Philipp Borgers, Tilman Blumenbach, Lyudmila Vaseva, Sascha Zinke,
+               Maximilian Claus, Michal Ajchman, Nicolas Lehmann, Tudor Soroceanu
 License     :  MIT
 Stability   :  unstable
 
