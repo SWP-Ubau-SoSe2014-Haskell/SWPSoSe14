@@ -1,0 +1,1 @@
+../../integration-tests/pos_movesFromBottomLeft.io

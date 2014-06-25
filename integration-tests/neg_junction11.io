@@ -1,3 +1,3 @@
-t
+1
 #
-RailCompiler: Invalid movement.
+RailCompiler: Disallowed entry into junction.

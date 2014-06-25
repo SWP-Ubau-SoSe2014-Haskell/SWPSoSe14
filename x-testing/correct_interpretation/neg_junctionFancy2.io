@@ -1,0 +1,1 @@
+../../integration-tests/neg_junctionFancy2.io
