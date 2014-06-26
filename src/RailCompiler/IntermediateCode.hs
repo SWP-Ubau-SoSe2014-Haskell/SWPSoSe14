@@ -315,7 +315,7 @@ greater = GlobalDefinition $ Global.functionDefaults {
 popInto = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "pop_into",
   Global.returnType = VoidType,
-  Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name $ 
+  Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name  
     "struct.table") (AddrSpace 0)) (UnName 0) [], 
     Parameter bytePointerType (UnName 0) [] ], False)
 }
@@ -324,7 +324,7 @@ popInto = GlobalDefinition $ Global.functionDefaults {
 pushFrom = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "push_from",
   Global.returnType = VoidType,
-  Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name $ 
+  Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name  
     "struct.table") (AddrSpace 0)) (UnName 0) [], 
     Parameter bytePointerType (UnName 0) [] ], False)
 }
@@ -334,7 +334,7 @@ initialiseSymbolTable = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "initialise",
   Global.returnType = VoidType,
   Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
-    Name $ "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
+    Name "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
 }
 
 -- struct declaration for the symbol table
@@ -342,7 +342,7 @@ structTable = TypeDefinition (Name "struct.table")
       (Just $ StructureType False
                 [ PointerType (IntegerType 8) (AddrSpace 0), 
                   PointerType (IntegerType 8) (AddrSpace 0), 
-                  PointerType (NamedTypeReference $ Name $ "struct.table") (AddrSpace 0)])
+                  PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0)])
 
 
 -- |Generate an instruction for the 'u'nderflow check command.
@@ -650,7 +650,7 @@ generateInstruction Start = do
     metadata = []
   },
     Name "table" := Instruction.Alloca {
-    allocatedType = NamedTypeReference $ Name $ "struct.table",
+    allocatedType = NamedTypeReference $ Name "struct.table",
     numElements = Nothing,
     alignment = 4,
     metadata = []
