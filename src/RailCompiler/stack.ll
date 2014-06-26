@@ -321,7 +321,7 @@ define i32 @finish(){
 
 ; Popping a pointer from the stack into a variable
 define void @pop_into(%struct.table* %t, i8* %name){
-  ;call void @underflow_assert()
+  call void @underflow_assert()
   %n_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 0
   %name_t = load i8** %n_ptr
 
