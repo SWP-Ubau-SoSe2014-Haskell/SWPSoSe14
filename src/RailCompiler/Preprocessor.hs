@@ -38,6 +38,7 @@ module Preprocessor (
   | otherwise = result grid 0
    where
     result grid n
+     | null grid = (grid, n)
      | not $ notStartingWithDollar $ head grid = (grid, n)
      | otherwise = result (tail grid) (n + 1)
 
