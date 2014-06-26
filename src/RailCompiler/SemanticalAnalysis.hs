@@ -56,7 +56,7 @@ module SemanticalAnalysis (
 
  -- looking for a main function
  nomain :: [IDT.AST] -> Bool
- nomain input = "main" `notElem` (allfunctions input)
+ nomain input = "main" `notElem` allfunctions input
 
  -- checking if there are two or more functions with the same name
  duplicatefunctions :: [IDT.AST] -> Bool
