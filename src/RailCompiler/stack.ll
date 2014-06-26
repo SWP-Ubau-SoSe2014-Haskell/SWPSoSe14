@@ -281,21 +281,6 @@ define void @push_int(i64 %top_int)
   ret void
 }
 
-define void @sub_int() {
-  ; get top of stack
-  %top_1   = call i64()* @pop_int()
-
-  ; get second top of stack
-  %top_2   = call i64()* @pop_int()
-
-  ; sub the two values
-  %res = sub i64 %top_1, %top_2
-
-  ; store result on stack
-  call void(i64)* @push_int(i64 %res)
-
-  ret void
-}
 
 define i8* @peek() {
   %sp   = load i64* @sp
