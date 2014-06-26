@@ -115,7 +115,8 @@ function run_one {
   if [ -n "$compilefail" ]; then
     TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
     if [ -n "$fileoutput" ]; then
-     : 
+      echo "$errormsg" >> "${fileoutput}.err"
+      echo "${STDERR[0]}" >> "${fileoutput}.exp.err"
     elif [[ "$errormsg" == "${STDERR[0]}" ]]; then
       [ $verbose -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
       if [ $verbose -gt 1 ]; then
@@ -283,6 +284,10 @@ test="$1"
 # Set fileoutput to absolute path.
 if [ -n "$fileoutput" ]; then 
   fileoutput="$OLDDIR/$fileoutput"
+  if [ -f "$fileoutput" ]; then
+    echo "Outpput file exists. Removing."
+    rm "$fileoutput"{,.exp,.err,.exp.err}
+  fi
 fi
 
 # -r implies -v
@@ -365,8 +370,10 @@ rm -rf tests/tmp
 
 echo
 echo "RAN $TOTAL_TESTCASES TESTCASES IN TOTAL."
-
-
+if [ -n "$fileoutput" ]; then 
+  echo "Written outputs to $fileoutput."
+  exit 0
+fi
 if [ ! $fail -eq 0 ];then
   echo "`$red`FAILED`$NC` $fail test cases."
   exit 1
