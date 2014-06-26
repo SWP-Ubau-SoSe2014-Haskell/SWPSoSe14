@@ -113,9 +113,18 @@ checkCons _ = False
 createGlobalVariable :: Lexeme -> Global
 createGlobalVariable (Pop v) = globalVariableDefaults {
   Global.name = Name v,
-  Global.type' = bytePointerTypeVar,
-  Global.initializer = Just (Undef VoidType)
+  Global.type' = ArrayType {
+    nArrayElements = fromInteger l,
+    elementType = IntegerType {typeBits = 8}
+  },
+  Global.initializer = Just Array {
+    memberType = IntegerType {typeBits = 8},
+    memberValues = map trans v ++ [Int { integerBits = 8, integerValue = 0 }]
+  }
 }
+  where
+    l = toInteger $ 1 + length v
+    trans c = Int { integerBits = 8, integerValue = toInteger $ ord c }
 
 generateVariables :: [AST] -> [Global]
 generateVariables = map createGlobalVariable . getAllVars
@@ -306,15 +315,35 @@ greater = GlobalDefinition $ Global.functionDefaults {
 popInto = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "pop_into",
   Global.returnType = VoidType,
-  Global.parameters = ([ Parameter bytePointerTypeVar (UnName 0) [] ], False)
+  Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name $ 
+    "struct.table") (AddrSpace 0)) (UnName 0) [], 
+    Parameter bytePointerType (UnName 0) [] ], False)
 }
 
 -- function declaration for push_from
 pushFrom = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "push_from",
   Global.returnType = VoidType,
-  Global.parameters = ([ Parameter bytePointerTypeVar (UnName 0) [] ], False)
+  Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name $ 
+    "struct.table") (AddrSpace 0)) (UnName 0) [], 
+    Parameter bytePointerType (UnName 0) [] ], False)
 }
+
+-- function declaration for initialising of the symbol table
+initialiseSymbolTable = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "initialise",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
+    Name $ "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
+}
+
+-- struct declaration for the symbol table
+structTable = TypeDefinition (Name "struct.table")
+      (Just $ StructureType False
+                [ PointerType (IntegerType 8) (AddrSpace 0), 
+                  PointerType (IntegerType 8) (AddrSpace 0), 
+                  PointerType (NamedTypeReference $ Name $ "struct.table") (AddrSpace 0)])
+
 
 -- |Generate an instruction for the 'u'nderflow check command.
 generateInstruction Underflow =
@@ -350,49 +379,39 @@ generateInstruction (Junction label) = do
 -- generate instruction for pop into a variable
 generateInstruction (Pop name) = do
   index <- fresh
-  index2 <- fresh
-  index3 <- fresh
-  return [ UnName index := Instruction.Alloca {
-     allocatedType = bytePointerType,
-     numElements = Nothing, --Just (LocalReference (Name name)),
-     alignment = 4,
-     metadata = []
-  },
-    UnName index2 := LLVM.General.AST.Call {
+  return [ UnName index := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "pop_into",
-    arguments = [(LocalReference $ UnName index, [])],
+    arguments = [ (LocalReference $ Name "table", []),
+    (ConstantOperand Constant.GetElementPtr {
+      Constant.inBounds = True,
+      Constant.address = Constant.GlobalReference (Name name),
+      Constant.indices = [
+       Int { integerBits = 8, integerValue = 0 },
+       Int { integerBits = 8, integerValue = 0 }
+      ]}, [])],
     functionAttributes = [],
     metadata = []
-  },
-    UnName index3 := Instruction.Store {
-    volatile = False,
-    Instruction.address = ConstantOperand $ GlobalReference $ Name name,
-    value = LocalReference (UnName index),
-    maybeAtomicity = Nothing,
-    alignment = 4,
-    metadata = []
-}]
+  }]
 
 -- generate instruction for push from a variable
 generateInstruction (Push name) = do
   index <- fresh
-  index2 <- fresh
-  return [ UnName index := Instruction.Load {
-     volatile = False,
-     Instruction.address = ConstantOperand $ GlobalReference $ Name name,
-     maybeAtomicity = Nothing,
-     alignment = 4,
-     metadata = []
-  },
-    UnName index2 := LLVM.General.AST.Call {
+  return [ UnName index := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "push_from",
-    arguments = [(LocalReference $ UnName index, [])],
+    arguments = [(LocalReference $ Name "table", []),
+      (ConstantOperand Constant.GetElementPtr {
+      Constant.inBounds = True,
+      Constant.address = Constant.GlobalReference (Name name),
+      Constant.indices = [
+       Int { integerBits = 8, integerValue = 0 },
+       Int { integerBits = 8, integerValue = 0 }
+      ]}, [])],
     functionAttributes = [],
     metadata = []
   }]
@@ -618,13 +637,30 @@ generateInstruction Greater =
   }]
 
 -- |Generate instruction for start instruction
-generateInstruction Start =
-  return [Do LLVM.General.AST.Call {
+generateInstruction Start = do
+  index <- fresh
+  index2 <- fresh
+  return [ UnName index := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "start",
     arguments = [],
+    functionAttributes = [],
+    metadata = []
+  },
+    Name "table" := Instruction.Alloca {
+    allocatedType = NamedTypeReference $ Name $ "struct.table",
+    numElements = Nothing,
+    alignment = 4,
+    metadata = []
+  },
+    UnName index2 := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "initialise",
+    arguments = [(LocalReference $ Name "table", [])],
     functionAttributes = [],
     metadata = []
   }]
@@ -712,18 +748,19 @@ generateGlobalDefinition index def = GlobalDefinition def {
   Global.hasUnnamedAddr = True
 }
 
--- TODO find a more elegant way to solve this
 generateGlobalDefinitionVar ::  Integer -> Global -> Definition
 generateGlobalDefinitionVar i def = GlobalDefinition def {
-  Global.initializer = Just (Undef VoidType)
+  Global.isConstant = True,
+  Global.linkage = Internal,
+  Global.hasUnnamedAddr = True
 }
 
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++
-    [ underflowCheck, IntermediateCode.print, crash, start, finish, inputFunc,
+process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++ 
+    [ structTable, underflowCheck, IntermediateCode.print, crash, start, finish, inputFunc,
       eofCheck, push, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
-      popInt, equal, greater, popInto, pushFrom ] ++ generateFunctionsFoo input
+      popInt, equal, greater, popInto, pushFrom, initialiseSymbolTable ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input

@@ -49,7 +49,7 @@ declare void @exit(i32 signext)
 @pushing = unnamed_addr constant [14 x i8] c"Pushing [%s]\0A\00"
 @popped  = unnamed_addr constant [13 x i8] c"Popped [%s]\0a\00"
 @msg = private unnamed_addr constant [5 x i8] c"msg\0a\00"
-
+@no_element = private unnamed_addr constant [18 x i8] c"No such Element!\0A\00"
 
 @int_to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @float_to_str  = private unnamed_addr constant [3 x i8] c"%f\00"
@@ -66,6 +66,8 @@ declare void @exit(i32 signext)
 %struct.stack_elem = type { i32, %union.anon }
 %union.anon = type { i8* }
 
+; struct for the symbol table
+%struct.table = type {i8*, i8*, %struct.table*}
 
 @.str = private unnamed_addr constant [33 x i8] c"call int add with a=%i and b=%i\0A\00", align 1
 @.str1 = private unnamed_addr constant [35 x i8] c"call float add with a=%f and b=%f\0A\00", align 1
@@ -318,17 +320,90 @@ define i32 @finish(){
 }
 
 ; Popping a pointer from the stack into a variable
-define void @pop_into(i8** %var_ptr) {
-  call void @underflow_assert()
-  %val_ptr = call i8* @pop()
-  store i8* %val_ptr, i8** %var_ptr
+define void @pop_into(%struct.table* %t, i8* %name){
+  ;call void @underflow_assert()
+  %n_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 0
+  %name_t = load i8** %n_ptr
+
+  %is_null = icmp eq i8* %name_t, null
+  br i1 %is_null, label %insert, label %search
+insert:
+  ; store name
+  store i8* %name, i8** %n_ptr
+  
+  ; pop value from stack and store value
+  %value = call i8*()* @pop()
+  %v_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 1
+  store i8* %value, i8** %v_ptr
+
+  ; create new element and append to table
+  %new_elem = alloca %struct.table
+  ; initialise new element with null
+  call void @initialise(%struct.table* %new_elem)
+
+  %next_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 2
+  store %struct.table* %new_elem, %struct.table** %next_ptr
+
+  br label %end
+
+search:
+  %is_equal = icmp eq i8* %name_t, %name
+  br i1 %is_equal, label %insert2, label %search_further
+
+insert2:
+  %value2 = call i8*()* @pop()
+  %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
+  store i8* %value2, i8** %v_ptr_found
+
+  br label %end
+
+search_further:
+  %next_ptr_recursive = getelementptr inbounds %struct.table* %t, i64 0, i32 2
+  %next_ptr_recursive2 = bitcast %struct.table** %next_ptr_recursive to %struct.table*
+  call void @pop_into(%struct.table* %next_ptr_recursive2, i8* %name) 
+  br label %end
+
+end:
   ret void
 }
 
 ; Pushing a pointer from a variable onto the stack
-define void @push_from(i8** %var_ptr) {
-  %val = load i8** %var_ptr
-  call void @push (i8* %val)
+define void @push_from(%struct.table* %t, i8* %name){
+  %n_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 0
+  %name_t = load i8** %n_ptr
+
+  %is_null = icmp eq i8* %name_t, null
+  br i1 %is_null, label %no_such_elem, label %search
+no_such_elem:
+  %no_elem = getelementptr [18 x i8]* @no_element, i64 0, i64 0
+  call i32(i8*, ...)* @printf(i8* %no_elem)
+  br label %end
+
+search:
+  %is_equal = icmp eq i8* %name_t, %name
+  br i1 %is_equal, label %push_onto_stack, label %search_further
+
+push_onto_stack:
+  %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
+  %value_to_push = load i8** %v_ptr_found
+  call void(i8*)* @push(i8* %value_to_push)
+
+  br label %end
+
+search_further:
+  %next_ptr_recursive = getelementptr inbounds %struct.table* %t, i64 0, i32 2
+  %next_ptr_recursive2 = bitcast %struct.table** %next_ptr_recursive to %struct.table*
+  call void @pop_into(%struct.table* %next_ptr_recursive2, i8* %name) 
+  br label %end
+
+end:
+  ret void
+}
+
+; initialise the symbol table with the first element = null
+define void @initialise(%struct.table* %t){
+  %1 = getelementptr inbounds %struct.table* %t, i64 0, i32 0
+  store i8* null, i8** %1
   ret void
 }
 
