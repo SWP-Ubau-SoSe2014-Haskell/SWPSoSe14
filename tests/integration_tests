@@ -3,9 +3,10 @@
 ### Usage info
 function show_help {
 cat << EOF
-Usage: ${0##*/} [-hvl] [-e/d TEST] [TEST]...
+Usage: ${0##*/} [-hvl] [-e/d TEST] [TEST/TESTDIR]
 Without arguments the script runs all enabled tests.
 When a test name is given then run this test.
+When a directory is given it runs all tests in that directory.
 
 -h         Display this help and exit
 -e/d TEST  Enable/Diasble the specified test.
@@ -15,6 +16,11 @@ When a test name is given then run this test.
            verbotisty.
 -c         Use C++ compiler/runtime system.
 -i         Use the rail interpreter.
+-a         Generate an AST file with the c++ rail compiler and read
+           it into the haskell compiler. When using -ca the haskell
+           compiler generates the AST and the cpp-compiler reads that AST.
+-o FILE    Write expected outputs and actual outputs to FILE.exp and FILE.
+           Don't do the actual output comparision here.
 EOF
 }
 
@@ -227,7 +233,7 @@ enable=""  # The test to enable.
 disable="" # The test to disable.
 
 OPTIND=1
-while getopts "hviclre:d:" opt; do
+while getopts "hviclrea:d:o:" opt; do
   case "$opt" in
     h)
       show_help
@@ -245,6 +251,9 @@ while getopts "hviclre:d:" opt; do
     c)
       cpp=true
       ;;
+    a)
+      ast=true
+      ;;
     r)
       reverse=true
       ;;
@@ -253,6 +262,9 @@ while getopts "hviclre:d:" opt; do
       ;;
     d)
       disable=$OPTARG
+      ;;
+    o)
+      outputfile=$OPTARG
       ;;
     '?')
       show_help >&2
@@ -316,14 +328,19 @@ export TMPDIR=tests/tmp
 mkdir -p $TMPDIR
 
 fail=0
-if [ -n "$test" ];then
-  if [ "${test##*.}" == "rail" ]; then
-    # Set the TESTDIR to the directory the .rail file is in.
-    test="$OLDDIR"/"$test"
-    TESTDIR=${test%/*}
+if [ -n "$test" ]; then
+  if [ -d "$test" ]; then # Use that directory as TESTDIR
+    TESTDIR="$OLDDIR/$test"
+    run_all
   else
-    TESTDIR="integration-tests"
-    test=$(get_filename "$test") # Find the path to the specified test
+    if [ "${test##*.}" == "rail" ]; then
+      # Set the TESTDIR to the directory the .rail file is in.
+      test="$OLDDIR"/"$test"
+      TESTDIR=${test%/*}
+    else
+      TESTDIR="integration-tests"
+      test=$(get_filename "$test") # Find the path to the specified test
+    fi
   fi
   if [ -f "$test" ]; then
     run_one "$test"
