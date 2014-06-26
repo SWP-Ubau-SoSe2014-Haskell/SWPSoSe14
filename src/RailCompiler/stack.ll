@@ -393,7 +393,7 @@ push_onto_stack:
 search_further:
   %next_ptr_recursive = getelementptr inbounds %struct.table* %t, i64 0, i32 2
   %next_ptr_recursive2 = bitcast %struct.table** %next_ptr_recursive to %struct.table*
-  call void @pop_into(%struct.table* %next_ptr_recursive2, i8* %name) 
+  call void @push_from(%struct.table* %next_ptr_recursive2, i8* %name) 
   br label %end
 
 end:
