@@ -1,8 +1,7 @@
 {- |
 Module      : Backend
 Description : Converts the internal LLVM representation into textual LLVM IR.
-Maintainer  : See the AUTHORS file in the root directory of this project for a list
-              of contributors.
+Maintainer  : Tilman Blumenbach, Nicolas Lehmann, Philipp Borgers
 License     : MIT
 
 Uses the LLVM bindings for Haskell to convert the internal LLVM representation
