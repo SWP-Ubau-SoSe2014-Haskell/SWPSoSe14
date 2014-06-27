@@ -3,9 +3,10 @@
 ### Usage info
 function show_help {
 cat << EOF
-Usage: ${0##*/} [-hvl] [-e/d TEST] [TEST]...
+Usage: ${0##*/} [-hvl] [-e/d TEST] [TEST/TESTDIR]
 Without arguments the script runs all enabled tests.
 When a test name is given then run this test.
+When a directory is given it runs all tests in that directory.
 
 -h         Display this help and exit
 -e/d TEST  Enable/Diasble the specified test.
@@ -15,6 +16,12 @@ When a test name is given then run this test.
            verbotisty.
 -c         Use C++ compiler/runtime system.
 -i         Use the rail interpreter.
+-a         Generate an AST file with the c++ rail compiler and read
+           it into the haskell compiler. When using -ca the haskell
+           compiler generates the AST and the cpp-compiler reads that AST.
+-o FILE    Write expected outputs and actual outputs to FILE.exp, 
+           FILE.exp.err, FILE and FILE.err.
+           Don't do the actual output comparision here.
 EOF
 }
 
@@ -107,8 +114,10 @@ function run_one {
   fi
   if [ -n "$compilefail" ]; then
     TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
-    # Check STDOUT first for backward compatibility.
-    if [[ "$errormsg" == "${STDOUT[0]}" || "$errormsg" == "${STDERR[0]}" ]]; then
+    if [ -n "$fileoutput" ]; then
+      echo "$errormsg" >> "${fileoutput}.err"
+      echo "${STDERR[0]}" >> "${fileoutput}.exp.err"
+    elif [[ "$errormsg" == "${STDERR[0]}" ]]; then
       [ $verbose -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
       if [ $verbose -gt 1 ]; then
         echo "  The error message was: \"$errormsg\""
@@ -152,8 +161,12 @@ function run_one {
     stderr=$(cat "$stderrfile"; echo x)
     stderr=${stderr%x}
     stderr=${stderr//$'\n'/\\n}
-
-    if [[ "$stdout" == "${STDOUT[$i]}" && "$stderr" == "${STDERR[$i]}" ]]; then
+    if [ -n "$fileoutput" ]; then
+      echo "$stdout" >> "$fileoutput"
+      echo "$stderr" >> "${fileoutput}.err"
+      echo "${STDOUT[$i]}" >> "${fileoutput}.exp"
+      echo "${STDERR[$i]}" >> "${fileoutput}.exp.err"
+    elif [[ "$stdout" == "${STDOUT[$i]}" && "$stderr" == "${STDERR[$i]}" ]]; then
       [ $verbose -gt 0 ] && echo -n "`$green`Passed`$NC` \"$filename.rail\" with input \"${STDIN[$i]}\""
 	if [ $verbose -gt 1 ]; then
           echo "  Got output: \"$stdout\". Stderr: \"$stderr\"."
@@ -227,7 +240,7 @@ enable=""  # The test to enable.
 disable="" # The test to disable.
 
 OPTIND=1
-while getopts "hviclre:d:" opt; do
+while getopts "hviclrea:d:o:" opt; do
   case "$opt" in
     h)
       show_help
@@ -245,6 +258,9 @@ while getopts "hviclre:d:" opt; do
     c)
       cpp=true
       ;;
+    a)
+      ast=true
+      ;;
     r)
       reverse=true
       ;;
@@ -254,6 +270,9 @@ while getopts "hviclre:d:" opt; do
     d)
       disable=$OPTARG
       ;;
+    o)
+      fileoutput=$OPTARG
+      ;;
     '?')
       show_help >&2
       exit 1
@@ -262,6 +281,14 @@ while getopts "hviclre:d:" opt; do
 done
 shift "$((OPTIND-1))" # Shift off the options and optional --.
 test="$1"
+# Set fileoutput to absolute path.
+if [ -n "$fileoutput" ]; then 
+  fileoutput="$OLDDIR/$fileoutput"
+  if [ -f "$fileoutput" ]; then
+    echo "Outpput file exists. Removing."
+    rm "$fileoutput"{,.exp,.err,.exp.err}
+  fi
+fi
 
 # -r implies -v
 [[ -n $reverse && $verbose -eq 0 ]] && verbose=1
@@ -316,14 +343,19 @@ export TMPDIR=tests/tmp
 mkdir -p $TMPDIR
 
 fail=0
-if [ -n "$test" ];then
-  if [ "${test##*.}" == "rail" ]; then
-    # Set the TESTDIR to the directory the .rail file is in.
-    test="$OLDDIR"/"$test"
-    TESTDIR=${test%/*}
+if [ -n "$test" ]; then
+  if [ -d "$test" ]; then # Use that directory as TESTDIR
+    TESTDIR="$OLDDIR/$test"
+    run_all
   else
-    TESTDIR="integration-tests"
-    test=$(get_filename "$test") # Find the path to the specified test
+    if [ "${test##*.}" == "rail" ]; then
+      # Set the TESTDIR to the directory the .rail file is in.
+      test="$OLDDIR"/"$test"
+      TESTDIR=${test%/*}
+    else
+      TESTDIR="integration-tests"
+      test=$(get_filename "$test") # Find the path to the specified test
+    fi
   fi
   if [ -f "$test" ]; then
     run_one "$test"
@@ -338,8 +370,10 @@ rm -rf tests/tmp
 
 echo
 echo "RAN $TOTAL_TESTCASES TESTCASES IN TOTAL."
-
-
+if [ -n "$fileoutput" ]; then 
+  echo "Written outputs to $fileoutput."
+  exit 0
+fi
 if [ ! $fail -eq 0 ];then
   echo "`$red`FAILED`$NC` $fail test cases."
   exit 1
