@@ -240,7 +240,7 @@ enable=""  # The test to enable.
 disable="" # The test to disable.
 
 OPTIND=1
-while getopts "hviclrea:d:o:" opt; do
+while getopts "hviclre:a:d:o:" opt; do
   case "$opt" in
     h)
       show_help
