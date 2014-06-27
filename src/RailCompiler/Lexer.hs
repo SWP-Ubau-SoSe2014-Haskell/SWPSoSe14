@@ -99,7 +99,7 @@ module Lexer (
                     -- e. g. @$ \'main\'@.
     -> String -- ^The function name.
  funcname line
-   | null line || length (elemIndices '\'' line) < 2 = error EH.strFunctionNameMissing
+   | null line || length (elemIndices '\'' line) < 2 || null fn = error EH.strFunctionNameMissing
    | not $ null $ fn `intersect` "'{}()!" = error EH.strInvalidFuncName
    | otherwise = fn
   where fn = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
