@@ -2,4 +2,4 @@
 2
 #
 %
-At EOF!\n
+Crash: There is nothing more to read!\n

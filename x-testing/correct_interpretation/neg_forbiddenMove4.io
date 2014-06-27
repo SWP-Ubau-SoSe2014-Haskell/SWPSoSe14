@@ -1,0 +1,1 @@
+../../integration-tests/neg_forbiddenMove4.io

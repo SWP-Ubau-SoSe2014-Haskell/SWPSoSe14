@@ -1,0 +1,1 @@
+../../integration-tests/neg_invalidCommand1.io

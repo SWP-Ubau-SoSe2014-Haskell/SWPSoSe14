@@ -1,0 +1,1 @@
+../../integration-tests/neg_missingDollar3.io
