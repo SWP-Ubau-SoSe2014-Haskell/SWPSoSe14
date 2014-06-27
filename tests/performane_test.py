@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-mode=1
+mode=0
 
 n = int(sys.argv[1])
 f = open("perftest.rail","w")
@@ -20,6 +20,19 @@ elif mode==1:
     f.write(" \\\n")
     f.write("  \\\n")
     for i in range(n):
-        f.write((i+3)*" "+"\\\n")
-
+        if i != n:
+            f.write((i+3)*" "+"\\"+(3*(n-i)-3)*" ")
+        if i ==0:
+            f.write("  /-\\\n")
+        elif i%2==1:
+            f.write((i//2+1)*"   /   \\"+"\n")
+        else:
+            f.write("  "+"/-<"+(i//2-1)*"     --<"+"     --\\"+"\n")
+    f.write((n+2+1)*" "+"\\-<"+(n//2-1)*"     --<"+"     --#\n")
+    for i in range(n):
+        if i%2==0:
+            f.write((n+4+(i+1)*2)*" "+(n//2-i//2)*"\\   /   "+"\n")
+        elif i!= n-1:
+            f.write((n+3+(i+1)*2)*" "+"\\-<"+(n//2-i//2-2)*"     --<"+"     --/"+"\n")
+    f.write(((3*n)+3)*" "+"\\-/")
 f.close()
