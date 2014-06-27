@@ -115,6 +115,7 @@ function run_one {
   if [ -n "$compilefail" ]; then
     TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
     if [ -n "$fileoutput" ]; then
+      echo "$filename" >> "${fileoutput}.tests"
       echo "$errormsg" >> "${fileoutput}.err"
       echo "${STDERR[0]}" >> "${fileoutput}.exp.err"
     elif [[ "$errormsg" == "${STDERR[0]}" ]]; then
@@ -162,6 +163,7 @@ function run_one {
     stderr=${stderr%x}
     stderr=${stderr//$'\n'/\\n}
     if [ -n "$fileoutput" ]; then
+      echo "$filename - Input: \"${STDIN[$i]}\"" >> "${fileoutput}.tests"
       echo "$stdout" >> "$fileoutput"
       echo "$stderr" >> "${fileoutput}.err"
       echo "${STDOUT[$i]}" >> "${fileoutput}.exp"
