@@ -55,7 +55,7 @@ module SyntacticalAnalysis (
 -- startNodes xs = error (show (Map.toList (nodeCount xs Map.empty)))
 -- startNodes xs = error (show (fst' (head xs):(Map.keys $ Map.filter (/= 1) $ nodeCount xs Map.empty)))
  startNodes [] = []
- startNodes xs = fst' (head xs):(filter (/=0) $ Map.keys $ Map.filter (/= 1) $ nodeCount xs Map.empty)
+ startNodes xs = fst' (head xs):filter (/=0) (Map.keys $ Map.filter (/= 1) $ nodeCount xs Map.empty)
     where
         -- result type: [(ID, Count)]
         nodeCount :: [IDT.LexNode] -> Map.Map Int Int -> Map.Map Int Int

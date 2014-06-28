@@ -92,9 +92,6 @@ module Lexer (
     (nxs, _) = nodes code [[(1, Start, 0, (0, 0, SE))]] start
 
  -- |Get the name of the given function.
- --
- -- TODO: Note that this will crash the entire program if there is
- -- no function name.
  funcname :: String -- ^A line containing the function declaration,
                     -- e. g. @$ \'main\'@.
     -> String -- ^The function name.
@@ -122,7 +119,7 @@ module Lexer (
      where
       -- This checks if we have e. g. two reflectors that "bounce" the IP between them
       -- endlessly.
-      endless = count ip > 8 * sum (map length code)
+      endless = count ip > 8 * length (head code) * length (head code)
       endlesslist = (newnode, NOP, newnode, (-1, -1, SE)) `prepend` update list (path ip) newnode
       newnode = sum (map length list) + 1
       prepend newx (x:xs) = (newx:x):xs

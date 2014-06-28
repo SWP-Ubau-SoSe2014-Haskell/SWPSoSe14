@@ -18,13 +18,24 @@ module Preprocessor (
  
  -- imports --
  import InterfaceDT as IDT
- import ErrorHandling as EH 
+ import ErrorHandling as EH
+ import Data.List
  
  -- functions --
  process :: IDT.Input2PreProc -> IDT.PreProc2Lexer
  process (IDT.IIP input) = IDT.IPL output
   where
-   output = (groupFunctionsToGrid2Ds . removeLines . lines) input
+   output = map maximize $ (groupFunctionsToGrid2Ds . removeLines . lines) input
+
+ -- |Makes the first line as long as max(max(lines),#lines)
+ -- this is useful for the lexer to determine an upper bound for empty endless loops
+ maximize :: (Grid2D, Int) -> (Grid2D, Int)
+ maximize ([], offset) = ([], offset)
+ maximize (x:xs, offset) = (stretchto (max maxlines maxcols) x:xs, offset)
+  where
+   stretchto count line = take count (line ++ repeat ' ')
+   maxlines = maximum $ map length (x:xs)
+   maxcols = length (x:xs)
 
  -- |Return False iff the first character is a dollar sign.
  notStartingWithDollar :: String -> Bool
