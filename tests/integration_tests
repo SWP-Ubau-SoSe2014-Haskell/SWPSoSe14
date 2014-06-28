@@ -103,6 +103,9 @@ function run_one {
       echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". $EXT-file is missing."
       return
   fi
+  if [[ -n "$ast" ]]; then 
+    return
+  fi
   if [[ -z $cpp && -z $interpreter ]]; then
     # Run Haskell compiler and llvm-linker.
     errormsg=$(dist/build/RailCompiler/RailCompiler -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
@@ -242,7 +245,7 @@ enable=""  # The test to enable.
 disable="" # The test to disable.
 
 OPTIND=1
-while getopts "hviclre:a:d:o:" opt; do
+while getopts "hviclre:ad:o:" opt; do
   case "$opt" in
     h)
       show_help
