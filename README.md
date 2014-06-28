@@ -69,7 +69,7 @@ corresponding io-file with two test cases could look as follows:
 21
 56
 #
-377
+77
 ```
 
 **NOTE 1:** printed newlines have to be stated explicitly. Consider a hello-world

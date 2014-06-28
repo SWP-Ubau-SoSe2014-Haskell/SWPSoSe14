@@ -27,10 +27,11 @@ module InterfaceDT where
   -- |* following Nodes or Pathes could have ID==0, in this case there is no Follower
 
   -- |Junction Int <=> if false goto Int; if true <=> following node
+	-- |Lambda Int <=> Int holds node of anonymous function
   data Lexeme = NOP | Boom | EOF | Input | Output | Underflow | RType |
     Constant String | Push String | Pop String | Call String | Add1 | Divide |
     Multiply | Remainder | Subtract | Cut | Append | Size | Nil | Cons |
-    Breakup | Greater | Equal | Start | Finish | Junction Int deriving (Eq, Show)
+    Breakup | Greater | Equal | Start | Finish | Junction Int | Lambda Int deriving (Eq, Show)
 
   -- interface datatypes --
   data Input2PreProc     = IIP String   deriving (Eq, Show)

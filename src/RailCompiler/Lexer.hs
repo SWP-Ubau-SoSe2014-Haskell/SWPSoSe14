@@ -74,19 +74,20 @@ module Lexer (
 
  -- |Process preprocessor output into a list of function ASTs.
  --
+ --
  -- Raises 'error's on invalid input; see 'ErrorHandling' for a list of error messages.
  process :: IDT.PreProc2Lexer -- ^Preprocessor output (a list of lists of strings; i. e. a list of functions
                               -- in their line representation).
     -> IDT.Lexer2SynAna -- ^A list of ASTs, each describing a single function.
- process (IDT.IPL input) = IDT.ILS $ concatMap processfn input
+ process (IDT.IPL input) = IDT.ILS $ map processfn input
 
  -- |Process a single function.
  processfn :: IDT.Grid2D -- ^The lines representing the function.
-    -> [IDT.Graph] -- ^A graph of nodes representing the function.
+    -> IDT.Graph -- ^A graph of nodes representing the function.
                    -- There may be more functions because of lambdas.
- processfn [x] = [(funcname x, [(1, Start, 0)])] -- oneliners are illegal; follower == 0 will
+ processfn [x] = (funcname x, [(1, Start, 0)]) -- oneliners are illegal; follower == 0 will
                                                  -- lead to a crash, which is what we want.
- processfn code@(x:xs) = if head x /= '$' then [(funcname x, [(1, Start, 0)])] else [(funcname x, finalize (head nxs) [])]
+ processfn code@(x:xs) = if head x /= '$' then (funcname x, [(1, Start, 0)]) else (funcname x, finalize (head nxs) [])
   where
     (nxs, _) = nodes code [[(1, Start, 0, (0, 0, SE))]] start
 
@@ -98,8 +99,10 @@ module Lexer (
                     -- e. g. @$ \'main\'@.
     -> String -- ^The function name.
  funcname line
-  | null line || length (elemIndices '\'' line) < 2 = error EH.strFunctionNameMissing
-  | otherwise = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
+   | null line || length (elemIndices '\'' line) < 2 = error EH.strFunctionNameMissing
+   | not $ null $ fn `intersect` "'{}()!" = error EH.strInvalidFuncName
+   | otherwise = fn
+  where fn = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
 
  -- |Get the nodes for the given function.
  nodes :: IDT.Grid2D  -- ^Lines representing the function.
@@ -139,18 +142,19 @@ module Lexer (
    helper code list ip (Just lexeme)
      | knownat > 0 = (update list (path ip) knownat, crash)
      | lexeme == Finish = (newlist, crash)
-     | isjunction lexeme = (merge final, crash)
+     | isattributed lexeme = (merge final, crash)
      | otherwise = (newlist, ip{count = 0})
     where
      knownat = visited list ip
      newnode = sum (map length list) + 1
      newlist = (newnode, lexeme, 0, (posx ip, posy ip, dir ip)) `prepend` update list (path ip) newnode
      prepend newx (x:xs) = (newx:x):xs
-     isjunction (Junction _) = True
-     isjunction _ = False
+     isattributed (Junction _) = True
+     isattributed (Lambda _) = True
+     isattributed _ = False
      final = fst $ nodes code ([]:temp) trueip
      temp = fst $ nodes code ([]:newlist) falseip
-     (falseip, trueip) = junctionturns code ip
+     (falseip, trueip) = if current code ip == '&' then lambdadirs ip else junctionturns code ip
  
 
  -- |Shift a node by the given amount. May be positive or negative.
@@ -173,15 +177,17 @@ module Lexer (
     -> Int -- ^ID of new follower to set for the first node in the list.
     -> [[PreLexNode]] -- ^Resulting graph.
  update list@(x:xs) dir following
-  | null x && startsjunction xs && dir == Lexer.Left = helpera list following
-  | null x && not (null xs) && startsjunction (tail xs) && dir == Lexer.Right = x:head xs:helper (head (tail xs)) following:tail (tail xs)
+  | null x && startsattributed xs && dir == Lexer.Left = helpera list following
+  | null x && not (null xs) && startsattributed (tail xs) && dir == Lexer.Right = x:head xs:helper (head (tail xs)) following:tail (tail xs)
   | null x = list
   | otherwise = helper x following:xs
    where
     helper ((node, lexeme, _, location):xs) following = (node, lexeme, following, location):xs
-    helpera (x:(((node, _, following, location):xs):xss)) attribute = x:(((node, Junction attribute, following, location):xs):xss)
-    startsjunction (((_, Junction _, _, _):_):_) = True
-    startsjunction _ = False
+    helpera (x:(((node, Junction _, following, location):xs):xss)) attribute = x:(((node, Junction attribute, following, location):xs):xss)
+    helpera (x:(((node, Lambda _, following, location):xs):xss)) attribute = x:(((node, Lambda attribute, following, location):xs):xss)
+    startsattributed (((_, Junction _, _, _):_):_) = True
+    startsattributed (((_, Lambda _, _, _):_):_) = True
+    startsattributed _ = False
 
  -- merges splitted graphs (e.g. Junction)
  -- x3 is the graph until the special node appeared
@@ -213,6 +219,7 @@ module Lexer (
  stepwhile code ip fn
    | not (fn curchar) = ("", ip)
    | not (moveable code ip Forward) = error EH.strMissingClosingBracket
+   | curchar `elem` "'{}()" = error EH.strInvalidVarName
    | otherwise = (curchar:resstring, resip)
   where
    curchar = current code ip
@@ -314,13 +321,19 @@ module Lexer (
   | current code ip `elem` turnblocked = (' ', charat code (posdir ip Forward), ' ')
   | otherwise = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
 
+ -- moves both pointers one step
+ tuplemove :: (IP, IP) -> (IP, IP)
+ tuplemove (ipl, ipr) = (move ipl Forward, move ipr Forward)
+
+ -- saves path information in instruction pointers
+ addpath :: (IP, IP) -> (IP, IP)
+ addpath (ipl, ipr) = (ipl{path = Lexer.Left}, ipr{path = Lexer.Right})
+
  -- returns instruction pointers turned for (False, True)
  junctionturns :: IDT.Grid2D -> IP -> (IP, IP)
  junctionturns code ip = tuplecheck $ tuplemove $ addpath $ turning (current code ip) ip
   where
    tuplecheck (ipl, ipr) = (if current code ipl == primary ipl then ipl else crash, if current code ipr == primary ipr then ipr else crash)
-   tuplemove (ipl, ipr) = (move ipl Forward, move ipr Forward)
-   addpath (ipl, ipr) = (ipl{path = Lexer.Left}, ipr{path = Lexer.Right})
    turning char ip
     | char == '<' = case dir ip of
        E -> (ip{dir = NE}, ip{dir = SE})
@@ -346,7 +359,7 @@ module Lexer (
 
  -- returns insturction pointers turned for (Lambda, Reflected)
  lambdadirs :: IP -> (IP, IP)
- lambdadirs ip = (ip, turnaround ip)
+ lambdadirs ip = addpath (ip, turnaround ip)
 
  -- make a 180° turn on instruction pointer
  turnaround :: IP -> IP
@@ -449,10 +462,11 @@ module Lexer (
    '^' -> (Just (Junction 0), ip)
    '>' -> (Just (Junction 0), ip)
    '<' -> (Just (Junction 0), ip)
+   '&' -> (Just (Lambda 0), ip)
    '[' -> let (string, newip) = readconstant code tempip '[' ']' in (Just (Constant string), newip)
    ']' -> let (string, newip) = readconstant code tempip ']' '[' in (Just (Constant string), newip)
-   '{' -> let (string, newip) = stepwhile code tempip (/= '}') in (Just (Call string), newip)
-   '}' -> let (string, newip) = stepwhile code tempip (/= '{') in (Just (Call string), newip)
+   '{' -> let (string, newip) = stepwhile code tempip (/= '}') in (Just (Call $ checkstring string), newip)
+   '}' -> let (string, newip) = stepwhile code tempip (/= '{') in (Just (Call $ checkstring string), newip)
    '(' -> let (string, newip) = stepwhile code tempip (/= ')') in (pushpop string, newip)
    ')' -> let (string, newip) = stepwhile code tempip (/= '(') in (pushpop string, newip)
    _ -> (Nothing, turn (current code ip) ip)
@@ -482,10 +496,11 @@ module Lexer (
     | dir ip `elem` [E, SE, S] = ip{dir = SE}
    turn _ ip = ip
    tempip = move ip Forward
+   checkstring string = if '!' `elem` string then error EH.strInvalidVarName else string
    pushpop string
-    | string == "" = Just (Push string)
-    | head string == '!' && last string == '!' = Just (Pop (tail $ init string))
-		| otherwise = Just (Push string)
+    | length string < 2 = Just (Push $ checkstring string)
+    | head string == '!' && last string == '!' = Just (Pop (checkstring $ tail $ init string))
+		| otherwise = Just (Push $ checkstring string)
 
  -- |Get ID of the node that has been already visited using the current IP
  -- (direction and coordinates).
@@ -551,7 +566,7 @@ module Lexer (
  
  -- list of chars that are commands in rail
  commandchars :: String
- commandchars = "abcdefgimnopqrstuz:~0123456789?#"
+ commandchars = "abcdefgimnopqrstuz:~0123456789?#&"
 
  -- list of chars which do not allow any turning
  turnblocked :: String
@@ -626,8 +641,10 @@ module Lexer (
    fromLexeme Start = "$"
    fromLexeme Finish = "#"
    fromLexeme (Junction _) = "v"
+   fromLexeme (Lambda _) = "&"
    fromLexeme NOP = "."
    optional (Junction follow) = ';' : show follow
+   optional (Lambda follow) = ';' : show follow
    optional _ = ";0"
 
  -- |Split a portable text representation of multiple function graphs (a forest) into separate
@@ -650,10 +667,13 @@ module Lexer (
      (follower, attribute) = span (/=';') (drop (2 + posx ip) other)
      fixedlex
       | isJunction lex = Junction (read $ tail attribute)
+      | isLambda lex = Lambda (read $ tail attribute)
       | otherwise = fromJust lex
      fromJust Nothing = error $ printf EH.shrLineNoLexeme ln
      fromJust (Just x) = x
      isJunction (Just (Junction _)) = True
      isJunction _ = False
+     isLambda (Just (Lambda _)) = True
+     isLambda _ = False
 
 -- vim:ts=2 sw=2 et

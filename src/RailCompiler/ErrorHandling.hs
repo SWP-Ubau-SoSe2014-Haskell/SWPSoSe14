@@ -24,6 +24,8 @@ strNestedOpenBracket    = "Nested opening bracket in string constant."
 strNonSymmetricEscape   = "Non-symmetric escape sequence in string constant."
 strUnhandledEscape      = "Unhandled escape sequence `\\%c' in string constant."
 strMissingClosingBracket= "Closing Bracket not found."
+strInvalidVarName       = "Invalid Variable Name used."
+strInvalidFuncName      = "Invalid Function Name used."
 
 -- "shr" like in "shared graph representation".
 shrLineNoLexeme         = "No lexeme found in line: %s"
@@ -33,6 +35,8 @@ shrLineNoLexeme         = "No lexeme found in line: %s"
 -- SemanticalAnalysis-Errors
 strInvalidMovement      = "Invalid movement."
 strMainMissing          = "No 'main' Method found."
+strUnknownNode          = "Unknown Node in AST."
+strEmptyProgram         = "Empty Program."
 
 -- IntermediateCode-Errors
 
