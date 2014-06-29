@@ -6,6 +6,7 @@ module TLexer (
  -- imports --
  import Test.HUnit
  import InterfaceDT                   as IDT
+ import qualified Preprocessor        as PreProc
  import qualified Lexer
 
  -- functions --
@@ -27,8 +28,8 @@ module TLexer (
  testLexer16 = "Empty Lambda: " ~: IDT.ILS [("main",[(1, Start, 2), (2, Lambda 0, 3), (3, Finish, 0)])] @=? run [" \\", "#--&"]
 
  -- helper functions
- run :: IDT.Grid2D -> IDT.Lexer2SynAna
- run grid = Lexer.process (IDT.IPL [("$ 'main'":grid, 0)])
+ run :: [String] -> IDT.Lexer2SynAna
+ run grid = Lexer.process (PreProc.process (IIP (unlines ("$ 'main'":grid))))
 
  res :: [Lexeme] -> IDT.Lexer2SynAna
  res lexeme = IDT.ILS [("main", (1, Start, 2):nodes 2 lexeme)]

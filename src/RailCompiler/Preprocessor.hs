@@ -20,18 +20,23 @@ module Preprocessor (
  import InterfaceDT as IDT
  import ErrorHandling as EH
  import Data.List
+ import qualified Data.Map as Map
  
  -- functions --
  process :: IDT.Input2PreProc -> IDT.PreProc2Lexer
  process (IDT.IIP input) = IDT.IPL output
   where
-   output = map maximize $ (groupFunctionsToGrid2Ds . removeLines . lines) input
+   output = map (\(c, o) -> (convert c, o)) $ map (\(c, o) -> (maximize c, o)) groups
+   groups = (groupFunctions . removeLines . lines) input
+
+ convert :: [String] -> Grid2D
+ convert code = Map.fromList $ zip [0..] (map (Map.fromList . zip [0..]) code)
 
  -- |Makes the first line as long as max(max(lines),#lines)
  -- this is useful for the lexer to determine an upper bound for empty endless loops
- maximize :: (Grid2D, Int) -> (Grid2D, Int)
- maximize ([], offset) = ([], offset)
- maximize (x:xs, offset) = (stretchto (max maxlines maxcols) x:xs, offset)
+ maximize :: [String] -> [String]
+ maximize [] = []
+ maximize (x:xs) = stretchto (max maxlines maxcols) x:xs
   where
    stretchto count line = take count (line ++ repeat ' ')
    maxlines = maximum $ map length (x:xs)
@@ -43,7 +48,7 @@ module Preprocessor (
  
  -- |Removes all leading strings from list until first string begins with a
  -- dollar sign.
- removeLines :: Grid2D -> (Grid2D, Int)
+ removeLines :: [String] -> ([String], Int)
  removeLines grid
   | null $ fst $ result grid 0 = error noStartSymbolFound
   | otherwise = result grid 0
@@ -55,8 +60,8 @@ module Preprocessor (
 
  -- |Puts every rail function/program into its on grid such that the dollar
  -- sign is the first character in the first line.
- groupFunctionsToGrid2Ds :: (Grid2D, Int) -> [(Grid2D, Int)]
- groupFunctionsToGrid2Ds ([], _) = []
- groupFunctionsToGrid2Ds (grid, offset) = (head grid:func, offset):groupFunctionsToGrid2Ds (other, offset + 1 + length func)
+ groupFunctions :: ([String], Int) -> [([String], Int)]
+ groupFunctions ([], _) = []
+ groupFunctions (grid, offset) = (head grid:func, offset):groupFunctions (other, offset + 1 + length func)
   where
    (func, other) = span notStartingWithDollar $ tail grid

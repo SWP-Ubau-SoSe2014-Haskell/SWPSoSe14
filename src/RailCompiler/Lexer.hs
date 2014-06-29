@@ -35,6 +35,8 @@ module Lexer (
  import ErrorHandling as EH
  import Data.List
  import Text.Printf
+ import Data.Maybe
+ import qualified Data.Map as Map
 
  -- |Modified 'IDT.LexNode' with an additional identifier for nodes
  -- to check whether we have circles in the graph.
@@ -85,21 +87,30 @@ module Lexer (
  processfn :: IDT.PositionedGrid -- ^The lines representing the function.
     -> IDT.Graph -- ^A graph of nodes representing the function.
                    -- There may be more functions because of lambdas.
- processfn ([x], _) = (funcname x, [(1, Start, 0)]) -- oneliners are illegal; follower == 0 will
-                                                 -- lead to a crash, which is what we want.
- processfn (code@(x:xs), _) = if head x /= '$' then (funcname x, [(1, Start, 0)]) else (funcname x, finalize (head nxs) [])
+ processfn (code, _)
+   | Map.size code < 2 = emptyfunc -- oneliners are illegal; follower == 0 will
+                               -- lead to a crash, which is what we want.
+   | Map.size firstline == 0 || fromJust (Map.lookup 0 firstline) /= '$' = emptyfunc
+   | otherwise = (funcname firstline, finalize (head nxs) [])
   where
+    emptyfunc = (funcname firstline, [(1, Start, 0)])
+    firstline = fromJust (Map.lookup 0 code)
     (nxs, _) = nodes code [[(1, Start, 0, (0, 0, SE))]] start
 
  -- |Get the name of the given function.
- funcname :: String -- ^A line containing the function declaration,
-                    -- e. g. @$ \'main\'@.
-    -> String -- ^The function name.
- funcname line
-   | null line || length (elemIndices '\'' line) < 2 || null fn = error EH.strFunctionNameMissing
-   | not $ null $ fn `intersect` "'{}()!" = error EH.strInvalidFuncName
-   | otherwise = fn
-  where fn = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
+ funcname :: Map.Map Int Char -- ^A line containing the function declaration,
+                              -- e. g. @$ \'main\'@.
+    -> String -- ^The function name
+ funcname line = helper (tostring 0 line)
+  where
+   tostring i line
+     | Map.lookup i line == Nothing = ""
+     | otherwise = fromJust (Map.lookup i line):tostring (i+1) line
+   helper line
+     | null line || length (elemIndices '\'' line) < 2 || null fn = error EH.strFunctionNameMissing
+     | not $ null $ fn `intersect` "'{}()!" = error EH.strInvalidFuncName
+     | otherwise = fn
+    where fn = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
 
  -- |Get the nodes for the given function.
  nodes :: IDT.Grid2D  -- ^Lines representing the function.
@@ -119,7 +130,7 @@ module Lexer (
      where
       -- This checks if we have e. g. two reflectors that "bounce" the IP between them
       -- endlessly.
-      endless = count ip > 8 * length (head code) * length (head code)
+      endless = count ip > 8 * Map.size (fromJust (Map.lookup 0 code)) * Map.size (fromJust (Map.lookup 0 code))
       endlesslist = (newnode, NOP, newnode, (-1, -1, SE)) `prepend` update list (path ip) newnode
       newnode = sum (map length list) + 1
       prepend newx (x:xs) = (newx:x):xs
@@ -228,13 +239,13 @@ module Lexer (
     -> RelDirection -- ^Where to move to
     -> Bool -- ^Whether or not the move could be made
  moveable code ip reldir
-   | null code = False
-   | newy < 0 || newy >= length code = False
-   | dir ip `elem` [W, E] && (newx < 0 || newx >= length line) = False
+   | Map.size code == 0 = False
+   | newy < 0 || newy >= Map.size code = False
+   | dir ip `elem` [W, E] && (newx < 0 || newx >= Map.size line) = False
    | otherwise = True
   where
    (newy, newx) = posdir ip reldir
-   line = code!!newy
+   line = fromJust (Map.lookup newy code)
 
  -- |Read a string constant and handle escape sequences like \n.
  -- Raises an error on invalid escape sequences and badly formatted constants.
@@ -366,13 +377,13 @@ module Lexer (
  charat :: IDT.Grid2D -- ^Line representation of current function.
     -> (Int, Int) -- ^Position as (x, y) coordinate.
     -> Char -- ^'Char' at given position.
- charat code _ | null code = ' '
- charat code (y, _) | y < 0 || y >= length code = ' '
+ charat code _ | Map.size code == 0 = ' '
+ charat code (y, _) | y < 0 || y >= Map.size code = ' '
  charat code (y, x)
-   | x < 0 || x >= length line = ' '
-   | otherwise = line!!x
+   | x < 0 || x >= Map.size line = ' '
+   | otherwise = fromJust (Map.lookup x line)
   where
-   line = code!!y
+   line = fromJust (Map.lookup y code)
 
  -- |Get the position of a specific heading.
  posdir :: IP -- ^Current instruction pointer.
@@ -660,7 +671,7 @@ module Lexer (
    nodes (ln:lns) = (read id, fixedlex, read follower):nodes lns
     where
      (id, other) = span (/=';') ln
-     (lex, ip) = parse [other] $ IP 0 1 0 E Forward
+     (lex, ip) = parse (convert [other]) (IP 0 1 0 E Forward)
      (follower, attribute) = span (/=';') (drop (2 + posx ip) other)
      fixedlex
       | isJunction lex = Junction (read $ tail attribute)
@@ -672,5 +683,6 @@ module Lexer (
      isJunction _ = False
      isLambda (Just (Lambda _)) = True
      isLambda _ = False
+     convert code = Map.fromList $ zip [0..] (map (Map.fromList . zip [0..]) code)
 
 -- vim:ts=2 sw=2 et

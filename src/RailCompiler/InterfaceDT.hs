@@ -14,9 +14,10 @@ a clean interface between the modules.
 module InterfaceDT where
 
   import qualified LLVM.General.AST as LAST
+  import qualified Data.Map as Map
 
   -- type definitions --
-  type Grid2D  = [String]
+  type Grid2D  = Map.Map Int (Map.Map Int Char)
   -- Int gives the line on which the function starts
   type PositionedGrid = (Grid2D, Int)
   -- |(NodeID (start: 1), Lexeme of Node, NodeID of following Node (0 if none))
