@@ -11,7 +11,7 @@
 ; Types
 
 ; i8 type, void *data, i32 refCount, void *next
-%stackElement = type <{ i8, i8*, i32, i8* }>
+%stack_element = type <{ i8, i8*, i32, i8* }>
 
 ; Global variables
 @stack = global [1000 x i8*] undef ; stack containing pointers to i8
