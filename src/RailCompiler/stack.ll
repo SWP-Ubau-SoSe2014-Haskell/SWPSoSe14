@@ -12,7 +12,7 @@
 ; Types
 
 ; i8 type, void *data, i32 refCount, void *next
-%stack_element = type <{ i8, i8*, i32, i8* }>
+%stack_element = type { i8, i8*, i32, i8* }
 
 ;typedef enum {INT = 1, FLOAT = 2, STRING = 3} elem_type;
 ;struct stack_elem {
