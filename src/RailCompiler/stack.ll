@@ -8,11 +8,16 @@
 ; These functions are used by our LLVM backend and most of them operate directly on
 ; the stack. Many also directly crash (in Rail terms: properly exit) the program.
 
+; Types
+
+; i8 type, void *data, i32 refCount, void *next
+%stackElement = type <{ i8, i8*, i32, i8* }>
+
+; Global variables
 @stack = global [1000 x i8*] undef ; stack containing pointers to i8
 @sp = global i64 0 ; global stack pointer (or rather: current number of elements)
 @lookahead = global i32 -1  ; current lookahead for input from stdin.
                             ; -1 means no lookahead done yet.
-
 
 ; Constants
 @to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
