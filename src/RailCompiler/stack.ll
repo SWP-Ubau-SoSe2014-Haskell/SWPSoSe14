@@ -8,16 +8,34 @@
 ; These functions are used by our LLVM backend and most of them operate directly on
 ; the stack. Many also directly crash (in Rail terms: properly exit) the program.
 
+
 ; Types
 
 ; i8 type, void *data, i32 refCount, void *next
 %stack_element = type <{ i8, i8*, i32, i8* }>
+
+;typedef enum {INT = 1, FLOAT = 2, STRING = 3} elem_type;
+;struct stack_elem {
+;    elem_type type;
+;    union {
+;        int ival;
+;        float fval;
+;        char *sval;
+;    };
+;};
+%struct.stack_elem = type { i32, %union.anon }
+%union.anon = type { i8* }
+
+; struct for the symbol table
+%struct.table = type {i8*, i8*, %struct.table*}
+
 
 ; Global variables
 @stack = global [1000 x i8*] undef ; stack containing pointers to i8
 @sp = global i64 0 ; global stack pointer (or rather: current number of elements)
 @lookahead = global i32 -1  ; current lookahead for input from stdin.
                             ; -1 means no lookahead done yet.
+
 
 ; Constants
 @to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
@@ -58,21 +76,6 @@ declare void @exit(i32 signext)
 
 @int_to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
 @float_to_str  = private unnamed_addr constant [3 x i8] c"%f\00"
-
-;typedef enum {INT = 1, FLOAT = 2, STRING = 3} elem_type;
-;struct stack_elem {
-;    elem_type type;
-;    union {
-;        int ival;
-;        float fval;
-;        char *sval;
-;    };
-;};
-%struct.stack_elem = type { i32, %union.anon }
-%union.anon = type { i8* }
-
-; struct for the symbol table
-%struct.table = type {i8*, i8*, %struct.table*}
 
 @.str = private unnamed_addr constant [33 x i8] c"call int add with a=%i and b=%i\0A\00", align 1
 @.str1 = private unnamed_addr constant [35 x i8] c"call float add with a=%f and b=%f\0A\00", align 1
