@@ -11,7 +11,22 @@
 
 ; Types
 
-; i8 type, void *data, i32 refCount, void *next
+; A "real" stack element that is stored on the stack.
+; This also double as a list element since lists need to be
+; able to store all the types that can be pushed onto the stack.
+;
+; The fields are:
+;  * i8 dataType: Type of the data stored in dataPtr.
+;    * 0 means string. dataPtr points to a null-terminated string.
+;    * 1 means list. Note that there is no seperate type for empty lists,
+;      those are represented with type == 1 and dataPtr == null.
+;      For non-empty lists, dataPtr points to another stack_element which
+;      is the head of the (linked) list.
+;  * void *dataPtr: Points to type-specific data. May be null.
+;  * i32 refCount: The element's reference count. When this reaches 0, the element
+;    is free'd.
+;  * void *nextElementPtr: Points to the next stacl_element. May be null if there
+;    is no next element.
 %stack_element = type { i8, i8*, i32, i8* }
 
 ;typedef enum {INT = 1, FLOAT = 2, STRING = 3} elem_type;
