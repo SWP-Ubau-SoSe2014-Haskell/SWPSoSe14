@@ -29,15 +29,22 @@
 ;    is no next element.
 %stack_element = type { i8, i8*, i32, i8* }
 
-;typedef enum {INT = 1, FLOAT = 2, STRING = 3} elem_type;
-;struct stack_elem {
-;    elem_type type;
-;    union {
-;        int ival;
-;        float fval;
-;        char *sval;
-;    };
-;};
+; Misnamed struct returned by get_stack_elem() (which, unfortunately,
+; is also misnamed). This is not the data type used for real stack elements,
+; but more like a container used to store conversion results (string to numerical
+; value).
+;
+; C definition was as follows:
+;
+;  typedef enum {INT = 1, FLOAT = 2, STRING = 3} elem_type;
+;  struct stack_elem {
+;      elem_type type;
+;      union {
+;          int ival;
+;          float fval;
+;          char *sval;
+;      };
+;  };
 %struct.stack_elem = type { i32, %union.anon }
 %union.anon = type { i8* }
 
@@ -432,7 +439,9 @@ define void @initialise(%struct.table* %t){
 
 ; Function Attrs: nounwind uwtable
 ; Takes a string, determines the type it is representing and returns the
-; corresponding stack element structure.
+; corresponding stack element structure. Not that this is NOT an actual
+; stack element structure, but more like a container used to store the conversion
+; results (string to numerical value).
 define i32 @get_stack_elem(i8* %string, %struct.stack_elem* %elem) #0 {
   %1 = alloca i32, align 4
   %2 = alloca i8*, align 8
