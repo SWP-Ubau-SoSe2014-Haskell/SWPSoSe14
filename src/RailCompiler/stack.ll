@@ -25,9 +25,9 @@
 ;  * void *dataPtr: Points to type-specific data. May be null.
 ;  * i32 refCount: The element's reference count. When this reaches 0, the element
 ;    is free'd.
-;  * void *nextElementPtr: Points to the next stacl_element. May be null if there
+;  * stack_element *nextElementPtr: Points to the next stack_element. May be null if there
 ;    is no next element.
-%stack_element = type { i8, i8*, i32, i8* }
+%stack_element = type { i8, i8*, i32, %stack_element* }
 
 ; Misnamed struct returned by get_stack_elem() (which, unfortunately,
 ; is also misnamed). This is not the data type used for real stack elements,
@@ -111,6 +111,40 @@ declare void @exit(i32 signext)
 define i64 @stack_get_size() {
   %sp = load i64* @sp
   ret i64 %sp
+}
+
+; Creates a new stack_element with a reference count of 1.
+define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_element* %nextElementPtr) {
+  ; How many bytes do we need to allocate for a single stack element struct?
+  ; getelementptr abuse taken from:
+  ; http://nondot.org/sabre/LLVMNotes/SizeOf-OffsetOf-VariableSizedStructs.txt
+  %elem_size0 = getelementptr %stack_element* null, i32 1
+  %elem_size1 = ptrtoint %stack_element* %elem_size0 to i16
+
+  ; Now we can allocate the memory.
+  ; TODO: Error checking?
+  %element0 = call i8* @calloc(i16 1, i16 %elem_size1)
+  %element1 = bitcast i8* %element0 to %stack_element*
+
+  ; %element1 now can be treated like an element struct. Yay!
+  ; dataType is member #0
+  %dataTypeDestPtr = getelementptr %stack_element* %element1, i32 0, i32 0
+  store i8 %dataType, i8* %dataTypeDestPtr
+
+  ; dataPtr is member #1
+  %dataPtrDestPtr = getelementptr %stack_element* %element1, i32 0, i32 1
+  store i8* %dataPtr, i8** %dataPtrDestPtr
+
+  ; refCount is member #2
+  %refCountDestPtr = getelementptr %stack_element* %element1, i32 0, i32 2
+  store i32 1, i32* %refCountDestPtr
+
+  ; nextElementPtr is member #3
+  %nextElementPtrDestPtr = getelementptr %stack_element* %element1, i32 0, i32 3
+  store %stack_element* %nextElementPtr, %stack_element** %nextElementPtrDestPtr
+
+  ; That's it!
+  ret %stack_element* %element1
 }
 
 ; Push the stack size onto the stack
@@ -518,6 +552,19 @@ define i32 @get_stack_elem(i8* %string, %struct.stack_elem* %elem) #0 {
 define i32 @main_() {
  %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
  %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
+ %int_to_str = getelementptr [3 x i8]* @int_to_str, i8 0, i8 0
+
+
+ %elm = call %stack_element* @stack_element_new(i8 42, i8* null, %stack_element* null)
+ %type0 = getelementptr %stack_element* %elm, i32 0, i32 0
+ %type1 = load i8* %type0
+ call i32(i8*, ...)* @printf(i8* %int_to_str, i8 %type1)
+
+ %refCount0 = getelementptr %stack_element* %elm, i32 0, i32 2
+ %refCount1 = load i32* %refCount0
+ call i32(i8*, ...)* @printf(i8* %int_to_str, i32 %refCount1)
+
+
 
  call void @eof_check()
  %i1 = call i8*()* @pop()
