@@ -53,10 +53,10 @@
 
 
 ; Global variables
-@stack = global [1000 x i8*] undef ; stack containing pointers to i8
-@sp = global i64 0 ; global stack pointer (or rather: current number of elements)
-@lookahead = global i32 -1  ; current lookahead for input from stdin.
-                            ; -1 means no lookahead done yet.
+@stack = global %stack_element* null  ; Linked list of stack_element structs.
+@stack_size = global i64 0            ; Current number of elements on the stack.
+@lookahead = global i32 -1            ; Current lookahead for input from stdin,
+                                      ; -1 means no lookahead done yet.
 
 
 ; Constants
@@ -87,6 +87,7 @@ declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare i8* @calloc(i16 zeroext, i16 zeroext)
+declare i8* @strdup(i8*)
 declare void @exit(i32 signext)
 
 
@@ -145,6 +146,28 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
 
   ; That's it!
   ret %stack_element* %element1
+}
+
+; Push a string onto the stack, creating a new stack_element struct
+; with a reference count of 1.
+;
+; The string must already be allocated _ON THE HEAP_.
+define %stack_element* @push_string_ptr(i8* %str) {
+  %curr_head = load %stack_element** @stack
+  %new_head = call %stack_element* @stack_element_new(i8 0, i8* %str, %stack_element* %curr_head)
+  store %stack_element* %new_head, %stack_element** @stack
+
+  ret %stack_element* %new_head
+}
+
+; strdup() a string and push it onto the stack, creating a new stack_element struct
+; with a reference count of 1.
+define %stack_element* @push_string_cpy(i8* %str) {
+  ; TODO: Error handling?
+  %str_copied = call i8* @strdup(i8* %str)
+  %ret = call %stack_element* @push_string_ptr(i8* %str_copied)
+
+  ret %stack_element* %ret
 }
 
 ; Push the stack size onto the stack
