@@ -251,7 +251,7 @@ div1 = GlobalDefinition $ Global.functionDefaults {
 
 
 -- function declaration for pushing constants
-push_string_cpy = GlobalDefinition $ Global.functionDefaults {
+pushStringCpy = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "push_string_cpy",
   Global.returnType = stackElementPointerType,
   Global.parameters = ([ Parameter bytePointerType (UnName 0) [] ], False)
@@ -768,7 +768,7 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++ 
     [ stackElementTypeDef, structTable, underflowCheck, IntermediateCode.print, crash, start, finish, inputFunc,
-      eofCheck, push_string_cpy, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
+      eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
       popInt, equal, greater, popInto, pushFrom, initialiseSymbolTable ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
