@@ -67,6 +67,7 @@
 @printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 @crash_cust_str_fmt = private unnamed_addr constant [24 x i8] c"Crash: Custom error: %s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
+@err_type_mismatch = private unnamed_addr constant [16 x i8] c"Type mismatch!\0A\00"
 @err_eof = unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
 @err_type = unnamed_addr constant [14 x i8] c"Invalid type!\00"
 @err_zero = unnamed_addr constant [18 x i8] c"Division by zero!\00"
@@ -371,20 +372,53 @@ define void @sub_int() {
   ret void
 }
 
-define i8* @peek() {
-  %sp   = load i64* @sp
-  %top_of_stack = sub i64 %sp, 1
-  %addr = getelementptr [1000 x i8*]* @stack, i8 0, i64 %top_of_stack
-  %val = load i8** %addr
-  ret i8* %val
+define %stack_element* @peek() {
+  ; 1. Make sure we can peek something.
+  call void @underflow_assert()
+
+  ; 2. Do the actual peek.
+  %stack = load %stack_element** @stack
+
+  ret %stack_element* %stack
 }
 
-define i8* @pop() {
-  %val = call i8*()* @peek()
-  %sp = load i64* @sp
-  %top_of_stack = sub i64 %sp, 1
-  store i64 %top_of_stack, i64* @sp
-  ret i8* %val
+; Pop a string from the stack.
+;
+; Crashes if the type of the topmost element is not "string".
+;
+; TODO: QUICK AND DIRTY! Does not free() anything and does not know
+;       anything about reference counts.
+define i8* @pop_string() {
+  ; 2. Pop the stack.
+  ;    "Next" pointer is struct member 3.
+  %stack = call %stack_element* @peek()
+  %next0 = getelementptr %stack_element* %stack, i32 0, i32 3
+  %next1 = load %stack_element** %next0
+  store %stack_element* %next1, %stack_element** @stack
+
+  ; 3. Decrement the stack size.
+  %stack_size0 = load i64* @stack_size
+  %stack_size1 = sub i64 %stack_size0, 1
+  store i64 %stack_size1, i64* @stack_size
+
+  ; 4. Is the type string? If not, crash.
+  ;    Type is struct member #0.
+  %type0 = getelementptr %stack_element* %stack, i32 0, i32 0
+  %type1 = load i8* %type0
+  switch i8 %type1, label %invalid_type [ i8 0, label %string_type ]
+
+invalid_type:
+  %err_type_mismatch = getelementptr [16 x i8]* @err_type_mismatch, i8 0, i8 0
+  call %stack_element* @push_string_cpy(i8* %err_type_mismatch)
+  call void @crash(i1 0)
+
+  ret i8* null
+
+string_type:
+  %buf0 = getelementptr %stack_element* %stack, i32 0, i32 1
+  %buf1 = load i8** %buf0
+
+  ret i8 *%buf1
 }
 
 define i32 @finish(){
