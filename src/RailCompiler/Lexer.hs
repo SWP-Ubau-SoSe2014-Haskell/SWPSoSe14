@@ -36,33 +36,8 @@ module Lexer (
  import Data.List
  import Text.Printf
  import Data.Maybe
+ import InstructionPointer
  import qualified Data.Map as Map
-
- -- |An absolute direction.
- data Direction = N | NE | E | SE | S | SW | W | NW deriving (Ord, Eq, Show)
- -- |A relative direction.
- data RelDirection = Left | Forward | Right deriving (Eq, Show)
- -- |Instruction pointer consisting of position and an orientation.
- data IP =
-    IP {
-      -- |Number of processed characters since start of current function.
-      count :: Int,
-      -- |Current X position.
-      posx :: Int,
-      -- |Current Y position.
-      posy :: Int,
-      -- |Current 'Direction'.
-      dir :: Direction,
-			-- |Determines if the instruction pointer is on a left or right path of a Junction
-			path :: RelDirection,
-      -- |Map of Position and Direction to Id
-      known :: Map.Map (Int, Int, Direction) Int
-    }
-  deriving (Show)
-
- instance Eq IP
-  where
-   (==) ipl ipr = posx ipl == posx ipr && posy ipl == posy ipr && dir ipl == dir ipr
  
  -- functions --
 
@@ -118,13 +93,13 @@ module Lexer (
                                                 -- a leading node without a follower
                                                 -- (follower == 0) because it is
                                                 -- not modified here at all.
-  | endless = (endlesslist, crash{known = known ip})
+  | endless = (endlesslist, crashfrom ip)
   | otherwise = nodes code newlist newip
    where
       -- This checks if we have e. g. two reflectors that "bounce" the IP between them endlessly.
       endless = count ip > 8 * Map.size (fromJust (Map.lookup 0 code)) * Map.size (fromJust (Map.lookup 0 code))
       endlesslist = (newnode, NOP, newnode) `prepend` update list (path ip) newnode
-      newnode = Map.size (known ip) + 1
+      newnode = (nodecount ip) + 1
       prepend newx (x:xs) = (newx:x):xs
       tempip = step code ip
       (newlist, newip) = handle code list tempip
@@ -140,21 +115,21 @@ module Lexer (
    (lexeme, newip) = parse code ip
    helper _ list ip Nothing = (list, ip)
    helper code list ip (Just lexeme)
-     | knownat > 0 = (update list (path ip) knownat, crash{known = known ip})
-     | lexeme == Finish = (newlist, crash{known = known newip})
-     | isattributed lexeme = (merge final, crash{known = known finip})
+     | knownat > 0 = (update list (path ip) knownat, crashfrom ip)
+     | lexeme == Finish = (newlist, crashfrom newip)
+     | isattributed lexeme = (merge final, crashfrom finip)
      | otherwise = (newlist, newip)
     where
      knownat = visited ip
-     newnode = Map.size (known ip) + 1
+     newnode = (nodecount ip) + 1
      newlist = (newnode, lexeme, 0) `prepend` update list (path ip) newnode
-     newip = ip{count = 0, known = Map.insert (posx ip, posy ip, dir ip) newnode (known ip)}
+     newip = nodeadd ip newnode
      prepend newx (x:xs) = (newx:x):xs
      isattributed (Junction _) = True
      isattributed (Lambda _) = True
      isattributed _ = False
-     (final, finip) = nodes code ([]:tempnodes) trueip{known = known tempip}
-     (tempnodes, tempip) = nodes code ([]:newlist) falseip{known = known newip}
+     (final, finip) = nodes code ([]:tempnodes) (ipmerge trueip tempip)
+     (tempnodes, tempip) = nodes code ([]:newlist) (ipmerge falseip newip)
      (falseip, trueip) = if current code ip == '&' then lambdadirs ip else junctionturns code ip
  
 
@@ -178,8 +153,8 @@ module Lexer (
     -> Int -- ^ID of new follower to set for the first node in the list.
     -> [[IDT.LexNode]] -- ^Resulting graph.
  update list@(x:xs) dir following
-  | null x && startsattributed xs && dir == Lexer.Left = helpera list following
-  | null x && not (null xs) && startsattributed (tail xs) && dir == Lexer.Right = x:head xs:helper (head (tail xs)) following:tail (tail xs)
+  | null x && startsattributed xs && dir == InstructionPointer.Left = helpera list following
+  | null x && not (null xs) && startsattributed (tail xs) && dir == InstructionPointer.Right = x:head xs:helper (head (tail xs)) following:tail (tail xs)
   | null x = list
   | otherwise = helper x following:xs
    where
@@ -203,10 +178,10 @@ module Lexer (
     -> IP -- ^New instruction pointer.
  step code ip
    | forward `elem` fval = move ip Forward
-   | left `elem` lval && right `elem` rval = crash{known = known ip}
-   | left `elem` lval = move ip Lexer.Left
-   | right `elem` rval = move ip Lexer.Right
-   | otherwise = crash{known = known ip}
+   | left `elem` lval && right `elem` rval = crashfrom ip
+   | left `elem` lval = move ip InstructionPointer.Left
+   | right `elem` rval = move ip InstructionPointer.Right
+   | otherwise = crashfrom ip
   where
    (left, forward, right) = adjacent code ip
    (lval, fval, rval) = valids code ip
@@ -294,21 +269,6 @@ module Lexer (
     -> IP -- ^New instruction pointer
  skip code ip n = foldl (\x _ -> move x Forward) ip [1..n]
 
- -- |Move the instruction pointer in a relative direction.
- move :: IP -- ^Current instruction pointer.
-    -> RelDirection -- ^Relative direction to move in.
-    -> IP -- ^New instruction pointer.
- move ip reldir = ip{count = newcount, posx = newx, posy = newy, dir = absolute ip reldir}
-  where
-   (newy, newx) = posdir ip reldir
-   newcount = count ip + 1
-
- -- |Get the 'Char' at the current position of the instruction pointer.
- current :: IDT.Grid2D -- ^Line representation of the current function.
-     -> IP -- ^Current instruction pointer.
-     -> Char -- ^'Char' at the current IP position.
- current code ip = charat code (posy ip, posx ip)
-
  -- |Get the 'Char' at the next position of the instruction pointer
  next :: IDT.Grid2D -> IP -> Char
  next code ip = current code $ move ip Forward
@@ -320,104 +280,7 @@ module Lexer (
      -> (Char, Char, Char) -- ^Adjacent (left secondary, primary, right secondary) symbols
  adjacent code ip
   | current code ip `elem` turnblocked = (' ', charat code (posdir ip Forward), ' ')
-  | otherwise = (charat code (posdir ip Lexer.Left), charat code (posdir ip Forward), charat code (posdir ip Lexer.Right))
-
- -- moves both pointers one step
- tuplemove :: (IP, IP) -> (IP, IP)
- tuplemove (ipl, ipr) = (move ipl Forward, move ipr Forward)
-
- -- saves path information in instruction pointers
- addpath :: (IP, IP) -> (IP, IP)
- addpath (ipl, ipr) = (ipl{path = Lexer.Left}, ipr{path = Lexer.Right})
-
- -- returns instruction pointers turned for (False, True)
- junctionturns :: IDT.Grid2D -> IP -> (IP, IP)
- junctionturns code ip = tuplecheck $ tuplemove $ addpath $ turning (current code ip) ip
-  where
-   tuplecheck (ipl, ipr) = (if current code ipl == primary ipl then ipl else crash{known = known ipl}, if current code ipr == primary ipr then ipr else crash{known = known ipr})
-   turning char ip
-    | char == '<' = case dir ip of
-       E -> (ip{dir = NE}, ip{dir = SE})
-       SW -> (ip{dir = SE}, ip{dir = W})
-       NW -> (ip{dir = W}, ip{dir = NE})
-       _ -> (crash{known = known ip}, crash{known = known ip})
-    | char == '>' = case dir ip of
-       W -> (ip{dir = SW}, ip{dir = NW})
-       SE -> (ip{dir = E}, ip{dir = SW})
-       NE -> (ip{dir = NW}, ip{dir = E})
-       _ -> (crash{known = known ip}, crash{known = known ip})
-    | char == '^' = case dir ip of
-       S -> (ip{dir = SE}, ip{dir = SW})
-       NE -> (ip{dir = N}, ip{dir = SE})
-       NW -> (ip{dir = SW}, ip{dir = N})
-       _ -> (crash{known = known ip}, crash{known = known ip})
-    | char == 'v' = case dir ip of
-       N -> (ip{dir = NW}, ip{dir = NE})
-       SE -> (ip{dir = NE}, ip{dir = S})
-       SW -> (ip{dir = S}, ip{dir = NW})
-       _ -> (crash{known = known ip}, crash{known = known ip})
-    | otherwise = (ip, ip)
-
- -- returns insturction pointers turned for (Lambda, Reflected)
- lambdadirs :: IP -> (IP, IP)
- lambdadirs ip = addpath (ip, turnaround ip)
-
- -- make a 180° turn on instruction pointer
- turnaround :: IP -> IP
- turnaround ip = ip{dir = absolute ip{dir = absolute ip{dir = absolute ip{dir = absolute ip Lexer.Left} Lexer.Left} Lexer.Left} Lexer.Left}
-
- -- |Returns 'Char' at given position, @\' \'@ if position is invalid.
- charat :: IDT.Grid2D -- ^Line representation of current function.
-    -> (Int, Int) -- ^Position as (x, y) coordinate.
-    -> Char -- ^'Char' at given position.
- charat code _ | Map.size code == 0 = ' '
- charat code (y, _) | y < 0 || y >= Map.size code = ' '
- charat code (y, x)
-   | x < 0 || x >= Map.size line = ' '
-   | otherwise = fromJust (Map.lookup x line)
-  where
-   line = fromJust (Map.lookup y code)
-
- -- |Get the position of a specific heading.
- posdir :: IP -- ^Current instruction pointer.
-    -> RelDirection -- ^Current relative direction.
-    -> (Int, Int) -- ^New position that results from the given relative movement.
- posdir ip reldir = posabsdir ip (absolute ip reldir)
-
- -- |Get the position of an absolute direction.
- posabsdir :: IP -- ^Current instruction pointer.
-    -> Direction -- ^Current absolute direction.
-    -> (Int, Int) -- ^New position that results from the given absolute movement.
- posabsdir ip N = (posy ip - 1, posx ip)
- posabsdir ip NE = (posy ip - 1, posx ip + 1)
- posabsdir ip E = (posy ip, posx ip + 1)
- posabsdir ip SE = (posy ip + 1, posx ip + 1)
- posabsdir ip S = (posy ip + 1, posx ip)
- posabsdir ip SW = (posy ip + 1, posx ip - 1)
- posabsdir ip W = (posy ip, posx ip - 1)
- posabsdir ip NW = (posy ip - 1, posx ip - 1)
-
- -- |Convert a relative direction into a relative one.
- absolute :: IP -- ^Current instruction pointer.
-    -> RelDirection -- ^Relative direction to convert.
-    -> Direction -- ^Equivalent absolute direction.
- absolute x Forward = dir x
- absolute (IP {dir=N}) Lexer.Left = NW
- absolute (IP {dir=N}) Lexer.Right = NE
- absolute (IP {dir=NE}) Lexer.Left = N
- absolute (IP {dir=NE}) Lexer.Right = E
- absolute (IP {dir=E}) Lexer.Left = NE
- absolute (IP {dir=E}) Lexer.Right = SE
- absolute (IP {dir=SE}) Lexer.Left = E
- absolute (IP {dir=SE}) Lexer.Right = S
- absolute (IP {dir=S}) Lexer.Left = SE
- absolute (IP {dir=S}) Lexer.Right = SW
- absolute (IP {dir=SW}) Lexer.Left = S
- absolute (IP {dir=SW}) Lexer.Right = W
- absolute (IP {dir=W}) Lexer.Left = SW
- absolute (IP {dir=W}) Lexer.Right = NW
- absolute (IP {dir=NW}) Lexer.Left = W
- absolute (IP {dir=NW}) Lexer.Right = N
+  | otherwise = (charat code (posdir ip InstructionPointer.Left), charat code (posdir ip Forward), charat code (posdir ip InstructionPointer.Right))
 
  -- |Get the next lexeme at the current position.
  parse :: IDT.Grid2D -- ^Line representation of current function.
@@ -473,29 +336,15 @@ module Lexer (
    _ -> (Nothing, turn (current code ip) ip)
   where
    junctioncheck (Nothing, ip)
-     | current code ip `elem` "+x*" && next code ip `elem` "v^<>" = (Nothing, crash{known = known ip})
-     | forward == ' ' && (left == current code ip || right == current code ip) = (Nothing, crash{known = known ip})
-     | forward == ' ' && (left `elem` "v^<>+x*" || right `elem` "v^<>+x*") = (Nothing, crash{known = known ip})
+     | current code ip `elem` "+x*" && next code ip `elem` "v^<>" = (Nothing, crashfrom ip)
+     | forward == ' ' && (left == current code ip || right == current code ip) = (Nothing, crashfrom ip)
+     | forward == ' ' && (left `elem` "v^<>+x*" || right `elem` "v^<>+x*") = (Nothing, crashfrom ip)
      | otherwise = (Nothing, ip)
     where
      (left, forward, right) = adjacent code ip
    junctioncheck (lexeme, ip)
-    | next code ip `elem` "v^<>" = (lexeme, crash{known = known ip})
+    | next code ip `elem` "v^<>" = (lexeme, crashfrom ip)
     | otherwise = (lexeme, ip)
-   turn '@' ip = turnaround ip
-   turn '|' ip
-    | dir ip `elem` [NW, N, NE] = ip{dir = N}
-    | dir ip `elem` [SW, S, SE] = ip{dir = S}
-   turn '/' ip
-    | dir ip `elem` [N, NE, E] = ip{dir = NE}
-    | dir ip `elem` [S, SW, W] = ip{dir = SW}
-   turn '-' ip
-    | dir ip `elem` [NE, E, SE] = ip{dir = E}
-    | dir ip `elem` [SW, S, NW] = ip{dir = W}
-   turn '\\' ip
-    | dir ip `elem` [W, NW, N] = ip{dir = NW}
-    | dir ip `elem` [E, SE, S] = ip{dir = SE}
-   turn _ ip = ip
    tempip = move ip Forward
    checkstring string = if '!' `elem` string then error EH.strInvalidVarName else string
    pushpop string
@@ -503,33 +352,10 @@ module Lexer (
     | head string == '!' && last string == '!' = Just (Pop (checkstring $ tail $ init string))
 		| otherwise = Just (Push $ checkstring string)
 
- -- |Get ID of the node that has been already visited using the current IP
- -- (direction and coordinates).
- visited :: IP -- ^Instruction pointer to use.
-    -> Int -- ^ID of visited node or 0 if none.
- visited ip = Map.findWithDefault 0 (posx ip, posy ip, dir ip) (known ip)
-
  -- |Brings it into right order
  finalize :: [IDT.LexNode] -- ^'LexNode's to convert.
     -> [IDT.LexNode] -- ^Resulting list of 'IDT.LexNode's.
  finalize = reverse
-
- -- |Initial value for the instruction pointer at the start of a function.
- start :: IP
- start = IP 0 0 0 SE Forward (Map.singleton (1, 1, SE) 1)
-
- -- |An instruction pointer representing a "crash" (fatal error).
- crash :: IP
- crash = IP 0 (-1) (-1) NW Forward Map.empty
-
- -- what is the primary rail for the given direction?
- -- mainly used to check if junctions turn away correctly
- primary :: IP -> Char
- primary ip
-  | dir ip `elem` [N, S] = '|'
-  | dir ip `elem` [E, W] = '-'
-  | dir ip `elem` [NE, SW] = '/'
-  | dir ip `elem` [NW, SE] = '\\'
 
  -- |Return valid chars for movement depending on the current direction.
  valids :: IDT.Grid2D -- ^Line representation of current function.
@@ -539,7 +365,7 @@ module Lexer (
                                 --     * Valid characters for movement to the (relative) left.
                                 --     * Valid characters for movement in the (relative) forward direction.
                                 --     * Valid characters for movement to the (relative) right.
- valids code ip = tripleinvert (commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Left}, finvalid ip, commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip Lexer.Right})
+ valids code ip = tripleinvert (commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip InstructionPointer.Left}, finvalid ip, commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip InstructionPointer.Right})
   where
    tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
    finvalid ip = dirinvalid ip ++ crossinvalid ip -- illegal to move forward

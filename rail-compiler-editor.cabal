@@ -24,6 +24,7 @@ library
     Backend
     CodeOptimization
     ErrorHandling
+    InstructionPointer
     InterfaceDT
     IntermediateCode
     Lexer
