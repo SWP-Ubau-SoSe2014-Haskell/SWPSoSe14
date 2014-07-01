@@ -118,8 +118,9 @@ module Lexer (
                                                 -- a leading node without a follower
                                                 -- (follower == 0) because it is
                                                 -- not modified here at all.
-  | otherwise = if endless then (endlesslist, crash) else nodes code newlist newip
-     where
+  | endless = (endlesslist, crash{known = known ip})
+  | otherwise = nodes code newlist newip
+   where
       -- This checks if we have e. g. two reflectors that "bounce" the IP between them endlessly.
       endless = count ip > 8 * Map.size (fromJust (Map.lookup 0 code)) * Map.size (fromJust (Map.lookup 0 code))
       endlesslist = (newnode, NOP, newnode) `prepend` update list (path newip) newnode
