@@ -122,8 +122,8 @@ module Lexer (
      where
       -- This checks if we have e. g. two reflectors that "bounce" the IP between them endlessly.
       endless = count ip > 8 * Map.size (fromJust (Map.lookup 0 code)) * Map.size (fromJust (Map.lookup 0 code))
-      endlesslist = (newnode, NOP, newnode) `prepend` update list (path ip) newnode
-      newnode = Map.size (known ip) + 1
+      endlesslist = (newnode, NOP, newnode) `prepend` update list (path newip) newnode
+      newnode = Map.size (known newip) + 1
       prepend newx (x:xs) = (newx:x):xs
       tempip = step code ip
       (newlist, newip) = handle code list tempip
