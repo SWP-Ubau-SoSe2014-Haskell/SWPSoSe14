@@ -45,16 +45,16 @@ executable RailCompiler
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
-executable RailEditor
-  main-is: Main.hs
-  other-modules:
-    EditorBackend
-    Execute
-    Menu
-    TextArea
-  build-depends: base (>=4.5.0.0 && <5), containers, transformers, gtk, process, mtl, rail-compiler-editor
-  hs-source-dirs: src/RailEditor
-  default-language: Haskell2010
+--executable RailEditor
+--  main-is: Main.hs
+--  other-modules:
+--    EditorBackend
+--    Execute
+--    Menu
+--    TextArea
+--  build-depends: base (>=4.5.0.0 && <5), containers, transformers, gtk, process, mtl, rail-compiler-editor
+--  hs-source-dirs: src/RailEditor
+--  default-language: Haskell2010
 
 Test-suite testcases
   main-is: Main.hs
