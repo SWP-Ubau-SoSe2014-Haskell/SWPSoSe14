@@ -110,8 +110,8 @@ declare void @exit(i32 signext)
 
 ; Get number of element on the stack
 define i64 @stack_get_size() {
-  %sp = load i64* @sp
-  ret i64 %sp
+  %sz = load i64* @stack_size
+  ret i64 %sz
 }
 
 ; Creates a new stack_element with a reference count of 1.
