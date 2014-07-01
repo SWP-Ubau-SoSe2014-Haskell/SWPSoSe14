@@ -20,6 +20,7 @@ module Preprocessor (
  import InterfaceDT as IDT
  import ErrorHandling as EH
  import Data.List
+ import Control.Arrow
  import qualified Data.Map as Map
  
  -- functions --
