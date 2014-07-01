@@ -57,7 +57,7 @@ module InstructionPointer (
  crash = IP 0 (-1) (-1) NW Forward Map.empty
 
  crashfrom :: IP -> IP
- crashfrom ip = ipmerge crash ip
+ crashfrom = ipmerge crash
 
  ipmerge :: IP -> IP -> IP
  ipmerge ipl ipr = ipl{known = known ipr}
