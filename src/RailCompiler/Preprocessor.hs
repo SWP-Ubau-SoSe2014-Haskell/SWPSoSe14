@@ -26,7 +26,7 @@ module Preprocessor (
  process :: IDT.Input2PreProc -> IDT.PreProc2Lexer
  process (IDT.IIP input) = IDT.IPL output
   where
-   output = map (\(c, o) -> (convert c, o)) $ map (\(c, o) -> (maximize c, o)) groups
+   output = map (Control.Arrow.first convert . Control.Arrow.first maximize) groups
    groups = (groupFunctions . removeLines . lines) input
 
  convert :: [String] -> Grid2D

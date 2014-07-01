@@ -96,7 +96,7 @@ module Lexer (
  funcname line = helper (tostring 0 line)
   where
    tostring i line
-     | Map.lookup i line == Nothing = ""
+     | isNothing (Map.lookup i line) = ""
      | otherwise = fromJust (Map.lookup i line):tostring (i+1) line
    helper line
      | null line || length (elemIndices '\'' line) < 2 || null fn = error EH.strFunctionNameMissing
@@ -508,10 +508,10 @@ module Lexer (
     -> Int -- ^ID of visited node or 0 if none.
  visited ip = Map.findWithDefault 0 (posx ip, posy ip, dir ip) (known ip)
 
- -- |Convert a list of 'PreLexNode's into a list of 'IDT.LexNode's.
- finalize :: [IDT.LexNode] -- ^'PreLexNode's to convert.
-    -> [IDT.LexNode] -- ^Resulting list of 'IDT.PreLexNode's.
- finalize list = reverse list
+ -- |Brings it into right order
+ finalize :: [IDT.LexNode] -- ^'LexNode's to convert.
+    -> [IDT.LexNode] -- ^Resulting list of 'IDT.LexNode's.
+ finalize = reverse
 
  -- |Initial value for the instruction pointer at the start of a function.
  start :: IP
