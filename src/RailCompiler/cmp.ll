@@ -12,11 +12,13 @@
 @true = external global [2 x i8]
 @false = external global [2 x i8]
 
+%stack_element = type opaque
 %struct.stack_elem = type { i32, %union.anon }
 %union.anon = type { i8* }
 
 declare i8* @pop()
-declare void @push(i8*)
+declare %stack_element* @push_string_ptr(i8* %str)
+declare %stack_element* @push_string_cpy(i8* %str)
 declare void @push_int(i64)
 declare void @push_float(double)
 declare void @underflow_assert()
@@ -31,8 +33,8 @@ define i32 @main_greater() {
   %number0 = getelementptr [4 x i8]* @main.number_a, i64 0, i64 0   
   %number1 = getelementptr [4 x i8]* @main.number_b, i64 0, i64 0   
 
-  call void(i8*)* @push(i8* %number0)
-  call void(i8*)* @push(i8* %number1)
+  call %stack_element* @push_string_cpy(i8* %number0)
+  call %stack_element* @push_string_cpy(i8* %number1)
 
   call i32 @greater()
   %result = call i8* @pop()
@@ -131,17 +133,17 @@ cmp_float:
 
 
 exit_with_invalid_type: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [14 x i8]* @err_type, i64 0, i64 0))
   br label %exit_with_failure
 
 exit_with_true: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [2 x i8]* @true, i64 0, i64 0))
   br label %exit_with_success
 
 exit_with_false: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [2 x i8]* @false, i64 0, i64 0))
   br label %exit_with_success
 
@@ -247,17 +249,17 @@ cmp_float:
 
 
 exit_with_invalid_type: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [14 x i8]* @err_type, i64 0, i64 0))
   br label %exit_with_failure
 
 exit_with_true: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [2 x i8]* @true, i64 0, i64 0))
   br label %exit_with_success
 
 exit_with_false: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [2 x i8]* @false, i64 0, i64 0))
   br label %exit_with_success
 

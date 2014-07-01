@@ -243,7 +243,7 @@ define void @input() {
 
 error:
   %at_eof = getelementptr [9 x i8]* @err_eof, i64 0, i64 0
-  call void @push(i8* %at_eof)
+  call %stack_element* @push_string_cpy(i8* %at_eof)
   call void @crash(i1 0)
   ret void
 
@@ -251,7 +251,7 @@ push:
   %byte = trunc i32 %read to i8
   %buffer_addr = call i8* @calloc(i16 1, i16 2)
   store i8 %byte, i8* %buffer_addr
-  call void @push(i8* %buffer_addr)
+  call %stack_element* @push_string_ptr(i8* %buffer_addr)
 
   ret void
 }
@@ -289,33 +289,12 @@ define void @eof_check() {
 
 at_eof:
   %true = getelementptr [2 x i8]* @true, i8 0, i8 0
-  call void @push(i8* %true)
+  call %stack_element* @push_string_cpy(i8* %true)
   ret void
 
 not_at_eof:
   %false = getelementptr [2 x i8]* @false, i8 0, i8 0
-  call void @push(i8* %false)
-
-  ret void
-}
-
-define void @push(i8* %str_ptr) {
-  ; dereferencing @sp by loading value into memory
-  %sp   = load i64* @sp
-
-  ; get position on the stack, the stack pointer points to. this is the top of
-  ; the stack.
-  ; nice getelementptr FAQ: http://llvm.org/docs/GetElementPtr.html
-  ;                     value of pointer type,  index,    field
-  %top = getelementptr [1000 x i8*]* @stack,   i8 0,     i64 %sp
-
-  ; the contents of memory are updated to contain %str_ptr at the location
-  ; specified by the %addr operand
-  store i8* %str_ptr, i8** %top
-
-  ; increase stack pointer to point to new free, top of stack
-  %newsp = add i64 %sp, 1
-  store i64 %newsp, i64* @sp
+  call %stack_element* @push_string_cpy(i8* %false)
 
   ret void
 }
@@ -347,7 +326,7 @@ define void @push_float(double %top_float)
           i8* %buffer_addr, i16 128, i8* %to_str_ptr, double %top_float)
 
   ; push on stack
-  call void(i8*)* @push(i8* %buffer_addr)
+  call %stack_element* @push_string_ptr(i8* %buffer_addr)
 
   ret void
 }
@@ -365,7 +344,7 @@ define void @push_int(i64 %top_int)
           i8* %buffer_addr, i16 128, i8* %to_str_ptr, i64 %top_int)
 
   ; push on stack
-  call void(i8*)* @push(i8* %buffer_addr)
+  call %stack_element* @push_string_ptr(i8* %buffer_addr)
 
   ret void
 }
@@ -473,7 +452,7 @@ search:
 push_onto_stack:
   %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
   %value_to_push = load i8** %v_ptr_found
-  call void(i8*)* @push(i8* %value_to_push)
+  call %stack_element* @push_string_ptr(i8* %value_to_push)
 
   br label %end
 
@@ -606,10 +585,10 @@ define i32 @main_() {
  %number3 = getelementptr [2 x i8]* @number3, i64 0, i64 0
 
  call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number2)
- call void(i8*)* @push(i8* %number2)
+ call %stack_element* @push_string_cpy(i8* %number2)
 
  call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number3)
- call void(i8*)* @push(i8* %number3)
+ call %stack_element* @push_string_cpy(i8* %number3)
 
  call void @underflow_check()
  %size0 = call i8*()* @pop()
