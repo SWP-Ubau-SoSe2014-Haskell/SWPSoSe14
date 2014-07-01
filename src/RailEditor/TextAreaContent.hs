@@ -32,6 +32,7 @@ module TextAreaContent (
   green,
   blue,
   red,
+  defaultColor,
 
 -- * Methods
   serialize,
@@ -105,7 +106,11 @@ serialize :: TextAreaContent
 serialize areaContent = do
   let (ChMap hMap size) = charMap areaContent
   hmap <- readIORef hMap
-  let list = toList hmap
+  (xMax,yMax) <- readIORef size
+  let 
+    l = [(fromIntegral x, fromIntegral y)|x <- [0..xMax], y <- [0..yMax]]
+    wMap = Prelude.foldl (\m c -> if (isNothing $ Map.lookup c m) then Map.insert c ' ' m else m) hmap l
+  let list = toList wMap
   let sortedList = quicksort list
   result <- listToString sortedList [] 0
   let rightOrder = unlines $ Prelude.map (reverse . dropWhile (== ' ') . reverse) (lines $ reverse result)

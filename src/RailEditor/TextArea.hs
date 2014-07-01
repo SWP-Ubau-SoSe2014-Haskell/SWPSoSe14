@@ -15,6 +15,7 @@ module TextArea where
 import TextAreaContent as TAC
 import qualified KeyHandler
 import TextAreaContentUtils
+import Highlighter as HIGH
 
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk
@@ -69,7 +70,7 @@ initTextAreaWithContent areaContent = do
   let textArea = TA drawArea areaRef scrwin posRef veAdjustment hoAdjustment
 
   onButtonPress drawArea $ \event -> do
-    readIORef posRef >>= clearCursor drawArea
+    readIORef posRef >>= clearCursor textArea
     handleButtonPress textArea (eventX event,eventY event) >>= writeIORef posRef
     return $ Events.eventSent event
 
@@ -77,7 +78,7 @@ initTextAreaWithContent areaContent = do
     let drawArea = drawingArea textArea
         posRef   = currentPosition textArea
         areaRef  = textAreaContent textArea
-    readIORef posRef >>= clearCursor drawArea
+    readIORef posRef >>= clearCursor textArea
     pos@(x,y) <- readIORef posRef
     let key = Events.eventKeyName event
     listBefore <- (readIORef areaRef >>= \areaContent -> generateContentList areaContent (\_ -> True))
@@ -91,14 +92,17 @@ initTextAreaWithContent areaContent = do
     runActions textArea actions
 
     listAfter <- (readIORef areaRef >>= \areaContent -> generateContentList areaContent (\_ -> True))
-    removeContent drawArea listBefore
-    readIORef posRef >>= redrawDrawingArea drawArea listAfter
+    
+    HIGH.highlight areaContent
+    
+    removeContent textArea listBefore
+    readIORef posRef >>= redrawDrawingArea textArea listAfter
     return $ Events.eventSent event
 
   onExpose drawArea $ \(Expose sent _ _ _) -> do
     content <- readIORef areaRef
     list <- generateContentList content (\_ -> True)
-    readIORef posRef >>= redrawDrawingArea drawArea list
+    readIORef posRef >>= redrawDrawingArea textArea list
     return sent
 
   return textArea
@@ -114,11 +118,11 @@ runAction textArea (KeyHandler.UpdatePosition pos) = do
 runAction textArea (KeyHandler.ExtendDrawingAreaH x) = do
   let drawArea = drawingArea textArea
       hAdj = hAdjustment textArea
-  extendDrawingAreaHorizontally drawArea hAdj x
+  extendDrawingAreaHorizontally textArea hAdj x
 runAction textArea (KeyHandler.ExtendDrawingAreaV y) = do
   let drawArea = drawingArea textArea
       vAdj = vAdjustment textArea
-  extendDrawingAreaVertically drawArea vAdj y
+  extendDrawingAreaVertically textArea vAdj y
   
 
 initTextArea :: IO(TextArea)
@@ -135,13 +139,10 @@ setUpDrawingArea = do
   widgetSetSizeRequest drawingArea (round width) (round height)
   return drawingArea
 
-
 removeContent _ [] = return ()
-removeContent drawingArea ((pos,_):xs) = do
- removeCharacter drawingArea pos
- removeContent drawingArea xs
-
-
+removeContent textArea ((pos,_):xs) = do
+  removeCharacter textArea pos
+  removeContent textArea xs
 
 getCharacter :: Event -> IO (Maybe Char)
 getCharacter event = 
@@ -151,71 +152,79 @@ getCharacter event =
 handleButtonPress :: TextArea -> Position -> IO (Position)  
 handleButtonPress textArea pos = do
   newPos <- updatePosition pos 
-  showCursor drawArea newPos
+  showCursor textArea newPos
   return newPos
     where
       drawArea = drawingArea textArea
 
-renderScene :: DrawingArea -> ContentEntry -> RGBColor -> IO ()
-renderScene drawingArea (ContentEntry (x,y) char) (RGBColor r g b) = do
-  removeCharacter drawingArea (x,y)
-  drawWindow <- widgetGetDrawWindow drawingArea
+renderScene :: TextArea -> ContentEntry -> RGBColor -> IO ()
+renderScene textArea (ContentEntry (x,y) char) (RGBColor r g b) = do
+  let drawArea = drawingArea textArea
+  removeCharacter textArea (x,y)
+  drawWindow <- widgetGetDrawWindow drawArea
   renderWithDrawable drawWindow $ do 
     setSourceRGBA r g b 1.0
     moveTo (x+2) (y+hef-3)
     setFontSize 14
     showText [char]
 
-removeCharacter :: DrawingArea -> Position -> IO ()     
-removeCharacter drawingArea (x,y) = do
-  drawWindow <- widgetGetDrawWindow drawingArea
+removeCharacter :: TextArea -> Position -> IO ()     
+removeCharacter textArea (x,y) = do
+  let drawArea = drawingArea textArea
+  drawWindow <- widgetGetDrawWindow drawArea
   drawWindowClearArea drawWindow (round x) (round y) (round bef) (round hef) 
 
 
-redrawCharacters :: DrawingArea -> ContentList -> Double -> Double -> IO ()
+redrawCharacters :: TextArea -> ContentList -> Double -> Double -> IO ()
 redrawCharacters _ [] _ _ = return ()
-redrawCharacters drawingArea ((pos@(x,y),char):xs) bef hef = do
-  redrawCharacters drawingArea xs bef hef
-  removeCharacter drawingArea (x,y)								
-  renderScene drawingArea (ContentEntry (x+bef,y+hef) char) black	
+redrawCharacters textArea ((pos@(x,y),char):xs) bef hef = do
+  redrawCharacters textArea xs bef hef
+  removeCharacter textArea (x,y)								
+  renderScene textArea (ContentEntry (x+bef,y+hef) char) black	
 
-redrawCharactersByCoordinates :: DrawingArea -> Position -> ContentList -> IO ()  
+redrawCharactersByCoordinates :: TextArea -> Position -> ContentList -> IO ()  
 redrawCharactersByCoordinates _ _ [] = return ()  
-redrawCharactersByCoordinates drawingArea (x1,y1) (((x2,y2),char):xs) = do
-  removeCharacter drawingArea (x2,y2)
-  renderScene drawingArea (ContentEntry (x2+x1,y1) char) black
-  redrawCharactersByCoordinates drawingArea (x1,y1) xs
+redrawCharactersByCoordinates textArea (x1,y1) (((x2,y2),char):xs) = do
+  removeCharacter textArea (x2,y2)
+  renderScene textArea (ContentEntry (x2+x1,y1) char) black
+  redrawCharactersByCoordinates textArea (x1,y1) xs
 
-redrawDrawingArea :: DrawingArea -> ContentList -> Position -> IO ()
-redrawDrawingArea drawingArea content pos = do
-  showCursor drawingArea pos
-  redrawContent drawingArea content
+redrawDrawingArea :: TextArea -> ContentList -> Position -> IO ()
+redrawDrawingArea textArea content pos = do
+  showCursor textArea pos
+  redrawContent textArea content
 
-redrawContent :: DrawingArea -> ContentList -> IO ()  
+redrawContent :: TextArea -> ContentList -> IO ()  
 redrawContent _ [] = return ()
-redrawContent drawingArea list@((pos,char):xs) = do
- renderScene drawingArea (ContentEntry pos char) black
- redrawContent drawingArea xs
+redrawContent textArea list@((pos,char):xs) = do
+  let areaContentRef = textAreaContent textArea
+  areaContent <- readIORef areaContentRef
+  mayCell <- getCell areaContent pos
+  let color = if (isNothing mayCell) then TAC.defaultColor else (snd $ fromJust $ mayCell)   
+  renderScene textArea (ContentEntry pos char) color
+  redrawContent textArea xs
 
-showCursor :: DrawingArea -> Position -> IO ()
-showCursor drawingArea (x,y) = do
-  drawWindow <- widgetGetDrawWindow drawingArea
+showCursor :: TextArea -> Position -> IO ()
+showCursor textArea (x,y) = do
+  let drawArea = drawingArea textArea
+  drawWindow <- widgetGetDrawWindow drawArea
   gc <- gcNew drawWindow
   gcSetValues gc $ newGCValues { foreground = defaultCursorColor }
   drawRectangle drawWindow gc True (round x) (round y) 2 (round hef)
   return ()
 
-clearCursor :: DrawingArea -> Position -> IO ()
-clearCursor drawingArea (x,y) = do
-  drawWindow <- widgetGetDrawWindow drawingArea
+clearCursor :: TextArea -> Position -> IO ()
+clearCursor textArea (x,y) = do
+  let drawArea = drawingArea textArea
+  drawWindow <- widgetGetDrawWindow drawArea
   drawWindowClearArea drawWindow (round x) (round y) 2 (round hef) 
 
 displayCharacter :: TextArea -> ContentEntry -> IO (Position)
 displayCharacter textArea entry@(ContentEntry (x,y) char) = do
   areaContent <- readIORef areaRef
   addCharacter areaContent entry
-  renderScene drawArea entry black       -- GUI
-  extendDrawingAreaHorizontally drawArea hoAdjustment x  -- GUI 	
+  renderScene textArea entry black       -- GUI
+  extendDrawingAreaHorizontally textArea hoAdjustment x  -- GUI 	
   return (x+bef,y)
     where
       drawArea = drawingArea textArea
@@ -231,18 +240,20 @@ updateDirection direction size adjustment = do
     return $ direction - size
   else return direction
 
-extendDrawingAreaHorizontally :: DrawingArea -> Adjustment -> Double -> IO ()
-extendDrawingAreaHorizontally drawingArea adjustment x = do 
-  (w,h) <- widgetGetSizeRequest drawingArea
+extendDrawingAreaHorizontally :: TextArea -> Adjustment -> Double -> IO ()
+extendDrawingAreaHorizontally textArea adjustment x = do 
+  let drawArea = drawingArea textArea
+  (w,h) <- widgetGetSizeRequest drawArea
   value <- adjustmentGetValue adjustment
   when (width + value - x - bef < bef) $ do
-    when (round (x + bef) >= w) $ widgetSetSizeRequest drawingArea (w + (round bef)) h
+    when (round (x + bef) >= w) $ widgetSetSizeRequest drawArea (w + (round bef)) h
     adjustmentSetValue adjustment $ value + bef
 
-extendDrawingAreaVertically :: DrawingArea -> Adjustment -> Double -> IO ()
-extendDrawingAreaVertically drawingArea adjustment y = do 
-  (w,h) <- widgetGetSizeRequest drawingArea
+extendDrawingAreaVertically :: TextArea -> Adjustment -> Double -> IO ()
+extendDrawingAreaVertically textArea adjustment y = do 
+  let drawArea = drawingArea textArea
+  (w,h) <- widgetGetSizeRequest drawArea
   value <- adjustmentGetValue adjustment
   when (height + value - y - hef < hef) $ do
-    when (round (y + hef) >= h) $ widgetSetSizeRequest drawingArea w (h + (round hef))
+    when (round (y + hef) >= h) $ widgetSetSizeRequest drawArea w (h + (round hef))
     adjustmentSetValue adjustment $ value + hef
