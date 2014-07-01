@@ -1,0 +1,2 @@
+#
+RailCompiler: Duplicate Functions found.

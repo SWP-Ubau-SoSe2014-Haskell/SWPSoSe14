@@ -6,6 +6,7 @@ module TLexer (
  -- imports --
  import Test.HUnit
  import InterfaceDT                   as IDT
+ import qualified Preprocessor        as PreProc
  import qualified Lexer
 
  -- functions --
@@ -13,7 +14,7 @@ module TLexer (
  testLexer02 = "Reflection: " ~: res [Constant "1"] @=? run [" \\", "  \\   #  #  #", "   \\   f f f", "    \\   \\|/", " #t-------@-f#", "         /|\\", "        f f f", "       #  #  #"]
  testLexer03 = "Rail crash: " ~: crash @=? run [" /", "#"]
  testLexer04 = "One liner: " ~: crash @=? run []
- testLexer05 = "Endless loop: " ~: IDT.ILS [("main",[(1,Start,2),(2,Constant "1",3),(3,NOP,3)])] @=? run [" 1 ", "  \\", " @--@"]
+ testLexer05 = "Endless loop: " ~: IDT.ILS [("main",[(1,Start,2),(2,Constant "1",3),(3,NOP,3)])] @=? run [" \\", "  1 ", "   \\", "  @--@"]
  testLexer06 = "Junction test: " ~: IDT.ILS [("main", [(1, Start, 2), (2, Junction 3, 5), (3, Constant "1", 4), (4, Finish, 0), (5, Constant "0", 6), (6, Finish, 0)])] @=? run [" \\", "  \\  /-1#", "   -<", "     \\-0#"]
  testLexer07 = "Simple Junction test: " ~: crash @=? run [" *-1#"]
  testLexer08 = "Two Junctions: " ~: IDT.ILS [("main", [(1, Start, 2), (2, Junction 3, 5), (3, Junction 4, 5), (4, Finish, 0), (5, Constant "0", 6), (6, Finish, 0)])] @=? run [" \\    --\\     -#", "  \\  /   \\   /", "   -<     --<", "     \\       \\", "      ---------0#"]
@@ -27,8 +28,8 @@ module TLexer (
  testLexer16 = "Empty Lambda: " ~: IDT.ILS [("main",[(1, Start, 2), (2, Lambda 0, 3), (3, Finish, 0)])] @=? run [" \\", "#--&"]
 
  -- helper functions
- run :: IDT.Grid2D -> IDT.Lexer2SynAna
- run grid = Lexer.process (IDT.IPL ["$ 'main'":grid])
+ run :: [String] -> IDT.Lexer2SynAna
+ run grid = Lexer.process (PreProc.process (IIP (unlines ("$ 'main'":grid))))
 
  res :: [Lexeme] -> IDT.Lexer2SynAna
  res lexeme = IDT.ILS [("main", (1, Start, 2):nodes 2 lexeme)]
