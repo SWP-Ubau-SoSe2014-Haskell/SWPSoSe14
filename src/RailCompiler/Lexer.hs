@@ -203,10 +203,10 @@ module Lexer (
     -> IP -- ^New instruction pointer.
  step code ip
    | forward `elem` fval = move ip Forward
-   | left `elem` lval && right `elem` rval = crash
+   | left `elem` lval && right `elem` rval = crash{known = known ip}
    | left `elem` lval = move ip Lexer.Left
    | right `elem` rval = move ip Lexer.Right
-   | otherwise = crash
+   | otherwise = crash{known = known ip}
   where
    (left, forward, right) = adjacent code ip
    (lval, fval, rval) = valids code ip
@@ -340,22 +340,22 @@ module Lexer (
        E -> (ip{dir = NE}, ip{dir = SE})
        SW -> (ip{dir = SE}, ip{dir = W})
        NW -> (ip{dir = W}, ip{dir = NE})
-       _ -> (crash, crash)
+       _ -> (crash{known = known ip}, crash{known = known ip})
     | char == '>' = case dir ip of
        W -> (ip{dir = SW}, ip{dir = NW})
        SE -> (ip{dir = E}, ip{dir = SW})
        NE -> (ip{dir = NW}, ip{dir = E})
-       _ -> (crash, crash)
+       _ -> (crash{known = known ip}, crash{known = known ip})
     | char == '^' = case dir ip of
        S -> (ip{dir = SE}, ip{dir = SW})
        NE -> (ip{dir = N}, ip{dir = SE})
        NW -> (ip{dir = SW}, ip{dir = N})
-       _ -> (crash, crash)
+       _ -> (crash{known = known ip}, crash{known = known ip})
     | char == 'v' = case dir ip of
        N -> (ip{dir = NW}, ip{dir = NE})
        SE -> (ip{dir = NE}, ip{dir = S})
        SW -> (ip{dir = S}, ip{dir = NW})
-       _ -> (crash, crash)
+       _ -> (crash{known = known ip}, crash{known = known ip})
     | otherwise = (ip, ip)
 
  -- returns insturction pointers turned for (Lambda, Reflected)
