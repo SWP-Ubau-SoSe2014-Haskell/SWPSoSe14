@@ -119,7 +119,7 @@ output. The result will be printed to stdout.
 - `cabal test` to run the tests
 - Run the compiler with `dist/build/SWPSoSe14/SWPSoSe14 -c -i <Source.rail> -o output`
 - You still need to link the stack manually if you want to have executables:
-  `llvm-link <compiled.ll> src/RailCompiler/stack.ll -o executable`
+  `llvm-link <compiled.ll> src/RailCompiler/*.ll -o executable`
 
 ## Documentation
 
