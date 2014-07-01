@@ -153,9 +153,15 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
 ;
 ; The string must already be allocated _ON THE HEAP_.
 define %stack_element* @push_string_ptr(i8* %str) {
+  ; 1. Create and push a new stack_element.
   %curr_head = load %stack_element** @stack
   %new_head = call %stack_element* @stack_element_new(i8 0, i8* %str, %stack_element* %curr_head)
   store %stack_element* %new_head, %stack_element** @stack
+
+  ; 2. Increment stack size.
+  %stack_size0 = call i64 @stack_get_size()
+  %stack_size1 = add i64 %stack_size0, 1
+  store i64 %stack_size1, i64* @stack_size
 
   ret %stack_element* %new_head
 }
