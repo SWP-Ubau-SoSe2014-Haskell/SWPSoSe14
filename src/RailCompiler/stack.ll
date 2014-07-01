@@ -372,6 +372,9 @@ define void @sub_int() {
   ret void
 }
 
+; Get (but do not remove) the topmost stack_element struct.
+;
+; Crashes the program if the stack is empty.
 define %stack_element* @peek() {
   ; 1. Make sure we can peek something.
   call void @underflow_assert()
@@ -389,19 +392,19 @@ define %stack_element* @peek() {
 ; TODO: QUICK AND DIRTY! Does not free() anything and does not know
 ;       anything about reference counts.
 define i8* @pop_string() {
-  ; 2. Pop the stack.
+  ; 1. Pop the stack.
   ;    "Next" pointer is struct member 3.
   %stack = call %stack_element* @peek()
   %next0 = getelementptr %stack_element* %stack, i32 0, i32 3
   %next1 = load %stack_element** %next0
   store %stack_element* %next1, %stack_element** @stack
 
-  ; 3. Decrement the stack size.
+  ; 2. Decrement the stack size.
   %stack_size0 = load i64* @stack_size
   %stack_size1 = sub i64 %stack_size0, 1
   store i64 %stack_size1, i64* @stack_size
 
-  ; 4. Is the type string? If not, crash.
+  ; 3. Is the type string? If not, crash.
   ;    Type is struct member #0.
   %type0 = getelementptr %stack_element* %stack, i32 0, i32 0
   %type1 = load i8* %type0
