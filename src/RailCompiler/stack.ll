@@ -88,6 +88,7 @@ declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare i8* @calloc(i16 zeroext, i16 zeroext)
+declare void @free(i8*)
 declare i8* @strdup(i8*)
 declare void @exit(i32 signext)
 
@@ -147,6 +148,37 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
 
   ; That's it!
   ret %stack_element* %element1
+}
+
+; free() a stack element and optionally, free the data it contains as well
+; (i. e. the memory pointed to by the dataPtr member).
+;
+; Returns the dataPtr if %free_data == 1 and null otherwise.
+;
+; TODO: This should probably decrement the reference count and only do something
+;       if it is 0 after decrementing.
+define i8* @stack_element_free(%stack_element* %element, i1 %free_data) {
+top:
+  ; NB: dataPtr is member #1.
+  %dataPtr0 = getelementptr %stack_element* %element, i32 0, i32 1
+  %dataPtr1 = load i8** %dataPtr0
+
+  br i1 %free_data, label %do_free_data, label %free_stack_struct
+
+do_free_data:
+  ; TODO: Check type here and free lists (type 1) correctly, i. e. iteratively.
+  ;       (Or rather: Decrement the reference count of each list element)
+  call void @free(i8* %dataPtr1)
+
+  br label %free_stack_struct
+
+free_stack_struct:
+  %ret = phi i8* [ %dataPtr1, %top ], [ null, %do_free_data ]
+
+  %mem = bitcast %stack_element* %element to i8*
+  call void @free(i8* %mem)
+
+  ret i8* %ret
 }
 
 ; Push a string onto the stack, creating a new stack_element struct
@@ -388,9 +420,6 @@ define %stack_element* @peek() {
 ; Pop a string from the stack.
 ;
 ; Crashes if the type of the topmost element is not "string".
-;
-; TODO: QUICK AND DIRTY! Does not free() anything and does not know
-;       anything about reference counts.
 define i8* @pop_string() {
   ; 1. Pop the stack.
   ;    "Next" pointer is struct member 3.
@@ -421,6 +450,7 @@ string_type:
   %buf0 = getelementptr %stack_element* %stack, i32 0, i32 1
   %buf1 = load i8** %buf0
 
+  call i8* @stack_element_free(%stack_element* %stack, i1 0)
   ret i8 *%buf1
 }
 
