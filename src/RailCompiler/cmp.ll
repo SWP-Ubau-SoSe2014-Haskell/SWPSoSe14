@@ -16,7 +16,7 @@
 %struct.stack_elem = type { i32, %union.anon }
 %union.anon = type { i8* }
 
-declare i8* @pop()
+declare i8* @pop_string()
 declare %stack_element* @push_string_ptr(i8* %str)
 declare %stack_element* @push_string_cpy(i8* %str)
 declare void @push_int(i64)
@@ -37,7 +37,7 @@ define i32 @main_greater() {
   call %stack_element* @push_string_cpy(i8* %number1)
 
   call i32 @greater()
-  %result = call i8* @pop()
+  %result = call i8* @pop_string()
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]*
               @popped, i32 0, i32 0), i8* %result)
 
@@ -58,11 +58,11 @@ define i32 @equal(){
  
   ; get top
   call void @underflow_assert()
-  %number_a = call i8* @pop()
+  %number_a = call i8* @pop_string()
 
   ; get top-1
   call void @underflow_assert()
-  %number_b = call i8* @pop()
+  %number_b = call i8* @pop_string()
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -174,11 +174,11 @@ define i32 @greater(){
  
   ; get top
   call void @underflow_assert()
-  %number_a = call i8* @pop()
+  %number_a = call i8* @pop_string()
 
   ; get top-1
   call void @underflow_assert()
-  %number_b = call i8* @pop()
+  %number_b = call i8* @pop_string()
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)

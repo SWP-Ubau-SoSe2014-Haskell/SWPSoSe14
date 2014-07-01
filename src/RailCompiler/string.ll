@@ -11,7 +11,7 @@
 
 %stack_element = type opaque
 
-declare i8* @pop()
+declare i8* @pop_string()
 declare %stack_element* @push_string_ptr(i8* %str)
 declare %stack_element* @push_string_cpy(i8* %str)
 declare i64 @pop_int()
@@ -24,9 +24,9 @@ declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits lo
 define void @strapp() {
 entry:
   call void @underflow_assert() 
-  %str2 = call i8*()* @pop()
+  %str2 = call i8*()* @pop_string()
   call void @underflow_assert() 
-  %str1 = call i8*()* @pop()
+  %str1 = call i8*()* @pop_string()
 
   ; compute length of input strings (TODO: maybe isolate strlen function for this purpose)
   call %stack_element* @push_string_ptr(i8* %str1)
@@ -75,7 +75,7 @@ finished2:
 define void @strlen() {
 entry:
   call void @underflow_assert() 
-  %str = call i8*()* @pop()
+  %str = call i8*()* @pop_string()
   br label %loop
 loop:
   %i = phi i64 [0, %entry ], [ %next_i, %loop ]
@@ -94,9 +94,9 @@ finished:
 define void @streq() {
 entry:
   call void @underflow_assert() 
-  %str1 = call i8*()* @pop()
+  %str1 = call i8*()* @pop_string()
   call void @underflow_assert() 
-  %str2 = call i8*()* @pop()
+  %str2 = call i8*()* @pop_string()
   br label %loop
 loop:
   ; the phi instruction says that coming from the 'entry' label i is 1
@@ -133,7 +133,7 @@ entry:
   call void @underflow_assert() 
   %indx = call i64()* @pop_int()
   call void @underflow_assert() 
-  %str = call i8*()* @pop()
+  %str = call i8*()* @pop_string()
 
   ; allocate space for result strings
   %len1_1 = add i64 %indx, 1

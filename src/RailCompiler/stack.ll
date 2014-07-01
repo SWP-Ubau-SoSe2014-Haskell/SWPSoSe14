@@ -208,7 +208,7 @@ define void @print() {
   call void @underflow_assert()
 
   %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
-  %val = call i8* @pop()
+  %val = call i8* @pop_string()
   call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
 
   ret void
@@ -231,7 +231,7 @@ raw_error:
 
 end:
   %fmt = phi i8* [%raw_fmt, %raw_error], [%cust_fmt, %custom_error]
-  %val = call i8* @pop()
+  %val = call i8* @pop_string()
   %stderr = load %FILE** @stderr
   call i32(%FILE*, i8*, ...)* @fprintf(%FILE* %stderr, i8* %fmt, i8* %val)
 
@@ -310,7 +310,7 @@ not_at_eof:
 ; returns the element, in case of error undefined
 define i64 @pop_int(){
   ; pop
-  %top = call i8* @pop()
+  %top = call i8* @pop_string()
 
   ; convert to int, check for error
   %top_int0 = call i32 @atol(i8* %top)
@@ -438,7 +438,7 @@ insert:
   store i8* %name, i8** %n_ptr
   
   ; pop value from stack and store value
-  %value = call i8*()* @pop()
+  %value = call i8*()* @pop_string()
   %v_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 1
   store i8* %value, i8** %v_ptr
 
@@ -457,7 +457,7 @@ search:
   br i1 %is_equal, label %insert2, label %search_further
 
 insert2:
-  %value2 = call i8*()* @pop()
+  %value2 = call i8*()* @pop_string()
   %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
   store i8* %value2, i8** %v_ptr_found
 
@@ -609,15 +609,15 @@ define i32 @main_() {
 
 
  call void @eof_check()
- %i1 = call i8*()* @pop()
+ %i1 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
 
  call void @input()
- %i0 = call i8*()* @pop()
+ %i0 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
 
  call void @input()
- %i2 = call i8*()* @pop()
+ %i2 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i2)
 
  ; push two numbers on the stack
@@ -631,15 +631,15 @@ define i32 @main_() {
  call %stack_element* @push_string_cpy(i8* %number3)
 
  call void @underflow_check()
- %size0 = call i8*()* @pop()
+ %size0 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
 
  call void @sub_int()
- %sum  = call i8*()* @pop()
+ %sum  = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
 
  call void @underflow_check()
- %size1 = call i8*()* @pop()
+ %size1 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
 
  ret i32 0
