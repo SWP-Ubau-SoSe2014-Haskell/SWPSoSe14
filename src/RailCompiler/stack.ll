@@ -181,6 +181,64 @@ free_stack_struct:
   ret i8* %ret
 }
 
+; Get the type of the data in a stack_element struct.
+;
+; See the definition of %stack_element for a description of
+; possible type values.
+define i8 @stack_element_get_type(%stack_element* %element) {
+  ; dataType is member #0
+  %dataType0 = getelementptr %stack_element* %element, i32 0, i32 0
+  %dataType1 = load i8* %dataType0
+  ret i8 %dataType1
+}
+
+; Set the type of the data in a stack_element struct.
+;
+; See the definition of %stack_element for a description of
+; possible type values.
+define void @stack_element_set_type(%stack_element* %element, i8 %type) {
+  ; dataType is member #0
+  %dataTypeDestPtr = getelementptr %stack_element* %element, i32 0, i32 0
+  store i8 %type, i8* %dataTypeDestPtr
+
+  ret void
+}
+
+; Get the raw, uncasted data pointer of a stack_element struct.
+define i8* @stack_element_get_data(%stack_element* %element) {
+  ; dataPtr is member #1
+  %dataPtr0 = getelementptr %stack_element* %element, i32 0, i32 1
+  %dataPtr1 = load i8** %dataPtr0
+  ret i8* %dataPtr1
+}
+
+; Set the raw data pointer of a stack_element struct.
+define void @stack_element_set_data(%stack_element* %element, i8* %data) {
+  ; dataPtr is member #1
+  %dataPtr = getelementptr %stack_element* %element, i32 0, i32 1
+  store i8* %data, i8** %dataPtr
+
+  ret void
+}
+
+; Get the "next element" pointer of a stack_element struct.
+define %stack_element* @stack_element_get_next(%stack_element* %element) {
+  ; nextElementPtr is member #3
+  %nextElement0 = getelementptr %stack_element* %element, i32 0, i32 3
+  %nextElement1 = load %stack_element** %nextElement0
+
+  ret %stack_element* %nextElement1
+}
+
+; Set the "next element" pointer of a stack_element struct.
+define void @stack_element_set_next(%stack_element* %element, %stack_element* %next) {
+  ; nextElementPtr is member #3
+  %nextPtr = getelementptr %stack_element* %element, i32 0, i32 3
+  store %stack_element* %next, %stack_element** %nextPtr
+
+  ret void
+}
+
 ; Push a string onto the stack, creating a new stack_element struct
 ; with a reference count of 1.
 ;
