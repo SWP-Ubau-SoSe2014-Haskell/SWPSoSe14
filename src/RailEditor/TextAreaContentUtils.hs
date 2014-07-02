@@ -16,12 +16,12 @@ import Data.Maybe
 import Data.Map as Map
 import Control.Monad
 
-import TextAreaContent as TAC
+import TextAreaContent
 
 data ContentEntry = ContentEntry Position Char
 
 bef = 15.0
-hef = 16.0
+hef = 15.0
 
 captureReturn :: TextAreaContent -> Position -> IO ContentList
 captureReturn areaContent (x,y) = do

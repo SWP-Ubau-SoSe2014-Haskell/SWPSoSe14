@@ -12,26 +12,27 @@ The TextArea-module depicts the view on the data structure stored in the TextAre
 module TextArea where
     
     -- imports --
-import TextAreaContent as TAC
+import qualified TextAreaContent as TAC
 import qualified KeyHandler
-import TextAreaContentUtils
+import qualified TextAreaContentUtils as TACU
 import Highlighter as HIGH
 
-import Graphics.Rendering.Cairo
-import Graphics.UI.Gtk
+import qualified Graphics.Rendering.Cairo as CAIRO
+import qualified Graphics.UI.Gtk as GTK
 import Graphics.UI.Gtk.Gdk.Events as Events
 import Data.IORef
 import Data.Maybe
 import Data.Map as Map
 import Control.Monad
+import qualified Graphics.UI.Gtk.Gdk.GC as GC
 import Graphics.UI.Gtk.Gdk.GC hiding (fill)
 import Graphics.UI.Gtk hiding (Color)
 
 
 data TextArea = TA { drawingArea :: DrawingArea,
-    textAreaContent :: IORef (TextAreaContent),
+    textAreaContent :: IORef (TAC.TextAreaContent),
     scrolledWindow :: ScrolledWindow,
-    currentPosition :: IORef (Position),
+    currentPosition :: IORef (TAC.Position),
     vAdjustment :: Adjustment,
     hAdjustment :: Adjustment }
 
@@ -53,15 +54,15 @@ height = 400.0
 getTextAreaContainer :: TextArea -> IO (ScrolledWindow)
 getTextAreaContainer textArea = return $ scrolledWindow textArea
 
-setTextAreaContent :: TextArea -> TextAreaContent -> IO ()
+setTextAreaContent :: TextArea -> TAC.TextAreaContent -> IO ()
 setTextAreaContent textArea areaContent= do
   let areaRef = textAreaContent textArea
   writeIORef areaRef areaContent
 
-initTextAreaWithContent :: TextAreaContent -> IO (TextArea)
+initTextAreaWithContent :: TAC.TextAreaContent -> IO (TextArea)
 initTextAreaWithContent areaContent = do
-  veAdjustment <- adjustmentNew 0 0 0 hef 0 0
-  hoAdjustment <- adjustmentNew 0 0 0 bef 0 0
+  veAdjustment <- adjustmentNew 0 0 0 TACU.hef 0 0
+  hoAdjustment <- adjustmentNew 0 0 0 TACU.bef 0 0
   scrwin <- scrolledWindowNew (Just hoAdjustment) (Just veAdjustment)
   drawArea <- setUpDrawingArea
   scrolledWindowAddWithViewport scrwin drawArea
@@ -81,9 +82,9 @@ initTextAreaWithContent areaContent = do
     readIORef posRef >>= clearCursor textArea
     pos@(x,y) <- readIORef posRef
     let key = Events.eventKeyName event
-    listBefore <- (readIORef areaRef >>= \areaContent -> generateContentList areaContent (\_ -> True))
+    listBefore <- (readIORef areaRef >>= \areaContent -> TAC.generateContentList areaContent (\_ -> True))
     char <- getCharacter event
-    when (isJust char) $ displayCharacter textArea (ContentEntry pos $ fromJust char) >>= writeIORef posRef
+    when (isJust char) $ displayCharacter textArea (TACU.ContentEntry pos $ fromJust char) >>= writeIORef posRef
     content <- readIORef areaRef
     let hAdj = hAdjustment textArea
         vAdj = vAdjustment textArea
@@ -91,7 +92,7 @@ initTextAreaWithContent areaContent = do
     actions <- KeyHandler.handleKey content pos key hAdj vAdj
     runActions textArea actions
 
-    listAfter <- (readIORef areaRef >>= \areaContent -> generateContentList areaContent (\_ -> True))
+    listAfter <- (readIORef areaRef >>= \areaContent -> TAC.generateContentList areaContent (\_ -> True))
     
     HIGH.highlight areaContent
     
@@ -101,7 +102,7 @@ initTextAreaWithContent areaContent = do
 
   onExpose drawArea $ \(Expose sent _ _ _) -> do
     content <- readIORef areaRef
-    list <- generateContentList content (\_ -> True)
+    list <- TAC.generateContentList content (\_ -> True)
     readIORef posRef >>= redrawDrawingArea textArea list
     return sent
 
@@ -149,83 +150,83 @@ getCharacter event =
   let val = Events.eventKeyVal event
   in return $ keyToChar val
 
-handleButtonPress :: TextArea -> Position -> IO (Position)  
+handleButtonPress :: TextArea -> TAC.Position -> IO (TAC.Position)  
 handleButtonPress textArea pos = do
-  newPos <- updatePosition pos 
+  newPos <- TACU.updatePosition pos 
   showCursor textArea newPos
   return newPos
     where
       drawArea = drawingArea textArea
 
-renderScene :: TextArea -> ContentEntry -> RGBColor -> IO ()
-renderScene textArea (ContentEntry (x,y) char) (RGBColor r g b) = do
+renderScene :: TextArea -> TACU.ContentEntry -> TAC.RGBColor -> IO ()
+renderScene textArea (TACU.ContentEntry (x,y) char) (TAC.RGBColor r g b) = do
   let drawArea = drawingArea textArea
   removeCharacter textArea (x,y)
   drawWindow <- widgetGetDrawWindow drawArea
   renderWithDrawable drawWindow $ do 
-    setSourceRGBA r g b 1.0
-    moveTo (x+2) (y+hef-3)
-    setFontSize 14
-    showText [char]
+    CAIRO.setSourceRGBA r g b 1.0
+    CAIRO.moveTo (x+2) (y+TACU.hef-3)
+    CAIRO.setFontSize 14
+    CAIRO.showText [char]
 
-removeCharacter :: TextArea -> Position -> IO ()     
+removeCharacter :: TextArea -> TAC.Position -> IO ()     
 removeCharacter textArea (x,y) = do
   let drawArea = drawingArea textArea
   drawWindow <- widgetGetDrawWindow drawArea
-  drawWindowClearArea drawWindow (round x) (round y) (round bef) (round hef) 
+  drawWindowClearArea drawWindow (round x) (round y) (round TACU.bef) (round TACU.hef) 
 
 
-redrawCharacters :: TextArea -> ContentList -> Double -> Double -> IO ()
+redrawCharacters :: TextArea -> TAC.ContentList -> Double -> Double -> IO ()
 redrawCharacters _ [] _ _ = return ()
 redrawCharacters textArea ((pos@(x,y),char):xs) bef hef = do
   redrawCharacters textArea xs bef hef
   removeCharacter textArea (x,y)								
-  renderScene textArea (ContentEntry (x+bef,y+hef) char) black	
+  renderScene textArea (TACU.ContentEntry (x+bef,y+hef) char) TAC.black	
 
-redrawCharactersByCoordinates :: TextArea -> Position -> ContentList -> IO ()  
+redrawCharactersByCoordinates :: TextArea -> TAC.Position -> TAC.ContentList -> IO ()  
 redrawCharactersByCoordinates _ _ [] = return ()  
 redrawCharactersByCoordinates textArea (x1,y1) (((x2,y2),char):xs) = do
   removeCharacter textArea (x2,y2)
-  renderScene textArea (ContentEntry (x2+x1,y1) char) black
+  renderScene textArea (TACU.ContentEntry (x2+x1,y1) char) TAC.black
   redrawCharactersByCoordinates textArea (x1,y1) xs
 
-redrawDrawingArea :: TextArea -> ContentList -> Position -> IO ()
+redrawDrawingArea :: TextArea -> TAC.ContentList -> TAC.Position -> IO ()
 redrawDrawingArea textArea content pos = do
   showCursor textArea pos
   redrawContent textArea content
 
-redrawContent :: TextArea -> ContentList -> IO ()  
+redrawContent :: TextArea -> TAC.ContentList -> IO ()  
 redrawContent _ [] = return ()
 redrawContent textArea list@((pos,char):xs) = do
   let areaContentRef = textAreaContent textArea
   areaContent <- readIORef areaContentRef
-  mayCell <- getCell areaContent pos
+  mayCell <- TAC.getCell areaContent pos
   let color = if (isNothing mayCell) then TAC.defaultColor else (snd $ fromJust $ mayCell)   
-  renderScene textArea (ContentEntry pos char) color
+  renderScene textArea (TACU.ContentEntry pos char) color
   redrawContent textArea xs
 
-showCursor :: TextArea -> Position -> IO ()
+showCursor :: TextArea -> TAC.Position -> IO ()
 showCursor textArea (x,y) = do
   let drawArea = drawingArea textArea
   drawWindow <- widgetGetDrawWindow drawArea
   gc <- gcNew drawWindow
   gcSetValues gc $ newGCValues { foreground = defaultCursorColor }
-  drawRectangle drawWindow gc True (round x) (round y) 2 (round hef)
+  drawRectangle drawWindow gc True (round x) (round y) 2 (round TACU.hef)
   return ()
 
-clearCursor :: TextArea -> Position -> IO ()
+clearCursor :: TextArea -> TAC.Position -> IO ()
 clearCursor textArea (x,y) = do
   let drawArea = drawingArea textArea
   drawWindow <- widgetGetDrawWindow drawArea
-  drawWindowClearArea drawWindow (round x) (round y) 2 (round hef) 
+  drawWindowClearArea drawWindow (round x) (round y) 2 (round TACU.hef) 
 
-displayCharacter :: TextArea -> ContentEntry -> IO (Position)
-displayCharacter textArea entry@(ContentEntry (x,y) char) = do
+displayCharacter :: TextArea -> TACU.ContentEntry -> IO (TAC.Position)
+displayCharacter textArea entry@(TACU.ContentEntry (x,y) char) = do
   areaContent <- readIORef areaRef
-  addCharacter areaContent entry
-  renderScene textArea entry black       -- GUI
+  TACU.addCharacter areaContent entry
+  renderScene textArea entry TAC.black       -- GUI
   extendDrawingAreaHorizontally textArea hoAdjustment x  -- GUI 	
-  return (x+bef,y)
+  return (x+TACU.bef,y)
     where
       drawArea = drawingArea textArea
       areaRef = textAreaContent textArea
@@ -245,15 +246,15 @@ extendDrawingAreaHorizontally textArea adjustment x = do
   let drawArea = drawingArea textArea
   (w,h) <- widgetGetSizeRequest drawArea
   value <- adjustmentGetValue adjustment
-  when (width + value - x - bef < bef) $ do
-    when (round (x + bef) >= w) $ widgetSetSizeRequest drawArea (w + (round bef)) h
-    adjustmentSetValue adjustment $ value + bef
+  when (width + value - x - TACU.bef < TACU.bef) $ do
+    when (round (x + TACU.bef) >= w) $ widgetSetSizeRequest drawArea (w + (round TACU.bef)) h
+    adjustmentSetValue adjustment $ value + TACU.bef
 
 extendDrawingAreaVertically :: TextArea -> Adjustment -> Double -> IO ()
 extendDrawingAreaVertically textArea adjustment y = do 
   let drawArea = drawingArea textArea
   (w,h) <- widgetGetSizeRequest drawArea
   value <- adjustmentGetValue adjustment
-  when (height + value - y - hef < hef) $ do
-    when (round (y + hef) >= h) $ widgetSetSizeRequest drawArea w (h + (round hef))
-    adjustmentSetValue adjustment $ value + hef
+  when (height + value - y - TACU.hef < TACU.hef) $ do
+    when (round (y + TACU.hef) >= h) $ widgetSetSizeRequest drawArea w (h + (round TACU.hef))
+    adjustmentSetValue adjustment $ value + TACU.hef

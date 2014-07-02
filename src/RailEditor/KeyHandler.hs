@@ -16,7 +16,7 @@ module KeyHandler (
 
 import Graphics.UI.Gtk
 import Control.Monad
-import TextAreaContent
+import TextAreaContent as TAC
 import TextAreaContentUtils
 
 data OutstandingAction =  UpdatePosition Position | ExtendDrawingAreaH Double | ExtendDrawingAreaV Double deriving (Show)

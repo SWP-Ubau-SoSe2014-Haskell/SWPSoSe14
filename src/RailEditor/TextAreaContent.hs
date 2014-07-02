@@ -53,7 +53,9 @@ import Control.Monad
 
 data RGBColor = RGBColor Double Double Double
 data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Integer,Integer))
-data CharMap  = ChMap  (IORef (Map Position Char)) (IORef (Integer,Integer))
+--data CharMap  = ChMap  (IORef (Map Position Char)) (IORef (Integer,Integer))
+-- chMap is a Map(y (x coord char)) where y and x are coords
+data CharMap  = ChMap  (IORef (Map Double (Map Double Char))) (IORef (Integer,Integer))
 
 data TextAreaContent = TAC {charMap :: CharMap, colorMap :: ColorMap}
 type Position = (Double,Double)
@@ -86,13 +88,38 @@ init x y = do
   let hMap = ChMap hmapR size
   return $ TAC hMap cMap
     where
-      hmap = fillMapWith Map.empty defaultChar xD yD xD yD
-      cmap = fillMapWith Map.empty defaultColor xD yD xD yD
+      hmap = fillCharMapWith (Map.insert 0 Map.empty Map.empty) defaultChar xD yD
+      cmap = fillMapWith Map.empty defaultColor xD yD
       xD = fromInteger x :: Double
       yD = fromInteger y :: Double
 
 --------------------
 -- Methods
+
+--fill a Map a (Map a b) with a specified content
+fillCharMapWith :: Map.Map Double (Map.Map Double Char) --Map of characters at position y x
+  -> Char --Content
+  -> Double --Max x size
+  -> Double --Max y size
+  -> Map.Map Double (Map.Map Double Char)--Map with content at every y x coord (x*y operations)
+fillCharMapWith charMap content xBound yBound =
+  Prelude.foldl (\yMap yK -> 
+    if (isNothing $ Map.lookup yK yMap) -- line Map nothing?
+    then insert --insert the filled xMap into yMap
+      yK 
+      (Prelude.foldl (\xMap xK -> --foldl with empty map
+        if (isNothing $ Map.lookup xK xMap) --check for char at x,y
+        then Map.insert xK content xMap 
+        else xMap)(Map.empty)[0..xBound])
+      yMap
+    else insert --insert the filled xMap into yMap
+      yK
+      (Prelude.foldl (\xMap xK -> --foldl with
+        if (isNothing $ Map.lookup xK xMap) --check for char at x,y
+        then Map.insert xK content xMap 
+        else xMap)(fromJust $ Map.lookup yK yMap)[0..xBound])
+       yMap
+  )charMap [0..yBound]
 
 --fills a map with a specified content
 fillMapWith :: Map.Map Position a -> a -> Double -> Double -> Double -> Double -> Map.Map Position a
@@ -104,60 +131,53 @@ fillMapWith map content xBound yBound x y = fillMapWith (Map.insert (x,y) conten
 serialize :: TextAreaContent
   -> IO String
 serialize areaContent = do
-  let (ChMap hMap size) = charMap areaContent
-  hmap <- readIORef hMap
-  (xMax,yMax) <- readIORef size
-  let 
-    l = [(fromIntegral x, fromIntegral y)|x <- [0..xMax], y <- [0..yMax]]
-    wMap = Prelude.foldl (\m c -> if (isNothing $ Map.lookup c m) then Map.insert c ' ' m else m) hmap l
-  let list = toList wMap
-  let sortedList = quicksort list
-  result <- listToString sortedList [] 0
-  let rightOrder = unlines $ Prelude.map (reverse . dropWhile (== ' ') . reverse) (lines $ reverse result)
-  return rightOrder
-    where
-      quicksort :: [(Position,Char)] -> [(Position,Char)]
-      quicksort [] = []
-      quicksort (x:xs) = quicksort [a | a <- xs, before a x] ++ [x] ++ quicksort [a | a <- xs, not $ before a x]
-      listToString :: [(Position,Char)] -> String -> Double -> IO String
-      listToString list akku beforeY = 
-        if Prelude.null list
-        then return akku
-        else do
-          let character = snd $ head list
-          let (x,y) = fst $ head list
-          if y > beforeY
-          then listToString (tail list) (character : '\n' : akku) y
-          else listToString (tail list) (character : akku) y
-      before :: (Position,Char) -> (Position,Char) -> Bool
-      before ((a,b),_) ((c,d),_) = b < d || (b == d && a <= c)
-
+  let (ChMap hMap size) = charMap areaContent --get the CharMap pointer
+  hmap <- readIORef hMap --get the CharMap
+  (xMax,yMax) <- readIORef size --get the size of the CharMap
+  --Fill the map with whitespaces
+  let wMap = fillCharMapWith hmap ' ' (fromIntegral xMax) (fromIntegral yMax)
+  {-1. Take a line map
+    2. fold that map to a line
+    3. reverse ist drop ' ' and reverse it again
+    4. append \n
+    5. goto 1. until Map.fold is finish
+  -}
+  return $ Map.fold (\lineMap code -> 
+    ((reverse . dropWhile (== ' ') . reverse)
+    (Map.fold (\char line ->line++[char]) "" lineMap))++['\n'] ) "" wMap
+    
 -- | creates a TextAreaContent by a string
 deserialize :: String
   -> IO TextAreaContent
 deserialize stringContent = do
   areaContent <- TextAreaContent.init newX newY
   let (ChMap hMap _) = charMap areaContent
-  readStringListInEntryMap hMap lined (0,0)
+  readStringListInEntryMap areaContent lined (0,0)
   return areaContent
     where
       newX = toInteger $ maximum $ Prelude.map length lined
       newY = toInteger $ length lined
       lined = lines stringContent
 
---subfunction for deserialization
+--subfunction for deserialization calls readStringInEntryMap for every line
+readStringListInEntryMap :: TextAreaContent
+  ->[String]--Lines
+  -> Position
+  -> IO()
 readStringListInEntryMap _ [] _ = return ()
-readStringListInEntryMap hmap (e:es) (x,y) = do
-  readStringInEntryMap hmap e (0,y)
-  readStringListInEntryMap hmap es (0,y+1);
+readStringListInEntryMap tac (e:es) (x,y) = do
+  readStringInEntryMap tac e (0,y)
+  readStringListInEntryMap tac es (0,y+1);
 
 --subfunction for deserialization
+readStringInEntryMap :: TextAreaContent
+  -> String --Line
+  -> Position
+  -> IO()
 readStringInEntryMap _ [] _ = return ()
-readStringInEntryMap hmap (s:ss) (x,y) = do
-  entryMap <- readIORef hmap
-  let entryMap = Map.insert (x,y) s entryMap
-  writeIORef hmap entryMap
-  readStringInEntryMap hmap ss (succ x,y)
+readStringInEntryMap tac (s:ss) (x,y) = do
+  putValue tac (x,y) s
+  readStringInEntryMap tac ss (succ x,y)
 
 --quadruples the size of the TextAreaContent
 resize :: TextAreaContent -> IO ()
@@ -178,29 +198,21 @@ expandXTextAreaN area (oldX,oldY) n
 --subfunction for expandXTextAreaN
 expandXTextArea areaContent (oldX,oldY)= do
   let (ChMap _ size) = charMap areaContent
-  expandXTextAreaH areaContent (oldX,oldY)
   (xmax,ymax) <- readIORef size
   writeIORef size (succ xmax,ymax)
+  print "before"
+  print $ show(succ xmax,ymax)
+  expandXTextAreaH areaContent (oldX,oldY)
 
 --subfunction for expandXTextArea
 expandXTextAreaH areaContent (oldX,oldY) = do
-  let (ChMap hMap _) = charMap areaContent
-  let (CoMap cMap _) = colorMap areaContent
   if oldY == 0
   then do
-    hmap <- readIORef hMap
-    cmap <- readIORef cMap
-    let hmap = Map.insert (succ oldX,0.0) defaultChar hmap
-    let cmap = Map.insert (succ oldX,0.0) defaultColor cmap
-    writeIORef hMap hmap
-    writeIORef cMap cmap
+    putColor areaContent (succ oldX,0.0) defaultColor
+    putValue areaContent (succ oldX,0.0) defaultChar
   else do
-    hmap <- readIORef hMap
-    cmap <- readIORef cMap
-    let hmap = Map.insert (succ oldX,oldY) defaultChar hmap
-    let cmap = Map.insert (succ oldX,oldY) defaultColor cmap
-    writeIORef hMap hmap
-    writeIORef cMap cmap
+    putValue areaContent (succ oldX,oldY) defaultChar
+    putColor areaContent (succ oldX,oldY) defaultColor
     expandXTextAreaH areaContent (oldX,pred oldY)
 
 --subfunction for resize
@@ -213,29 +225,19 @@ expandYTextAreaN areaContent (oldX,oldY) n
 --subfunction for expandYTextAreaN
 expandYTextArea areaContent (oldX,oldY)= do
   let (ChMap _ size) = charMap areaContent
-  expandYTextAreaH areaContent (oldX,oldY)
   (xmax,ymax) <- readIORef size
   writeIORef size (xmax,succ ymax)
-
+  expandYTextAreaH areaContent (oldX,oldY)
+  
 --subfunction for expandYTextArea
 expandYTextAreaH areaContent (oldX,oldY) = do
-  let (ChMap hMap _) = charMap areaContent
-  let (CoMap cMap _) = colorMap areaContent
   if oldX == 0
   then do
-    hmap <- readIORef hMap
-    cmap <- readIORef cMap
-    let hmap = Map.insert (0,succ oldY) defaultChar hmap
-    let cmap = Map.insert (0,succ oldY) defaultColor cmap
-    writeIORef hMap hmap
-    writeIORef cMap cmap
+    putValue areaContent (0,succ oldY) defaultChar
+    putColor areaContent (0, succ oldY) defaultColor
   else do
-    hmap <- readIORef hMap
-    cmap <- readIORef cMap
-    let hmap = Map.insert (oldX,succ oldY) defaultChar hmap
-    let cmap = Map.insert (oldX,succ oldY) defaultColor cmap
-    writeIORef hMap hmap
-    writeIORef cMap cmap
+    putValue areaContent (oldX,succ oldY) defaultChar
+    putColor areaContent (oldX, succ oldY) defaultColor
     expandXTextAreaH areaContent (pred oldX,oldY)
 
 -- | sets the character for a cell identified by a coordinate
@@ -243,61 +245,81 @@ putValue :: TextAreaContent
   -> Position -- ^ coordinates of the required cell
   -> Char -- ^ character
   -> IO ()
-putValue areaContent coord character = do
-  let (ChMap hMap _) = charMap areaContent
-  let (CoMap cMap _) = colorMap areaContent
-  modifyIORef hMap (Map.insert coord character)
-  cmap <- readIORef cMap
-  let color = Map.lookup coord cmap
-  when (isNothing color) $ modifyIORef cMap (Map.insert coord defaultColor)
-
+putValue areaContent (x,y) character = do
+  (xMax,yMax) <- TextAreaContent.size areaContent
+  print "putValue"
+  print $ show(x,y)
+  print $ show(xMax,yMax)
+  if (x > xMax || y > yMax)
+  then error "putValue: Position out of Bounds"
+  else do
+    let 
+      (ChMap hMap size) = charMap areaContent
+      (CoMap cMap _) = colorMap areaContent
+    valHMap <- readIORef hMap
+    let lineMap = Map.lookup y valHMap
+    if (isNothing lineMap) 
+    then modifyIORef hMap (Map.insert y (Map.insert x character Map.empty))
+    else modifyIORef hMap (Map.insert y (Map.insert x character $ fromJust lineMap))
+    {-
+    No need to set a a defaultColor, because it's only important to save highlighted chars.
+    This improves performance in highlighter.
+    cmap <- readIORef cMap
+    let color = Map.lookup (x,y) cmap
+    when (isNothing color) $ modifyIORef cMap (Map.insert (x,y) defaultColor)
+    -}
 -- | sets the color of a cell identified by 
 putColor :: TextAreaContent
   -> Position -- ^ coordinates of the required cell
   -> RGBColor -- ^ color to put
   -> IO ()
-putColor areaContent coord color = do
-  let (CoMap cMap _) = colorMap areaContent
-  cmap <- readIORef cMap
-  let cmap = Map.insert coord color cmap
-  writeIORef cMap cmap
+putColor areaContent (x,y) color = do
+  (xMax,yMax) <- TextAreaContent.size areaContent
+  if (x > xMax || y > yMax)
+  then error "putColor: Position out of Bounds"
+  else do
+    let (CoMap cMap _) = colorMap areaContent
+    cmap <- readIORef cMap
+    let cmap = Map.insert (x,y) color cmap
+    writeIORef cMap cmap
 
 -- | delets a cell
 deleteCell :: TextAreaContent 
   -> Position
   -> IO (Bool)
-deleteCell areaContent coord = do
+deleteCell areaContent (x,y) = do
   let (ChMap hMap _) = charMap  areaContent
   let (CoMap cMap _) = colorMap areaContent
-  let succ = True
-  hmap <- readIORef hMap
-  cmap <- readIORef cMap
-  when (isNothing $ Map.lookup coord cmap) $ do
-    let succ = False
-    return ()
-  when (isNothing $ Map.lookup coord hmap) $ do
-    let succ = False
-    return ()
-  modifyIORef hMap (Map.delete coord)
-  modifyIORef cMap (Map.delete coord)
-  return succ
+  (xMax,yMax) <- TextAreaContent.size areaContent
+  if (x > xMax || y > yMax)
+  then return False
+  else do
+    let delete = (\m -> Map.delete x (fromJust $ Map.lookup y m))
+    modifyIORef hMap (\m -> Map.insert y (delete m) m)
+    modifyIORef cMap (Map.delete (x,y))
+    return True
 
 -- | returns the character and the color of a cell
 getCell :: TextAreaContent 
   -> Position -- ^ coordinates of the required cell
   -> IO (Maybe (Char,RGBColor))
-getCell areaContent coord = do
+getCell areaContent (x,y) = do
   let (ChMap hMap _) = charMap areaContent
   let (CoMap cMap _) = colorMap areaContent
   hmap <- readIORef hMap
   cmap <- readIORef cMap
-  let mayValue =  Map.lookup coord hmap
-  let mayColor =  Map.lookup coord cmap
-  if (isNothing mayValue) 
-  then return Nothing
-  else if (isNothing mayColor) 
-       then return Nothing
-       else return $ Just (fromJust mayValue, fromJust mayColor)
+  let valMap =  Map.lookup y hmap
+  let mayColor =  Map.lookup (x,y) cmap
+  case (isNothing valMap) of
+    True -> return Nothing
+    _ -> do
+      let mayValue = Map.lookup x $ fromJust valMap
+      case (isNothing mayValue) of
+       True -> return Nothing
+       _ -> 
+         case (isNothing mayColor) of
+          True -> return $ Just (fromJust mayValue, defaultColor)
+          _ -> return $ Just (fromJust mayValue, fromJust mayColor)
 
 generateContentList :: TextAreaContent
   -> (Position -> Bool)
@@ -305,7 +327,17 @@ generateContentList :: TextAreaContent
 generateContentList areaContent function = do
   let (ChMap hMap _) = charMap areaContent
   hmap <- readIORef hMap
-  let list = Map.toList $ Map.filterWithKey (\coord _ -> function coord) hmap
+  -- make the old map format from ChMap
+  let 
+    foldIns :: Double -> Map.Map Double Char -> Map.Map Position Char -> Map.Map Position Char
+    foldIns = 
+      (\y lineMap posCharMap ->
+        Map.foldWithKey (\x val posCharMap ->
+          Map.insert (x,y) val posCharMap
+        ) posCharMap lineMap
+      ) 
+    mapPosChar = Map.foldWithKey foldIns Map.empty hmap
+    list = Map.toList $ Map.filterWithKey (\coord _ -> function coord) mapPosChar
   return list
 
 -- | returns the size of a TextAreaContent.
