@@ -1,12 +1,11 @@
-; Module      : LLVM backend - stack implementation (and some misc. functions)
-; Description : Contains our stack implementation in LLVM and also some functions
-;               which have not yet been split out into their own modules.
+; Module      : LLVM backend - stack helper functions (and some misc. functions)
+; Description : Contains helper functions for working with the stack and also
+;               some functions which have not yet been split out into their own modules.
 ; Maintainers : Tilman Blumenbach, Sascha Zinke, Maximilian Claus, Tudor Soroceanu,
 ;               Philipp Borgers, Lyudmila Vaseva, Marcus Hoffmann, Michal Ajchman
 ; License     : MIT
 ;
-; These functions are used by our LLVM backend and most of them operate directly on
-; the stack. Many also directly crash (in Rail terms: properly exit) the program.
+; Beware: Many of these functions directly crash (in Rail terms: properly exit) the program.
 
 
 ; Types
