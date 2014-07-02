@@ -417,10 +417,8 @@ define %stack_element* @peek() {
   ret %stack_element* %stack
 }
 
-; Pop a string from the stack.
-;
-; Crashes if the type of the topmost element is not "string".
-define i8* @pop_string() {
+; Pop a stack_element struct from the stack.
+define %stack_element* @pop_struct() {
   ; 1. Pop the stack.
   ;    "Next" pointer is struct member 3.
   %stack = call %stack_element* @peek()
@@ -433,7 +431,18 @@ define i8* @pop_string() {
   %stack_size1 = sub i64 %stack_size0, 1
   store i64 %stack_size1, i64* @stack_size
 
-  ; 3. Is the type string? If not, crash.
+  ; 3. That's it!
+  ret %stack_element* %stack
+}
+
+; Pop a string from the stack.
+;
+; Crashes if the type of the topmost element is not "string".
+define i8* @pop_string() {
+  ; 1. Pop the stack.
+  %stack = call %stack_element* @pop_struct()
+
+  ; 2. Is the type string? If not, crash.
   ;    Type is struct member #0.
   %type0 = getelementptr %stack_element* %stack, i32 0, i32 0
   %type1 = load i8* %type0
