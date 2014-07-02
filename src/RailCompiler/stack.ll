@@ -171,6 +171,18 @@ free_stack_struct:
   ret i8* %ret
 }
 
+; Increment the reference count of a stack_element.
+define void @stack_element_ref(%stack_element* %element) {
+  ; refCount is member #2
+  %refCount0 = getelementptr %stack_element* %element, i32 0, i32 2
+  %refCount1 = load i32* %refCount0
+
+  %newRefCount = add i32 %refCount1, 1
+  store i32 %newRefCount, i32* %refCount0
+
+  ret void
+}
+
 ; Get the type of the data in a stack_element struct.
 ;
 ; See the definition of %stack_element for a description of
