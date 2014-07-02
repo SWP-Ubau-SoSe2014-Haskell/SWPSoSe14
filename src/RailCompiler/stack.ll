@@ -134,10 +134,8 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
   call void @stack_element_set_data(%stack_element* %element1, i8* %dataPtr)
   call void @stack_element_set_next(%stack_element* %element1, %stack_element* %nextElementPtr)
 
-  ; Finally, set the reference count.
-  ; refCount is member #2
-  %refCountDestPtr = getelementptr %stack_element* %element1, i32 0, i32 2
-  store i32 1, i32* %refCountDestPtr
+  ; Finally, increment the reference count so that it is exactly 1.
+  call void @stack_element_ref(%stack_element* %element1)
 
   ; That's it!
   ret %stack_element* %element1
