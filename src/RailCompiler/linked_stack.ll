@@ -45,8 +45,8 @@ declare signext i32 @atol(i8*)
 declare void @free(i8*)
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare signext i32 @snprintf(i8*, ...)
-declare i8* @strdup(i8*)
 declare i8* @xcalloc(i16 zeroext, i16 zeroext)
+declare i8* @xstrdup(i8*)
 
 ; Own external LLVM variables/functions
 @float_to_str = external global [3 x i8]
@@ -295,8 +295,7 @@ define %stack_element* @push_string_ptr(i8* %str) {
 ; strdup() a string and push it onto the stack, creating a new stack_element struct
 ; with a reference count of 1.
 define %stack_element* @push_string_cpy(i8* %str) {
-  ; TODO: Error handling?
-  %str_copied = call i8* @strdup(i8* %str)
+  %str_copied = call i8* @xstrdup(i8* %str)
   %ret = call %stack_element* @push_string_ptr(i8* %str_copied)
 
   ret %stack_element* %ret
