@@ -66,6 +66,7 @@ declare signext i32 @fprintf(%FILE*, i8*, ...)
 declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
 declare i8* @calloc(i16 zeroext, i16 zeroext)
+declare i8* @strdup(i8*)
 declare void @exit(i32 signext)
 
 declare i64 @pop_int()
@@ -409,6 +410,24 @@ define i32 @get_stack_elem(i8* %string, %struct.stack_elem* %elem) #0 {
 ; "Fatal" version of calloc(3): crash()es the program on errors.
 define i8* @xcalloc(i16 zeroext %nmemb, i16 zeroext %size) {
   %mem = call i8* @calloc(i16 %nmemb, i16 %size)
+  %is_null = icmp eq i8* %mem, null
+  br i1 %is_null, label %bail_out, label %okay
+
+bail_out:
+  ; Oopsie, out of memory. Try to bail out politely.
+  %oom_str = getelementptr [15 x i8]* @err_oom, i32 0, i32 0
+  call %stack_element* @push_string_cpy(i8* %oom_str)
+  call void @crash(i1 0)
+
+  ret i8* null
+
+okay:
+  ret i8* %mem
+}
+
+; "Fatal" version of strdup(3): crash()es the program on errors.
+define i8* @xstrdup(i8* %str) {
+  %mem = call i8* @strdup(i8* %str)
   %is_null = icmp eq i8* %mem, null
   br i1 %is_null, label %bail_out, label %okay
 
