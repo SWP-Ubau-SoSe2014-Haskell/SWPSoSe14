@@ -306,7 +306,6 @@ uas_okay:
 
 ; Pop stack and print result string
 define void @print() {
-  ; TODO: Check if the top stack element is a string and crash if it is not.
   call void @underflow_assert()
 
   %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
@@ -318,7 +317,6 @@ define void @print() {
 
 ; Pop stack, print result string to stderr and exit the program.
 define void @crash(i1 %is_custom_error) {
-  ; TODO: Check if the top stack element is a string and crash if it is not.
   call void @underflow_assert()
 
   br i1 %is_custom_error, label %custom_error, label %raw_error
