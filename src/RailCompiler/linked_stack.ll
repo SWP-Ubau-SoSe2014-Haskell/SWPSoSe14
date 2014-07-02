@@ -42,11 +42,11 @@
 
 ; C standard library variables/functions
 declare signext i32 @atol(i8*)
-declare i8* @calloc(i16 zeroext, i16 zeroext)
 declare void @free(i8*)
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare signext i32 @snprintf(i8*, ...)
 declare i8* @strdup(i8*)
+declare i8* @xcalloc(i16 zeroext, i16 zeroext)
 
 ; Own external LLVM variables/functions
 @float_to_str = external global [3 x i8]
@@ -73,8 +73,7 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
   %elem_size1 = ptrtoint %stack_element* %elem_size0 to i16
 
   ; Now we can allocate the memory.
-  ; TODO: Error checking?
-  %element0 = call i8* @calloc(i16 1, i16 %elem_size1)
+  %element0 = call i8* @xcalloc(i16 1, i16 %elem_size1)
   %element1 = bitcast i8* %element0 to %stack_element*
 
   ; %element1 now can be treated like an element struct. Yay!

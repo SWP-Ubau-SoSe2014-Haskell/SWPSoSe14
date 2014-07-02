@@ -173,7 +173,7 @@ error:
 
 push:
   %byte = trunc i32 %read to i8
-  %buffer_addr = call i8* @calloc(i16 1, i16 2)
+  %buffer_addr = call i8* @xcalloc(i16 1, i16 2)
   store i8 %byte, i8* %buffer_addr
   call %stack_element* @push_string_ptr(i8* %buffer_addr)
 
