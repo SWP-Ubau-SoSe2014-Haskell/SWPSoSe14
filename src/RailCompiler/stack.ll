@@ -414,9 +414,8 @@ define i32 @main_() {
  %type = call i8 @stack_element_get_type(%stack_element* %elm)
  call i32(i8*, ...)* @printf(i8* %int_to_str, i8 %type)
 
- %refCount0 = getelementptr %stack_element* %elm, i32 0, i32 2
- %refCount1 = load i32* %refCount0
- call i32(i8*, ...)* @printf(i8* %int_to_str, i32 %refCount1)
+ %refCount = call i32 @stack_element_get_refcount(%stack_element* %elm)
+ call i32(i8*, ...)* @printf(i8* %int_to_str, i32 %refCount)
 
 
 
