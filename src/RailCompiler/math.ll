@@ -10,11 +10,13 @@
 @err_zero = external global [18 x i8]
 @popped = external global [13 x i8]
 
+%stack_element = type opaque
 %struct.stack_elem = type { i32, %union.anon }
 %union.anon = type { i8* }
 
-declare i8* @pop()
-declare void @push(i8*)
+declare i8* @pop_string()
+declare %stack_element* @push_string_ptr(i8* %str)
+declare %stack_element* @push_string_cpy(i8* %str)
 declare void @push_int(i64)
 declare void @push_float(double)
 declare void @underflow_assert()
@@ -29,11 +31,11 @@ define i32 @main_math() {
   %number0 = getelementptr [4 x i8]* @main.number_a, i64 0, i64 0   
   %number1 = getelementptr [4 x i8]* @main.number_b, i64 0, i64 0   
 
-  call void(i8*)* @push(i8* %number0)
-  call void(i8*)* @push(i8* %number1)
+  call %stack_element* @push_string_cpy(i8* %number0)
+  call %stack_element* @push_string_cpy(i8* %number1)
 
   call i32 @div()
-  %result = call i8* @pop()
+  %result = call i8* @pop_string()
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]*
               @popped, i32 0, i32 0), i8* %result)
 
@@ -52,11 +54,11 @@ define i32 @mult() {
 
   ; get top of stack
   call void @underflow_assert()
-  %number_a = call i8* @pop()
+  %number_a = call i8* @pop_string()
 
   ; get second top of stack
   call void @underflow_assert()
-  %number_b = call i8* @pop()
+  %number_b = call i8* @pop_string()
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -142,7 +144,7 @@ exit_with_success:
   br label %exit
 
 exit_with_invalid_type: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [14 x i8]* @err_type, i64 0, i64 0))
   br label %exit_with_failure
 
@@ -166,11 +168,11 @@ define i32 @rem() {
 
   ; get top of stack
   call void @underflow_assert()
-  %number_a = call i8* @pop()
+  %number_a = call i8* @pop_string()
 
   ; get second top of stack
   call void @underflow_assert()
-  %number_b = call i8* @pop()
+  %number_b = call i8* @pop_string()
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -257,7 +259,7 @@ exit_with_success:
   br label %exit
 
 exit_with_invalid_type: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [14 x i8]* @err_type, i64 0, i64 0))
   br label %exit_with_failure
 
@@ -281,11 +283,11 @@ define i32 @sub() {
 
   ; get top of stack
   call void @underflow_assert()
-  %number_a = call i8* @pop()
+  %number_a = call i8* @pop_string()
 
   ; get second top of stack
   call void @underflow_assert()
-  %number_b = call i8* @pop()
+  %number_b = call i8* @pop_string()
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -371,7 +373,7 @@ exit_with_success:
   br label %exit
 
 exit_with_invalid_type: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [14 x i8]* @err_type, i64 0, i64 0))
   br label %exit_with_failure
 
@@ -395,11 +397,11 @@ define i32 @add() {
 
   ; get top of stack
   call void @underflow_assert()
-  %number_a = call i8* @pop()
+  %number_a = call i8* @pop_string()
 
   ; get second top of stack
   call void @underflow_assert()
-  %number_b = call i8* @pop()
+  %number_b = call i8* @pop_string()
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -485,7 +487,7 @@ exit_with_success:
   br label %exit
 
 exit_with_invalid_type: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [14 x i8]* @err_type, i64 0, i64 0))
   br label %exit_with_failure
 
@@ -509,11 +511,11 @@ define i32 @div() {
 
   ; get top of stack
   call void @underflow_assert() 
-  %number_a = call i8* @pop()
+  %number_a = call i8* @pop_string()
 
   ; get second top of stack
   call void @underflow_assert() 
-  %number_b = call i8* @pop()
+  %number_b = call i8* @pop_string()
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -611,12 +613,12 @@ exit_with_success:
   br label %exit
 
 exit_with_zero: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [18 x i8]* @err_zero, i64 0, i64 0))
   br label %exit_with_failure
 
 exit_with_invalid_type: 
-  call void(i8*)* @push(i8* getelementptr inbounds(
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                           [14 x i8]* @err_type, i64 0, i64 0))
   br label %exit_with_failure
 

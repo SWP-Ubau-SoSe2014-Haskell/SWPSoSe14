@@ -9,8 +9,11 @@
 @true = external global i8
 @false = external global i8
 
-declare i8* @pop()
-declare void @push(i8*)
+%stack_element = type opaque
+
+declare i8* @pop_string()
+declare %stack_element* @push_string_ptr(i8* %str)
+declare %stack_element* @push_string_cpy(i8* %str)
 declare i64 @pop_int()
 declare void @push_int(i64)
 declare void @underflow_assert()
@@ -21,15 +24,15 @@ declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits lo
 define void @strapp() {
 entry:
   call void @underflow_assert() 
-  %str2 = call i8*()* @pop()
+  %str2 = call i8*()* @pop_string()
   call void @underflow_assert() 
-  %str1 = call i8*()* @pop()
+  %str1 = call i8*()* @pop_string()
 
   ; compute length of input strings (TODO: maybe isolate strlen function for this purpose)
-  call void(i8*)* @push(i8* %str1)
+  call %stack_element* @push_string_ptr(i8* %str1)
   call void()* @strlen()
   %len_str1 = call i64()* @pop_int()
-  call void(i8*)* @push(i8* %str2)
+  call %stack_element* @push_string_ptr(i8* %str2)
   call void()* @strlen()
   %len_str2 = call i64()* @pop_int()
 
@@ -64,7 +67,7 @@ loop2:
   %cond2 = icmp eq i8 %c2, 0
   br i1 %cond2, label %finished2, label %loop2
 finished2:
-  call void(i8*)* @push(i8* %result)
+  call %stack_element* @push_string_ptr(i8* %result)
   ret void
 }
 
@@ -72,7 +75,7 @@ finished2:
 define void @strlen() {
 entry:
   call void @underflow_assert() 
-  %str = call i8*()* @pop()
+  %str = call i8*()* @pop_string()
   br label %loop
 loop:
   %i = phi i64 [0, %entry ], [ %next_i, %loop ]
@@ -91,9 +94,9 @@ finished:
 define void @streq() {
 entry:
   call void @underflow_assert() 
-  %str1 = call i8*()* @pop()
+  %str1 = call i8*()* @pop_string()
   call void @underflow_assert() 
-  %str2 = call i8*()* @pop()
+  %str2 = call i8*()* @pop_string()
   br label %loop
 loop:
   ; the phi instruction says that coming from the 'entry' label i is 1
@@ -116,11 +119,11 @@ cont:
   br i1 %cond2, label %success, label %loop
 success:
   %t = getelementptr i8* @true, i64 0
-  call void(i8*)* @push(i8* %t)
+  call %stack_element* @push_string_cpy(i8* %t)
   ret void
 fail:
   %f = getelementptr i8* @false, i64 0
-  call void(i8*)* @push(i8* %f)
+  call %stack_element* @push_string_cpy(i8* %f)
   ret void
 }
 
@@ -130,12 +133,12 @@ entry:
   call void @underflow_assert() 
   %indx = call i64()* @pop_int()
   call void @underflow_assert() 
-  %str = call i8*()* @pop()
+  %str = call i8*()* @pop_string()
 
   ; allocate space for result strings
   %len1_1 = add i64 %indx, 1
   %len1 = trunc i64 %len1_1 to i16
-  call void(i8*)* @push(i8* %str)
+  call %stack_element* @push_string_ptr(i8* %str)
   call void()* @strlen()
   %len_str = call i64()* @pop_int()
   %len2_1 = sub i64 %len_str, %indx
@@ -171,7 +174,7 @@ loop2:
   %cond2 = icmp eq i8 %c2, 0
   br i1 %cond2, label %finished2, label %loop2
 finished2: 
-  call void(i8*)* @push(i8* %result2)
-  call void(i8*)* @push(i8* %result1)
+  call %stack_element* @push_string_ptr(i8* %result2)
+  call %stack_element* @push_string_ptr(i8* %result1)
   ret void
 }
