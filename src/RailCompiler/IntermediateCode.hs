@@ -141,6 +141,9 @@ checkVars (Pop v) = True
 checkVars _ = False
 --------------------------------------------------------------------------------
 
+-- |Opaque type definition for the stack_element struct, defined in stack.ll.
+stackElementTypeDef = TypeDefinition (Name "stack_element") Nothing
+
 -- pointer type for i8* used e.g. as "string" pointer
 bytePointerType = PointerType {
   pointerReferent = IntegerType 8,
@@ -154,6 +157,12 @@ bytePointerTypeVar = PointerType {
     pointerAddrSpace = AddrSpace 0
   },
   pointerAddrSpace = AddrSpace 0
+}
+
+-- |Pointer type: %stack_element* (see stack.ll).
+stackElementPointerType = PointerType {
+    pointerReferent = NamedTypeReference $ Name "stack_element",
+    pointerAddrSpace = AddrSpace 0
 }
 
 -- |Function declaration for 'underflow_check'.
@@ -241,10 +250,10 @@ div1 = GlobalDefinition $ Global.functionDefaults {
 }
 
 
--- function declaration for push
-push = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "push",
-  Global.returnType = VoidType,
+-- function declaration for pushing constants
+pushStringCpy = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "push_string_cpy",
+  Global.returnType = stackElementPointerType,
   Global.parameters = ([ Parameter bytePointerType (UnName 0) [] ], False)
 }
 
@@ -435,7 +444,7 @@ generateInstruction (Constant value) = do
     -- 'signext', and 'inreg' attributes are valid here
     returnAttributes = [],
     -- actual function to call
-    function = Right $ ConstantOperand $ GlobalReference $ Name "push",
+    function = Right $ ConstantOperand $ GlobalReference $ Name "push_string_cpy",
     -- argument list whose types match the function signature argument types
     -- and parameter attributes. All arguments must be of first class type. If
     -- the function signature indicates the function accepts a variable number of
@@ -758,8 +767,8 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 -- entry point into module --
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++ 
-    [ structTable, underflowCheck, IntermediateCode.print, crash, start, finish, inputFunc,
-      eofCheck, push, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
+    [ stackElementTypeDef, structTable, underflowCheck, IntermediateCode.print, crash, start, finish, inputFunc,
+      eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
       popInt, equal, greater, popInto, pushFrom, initialiseSymbolTable ] ++ generateFunctionsFoo input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
