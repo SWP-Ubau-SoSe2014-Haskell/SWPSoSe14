@@ -239,6 +239,28 @@ define void @stack_element_set_next(%stack_element* %element, %stack_element* %n
   ret void
 }
 
+; Assert that the data in the stack_element has the passed type.
+;
+; If the types do not match, crash the program with an appropriate error message.
+; This actually checks if the dataType member is equal to %want_type.
+define void @stack_element_assert_type(%stack_element* %element, i8 %want_type) {
+  %actual_type = call i8 @stack_element_get_type(%stack_element* %element)
+  %is_valid = icmp eq i8 %actual_type, %want_type
+  br i1 %is_valid, label %valid_type, label %invalid_type
+
+valid_type:
+  ; All good. Do nothing.
+  ret void
+
+invalid_type:
+  ; Bail out!
+  %err_type_mismatch = getelementptr [16 x i8]* @err_type_mismatch, i8 0, i8 0
+  call %stack_element* @push_string_cpy(i8* %err_type_mismatch)
+  call void @crash(i1 0)
+
+  ret void
+}
+
 ; Push a string onto the stack, creating a new stack_element struct
 ; with a reference count of 1.
 ;
