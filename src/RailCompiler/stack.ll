@@ -523,24 +523,15 @@ define i8* @pop_string() {
   %stack = call %stack_element* @pop_struct()
 
   ; 2. Is the type string? If not, crash.
-  ;    Type is struct member #0.
-  %type0 = getelementptr %stack_element* %stack, i32 0, i32 0
-  %type1 = load i8* %type0
-  switch i8 %type1, label %invalid_type [ i8 0, label %string_type ]
+  call void @stack_element_assert_type(%stack_element* %stack, i8 0)
 
-invalid_type:
-  %err_type_mismatch = getelementptr [16 x i8]* @err_type_mismatch, i8 0, i8 0
-  call %stack_element* @push_string_cpy(i8* %err_type_mismatch)
-  call void @crash(i1 0)
+  ; 3. It's a string, everything is fine. Extract the string.
+  %buf = call i8* @stack_element_get_data(%stack_element* %stack)
 
-  ret i8* null
-
-string_type:
-  %buf0 = getelementptr %stack_element* %stack, i32 0, i32 1
-  %buf1 = load i8** %buf0
-
+  ; 4. Finally, free the stack element.
   call i8* @stack_element_free(%stack_element* %stack, i1 0)
-  ret i8 *%buf1
+
+  ret i8 *%buf
 }
 
 define i32 @finish(){
