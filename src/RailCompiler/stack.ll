@@ -49,6 +49,7 @@
 @crash_cust_str_fmt = private unnamed_addr constant [24 x i8] c"Crash: Custom error: %s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
 @err_eof = unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
+@err_oom = unnamed_addr constant [15 x i8] c"Out of memory!\00"
 @err_type = unnamed_addr constant [14 x i8] c"Invalid type!\00"
 @err_zero = unnamed_addr constant [18 x i8] c"Division by zero!\00"
 
@@ -403,6 +404,24 @@ define i32 @get_stack_elem(i8* %string, %struct.stack_elem* %elem) #0 {
 ; <label>:39                                      ; preds = %32, %25, %10
   %40 = load i32* %1
   ret i32 %40
+}
+
+; "Fatal" version of calloc(3): crash()es the program on errors.
+define i8* @xcalloc(i16 zeroext %nmemb, i16 zeroext %size) {
+  %mem = call i8* @calloc(i16 %nmemb, i16 %size)
+  %is_null = icmp eq i8* %mem, null
+  br i1 %is_null, label %bail_out, label %okay
+
+bail_out:
+  ; Oopsie, out of memory. Try to bail out politely.
+  %oom_str = getelementptr [15 x i8]* @err_oom, i32 0, i32 0
+  call %stack_element* @push_string_cpy(i8* %oom_str)
+  call void @crash(i1 0)
+
+  ret i8* null
+
+okay:
+  ret i8* %mem
 }
 
 @number2 = private unnamed_addr constant [2 x i8] c"5\00"
