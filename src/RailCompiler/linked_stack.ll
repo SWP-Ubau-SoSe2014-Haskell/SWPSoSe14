@@ -155,6 +155,24 @@ define void @stack_element_set_data(%stack_element* %element, i8* %data) {
   ret void
 }
 
+; Set the reference count of a stack_element struct.
+define void @stack_element_set_refcount(%stack_element* %element, i32 %refCount) {
+  ; refCount is member #2
+  %refCountDestPtr = getelementptr %stack_element* %element, i32 0, i32 2
+  store i32 %refCount, i32* %refCountDestPtr
+
+  ret void
+}
+
+; Get the reference count of a stack_element struct.
+define i32 @stack_element_get_refcount(%stack_element* %element) {
+  ; refCount is member #2
+  %refCount0 = getelementptr %stack_element* %element, i32 0, i32 2
+  %refCount1 = load i32* %refCount0
+
+  ret i32 %refCount1
+}
+
 ; Get the "next element" pointer of a stack_element struct.
 define %stack_element* @stack_element_get_next(%stack_element* %element) {
   ; nextElementPtr is member #3
