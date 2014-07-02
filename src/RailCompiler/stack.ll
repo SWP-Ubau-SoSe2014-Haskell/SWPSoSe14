@@ -59,19 +59,24 @@
 
 @stderr = global %FILE* undef
 
-declare signext i32 @atol(i8*)
 declare i64 @strtol(i8*, i8**, i32 )
-declare signext i32 @snprintf(i8*, ...)
 declare signext i32 @printf(i8*, ...)
 declare %FILE* @fdopen(i32, i8*)
 declare signext i32 @fprintf(%FILE*, i8*, ...)
 declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
-declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare i8* @calloc(i16 zeroext, i16 zeroext)
-declare void @free(i8*)
-declare i8* @strdup(i8*)
 declare void @exit(i32 signext)
+
+declare i64 @pop_int()
+declare i8* @pop_string()
+declare void @push_int(i64)
+declare %stack_element* @push_string_cpy(i8*)
+declare %stack_element* @push_string_ptr(i8*)
+declare i32 @stack_element_get_refcount(%stack_element*)
+declare i8 @stack_element_get_type(%stack_element*)
+declare %stack_element* @stack_element_new(i8, i8*, %stack_element*)
+declare i64 @stack_get_size()
 
 
 ; Debugging stuff
@@ -80,8 +85,8 @@ declare void @exit(i32 signext)
 @msg = private unnamed_addr constant [5 x i8] c"msg\0a\00"
 @no_element = private unnamed_addr constant [18 x i8] c"No such Element!\0A\00"
 
-@int_to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
-@float_to_str  = private unnamed_addr constant [3 x i8] c"%f\00"
+@int_to_str = unnamed_addr constant [3 x i8] c"%i\00"
+@float_to_str = unnamed_addr constant [3 x i8] c"%f\00"
 
 @.str = private unnamed_addr constant [33 x i8] c"call int add with a=%i and b=%i\0A\00", align 1
 @.str1 = private unnamed_addr constant [35 x i8] c"call float add with a=%f and b=%f\0A\00", align 1
@@ -416,7 +421,6 @@ define i32 @main_() {
 
  %refCount = call i32 @stack_element_get_refcount(%stack_element* %elm)
  call i32(i8*, ...)* @printf(i8* %int_to_str, i32 %refCount)
-
 
 
  call void @eof_check()

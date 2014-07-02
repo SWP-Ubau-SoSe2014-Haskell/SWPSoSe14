@@ -1,7 +1,7 @@
 ; Module      : LLVM backend - linked stack implementation/reference counting
 ; Description : Contains our linked stack implementation and its reference counting
 ;               routines.
-; Maintainers : Tilman Blumenbach
+; Maintainers : Tilman Blumenbach et al.
 ; License     : MIT
 ;
 ; These functions are used by our LLVM backend and most of them operate directly on
@@ -39,7 +39,21 @@
 
 
 ; External declarations
-; ...
+
+; C standard library variables/functions
+declare signext i32 @atol(i8*)
+declare i8* @calloc(i16 zeroext, i16 zeroext)
+declare void @free(i8*)
+declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
+declare signext i32 @snprintf(i8*, ...)
+declare i8* @strdup(i8*)
+
+; Own external LLVM variables/functions
+@float_to_str = external global [3 x i8]
+@int_to_str = external global [3 x i8]
+
+declare void @crash(i1)
+declare void @underflow_assert()
 
 
 ; Function definitions
