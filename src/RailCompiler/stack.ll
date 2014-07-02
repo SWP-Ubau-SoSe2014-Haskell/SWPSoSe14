@@ -130,21 +130,14 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
   %element1 = bitcast i8* %element0 to %stack_element*
 
   ; %element1 now can be treated like an element struct. Yay!
-  ; dataType is member #0
-  %dataTypeDestPtr = getelementptr %stack_element* %element1, i32 0, i32 0
-  store i8 %dataType, i8* %dataTypeDestPtr
+  call void @stack_element_set_type(%stack_element* %element1, i8 %dataType)
+  call void @stack_element_set_data(%stack_element* %element1, i8* %dataPtr)
+  call void @stack_element_set_next(%stack_element* %element1, %stack_element* %nextElementPtr)
 
-  ; dataPtr is member #1
-  %dataPtrDestPtr = getelementptr %stack_element* %element1, i32 0, i32 1
-  store i8* %dataPtr, i8** %dataPtrDestPtr
-
+  ; Finally, set the reference count.
   ; refCount is member #2
   %refCountDestPtr = getelementptr %stack_element* %element1, i32 0, i32 2
   store i32 1, i32* %refCountDestPtr
-
-  ; nextElementPtr is member #3
-  %nextElementPtrDestPtr = getelementptr %stack_element* %element1, i32 0, i32 3
-  store %stack_element* %nextElementPtr, %stack_element** %nextElementPtrDestPtr
 
   ; That's it!
   ret %stack_element* %element1
@@ -159,21 +152,18 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
 ;       if it is 0 after decrementing.
 define i8* @stack_element_free(%stack_element* %element, i1 %free_data) {
 top:
-  ; NB: dataPtr is member #1.
-  %dataPtr0 = getelementptr %stack_element* %element, i32 0, i32 1
-  %dataPtr1 = load i8** %dataPtr0
-
+  %data = call i8* @stack_element_get_data(%stack_element* %element)
   br i1 %free_data, label %do_free_data, label %free_stack_struct
 
 do_free_data:
   ; TODO: Check type here and free lists (type 1) correctly, i. e. iteratively.
   ;       (Or rather: Decrement the reference count of each list element)
-  call void @free(i8* %dataPtr1)
+  call void @free(i8* %data)
 
   br label %free_stack_struct
 
 free_stack_struct:
-  %ret = phi i8* [ %dataPtr1, %top ], [ null, %do_free_data ]
+  %ret = phi i8* [ %data, %top ], [ null, %do_free_data ]
 
   %mem = bitcast %stack_element* %element to i8*
   call void @free(i8* %mem)
@@ -500,11 +490,9 @@ define %stack_element* @peek() {
 ; Pop a stack_element struct from the stack.
 define %stack_element* @pop_struct() {
   ; 1. Pop the stack.
-  ;    "Next" pointer is struct member 3.
   %stack = call %stack_element* @peek()
-  %next0 = getelementptr %stack_element* %stack, i32 0, i32 3
-  %next1 = load %stack_element** %next0
-  store %stack_element* %next1, %stack_element** @stack
+  %next = call %stack_element* @stack_element_get_next(%stack_element* %stack)
+  store %stack_element* %next, %stack_element** @stack
 
   ; 2. Decrement the stack size.
   %stack_size0 = load i64* @stack_size
@@ -711,9 +699,8 @@ define i32 @main_() {
 
 
  %elm = call %stack_element* @stack_element_new(i8 42, i8* null, %stack_element* null)
- %type0 = getelementptr %stack_element* %elm, i32 0, i32 0
- %type1 = load i8* %type0
- call i32(i8*, ...)* @printf(i8* %int_to_str, i8 %type1)
+ %type = call i8 @stack_element_get_type(%stack_element* %elm)
+ call i32(i8*, ...)* @printf(i8* %int_to_str, i8 %type)
 
  %refCount0 = getelementptr %stack_element* %elm, i32 0, i32 2
  %refCount1 = load i32* %refCount0
