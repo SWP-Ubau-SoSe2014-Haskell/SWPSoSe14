@@ -38,6 +38,7 @@ module TextAreaContent (
   deserialize,
   putValue,
   putColor,
+  putCell,
   getCell,
   deleteCell,
   TextAreaContent.size,
@@ -256,6 +257,15 @@ putColor areaContent coord color = do
   cmap <- readIORef cMap
   let cmap = Map.insert coord color cmap
   writeIORef cMap cmap
+
+-- / sets a cell
+putCell :: TextAreaContent
+  -> Position -- ^ coordinates of the required cell
+  -> (Char,RGBColor) -- ^ char and color to put
+  -> IO ()
+putCell areaContent coord (char,color) = do
+  putColor areaContent coord color
+  putValue areaContent coord char
 
 -- | delets a cell
 deleteCell :: TextAreaContent 
