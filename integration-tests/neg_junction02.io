@@ -1,2 +1,3 @@
 #
+%
 RailCompiler: Invalid movement.
