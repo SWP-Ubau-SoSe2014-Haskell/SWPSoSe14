@@ -96,20 +96,19 @@ createGlobalString (Constant s) = globalVariableDefaults {
 -- TODO: Maybe rename these subfunctions?
 generateConstants :: [AST] -> [Global]
 generateConstants = map createGlobalString . getAllCons
-
-
+    
 getAllCons :: [AST] -> [Lexeme]
 getAllCons = concatMap generateCons
+  where
+    generateCons :: AST -> [Lexeme]
+    generateCons (name, paths) = concatMap generateC paths
 
-generateCons :: AST -> [Lexeme]
-generateCons (name, paths) = concatMap generateC paths
+    generateC :: (Int, [Lexeme], Int) -> [Lexeme]
+    generateC (pathID, lex, nextPath) = filter checkCons lex
 
-generateC :: (Int, [Lexeme], Int) -> [Lexeme]
-generateC (pathID, lex, nextPath) = filter checkCons lex
-
-checkCons :: Lexeme -> Bool
-checkCons (Constant c) = True
-checkCons _ = False
+    checkCons :: Lexeme -> Bool
+    checkCons (Constant c) = True
+    checkCons _ = False
 
 --------------------------------------------------------------------------------
 -- generate global variables for push and pop form and into variables
@@ -131,19 +130,19 @@ createGlobalVariable (Pop v) = globalVariableDefaults {
 
 generateVariables :: [AST] -> [Global]
 generateVariables = map createGlobalVariable . getAllVars
+  where
+    getAllVars :: [AST] -> [Lexeme]
+    getAllVars = concatMap generateVars
 
-getAllVars :: [AST] -> [Lexeme]
-getAllVars = concatMap generateVars
+    generateVars :: AST -> [Lexeme]
+    generateVars (name, paths) = nub $ concatMap generateV paths --delete duplicates
 
-generateVars :: AST -> [Lexeme]
-generateVars (name, paths) = nub $ concatMap generateV paths --delete duplicates
+    generateV :: (Int, [Lexeme], Int) -> [Lexeme]
+    generateV (pathID, lex, nextPath) = filter checkVars lex
 
-generateV :: (Int, [Lexeme], Int) -> [Lexeme]
-generateV (pathID, lex, nextPath) = filter checkVars lex
-
-checkVars :: Lexeme -> Bool
-checkVars (Pop v) = True
-checkVars _ = False
+    checkVars :: Lexeme -> Bool
+    checkVars (Pop v) = True
+    checkVars _ = False
 --------------------------------------------------------------------------------
 
 -- |Opaque type definition for the stack_element struct, defined in stack.ll.
