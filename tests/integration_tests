@@ -109,7 +109,7 @@ function run_one {
   if [[ -z $cpp && -z $interpreter ]]; then
     # Run Haskell compiler and llvm-linker.
     errormsg=$(dist/build/RailCompiler/RailCompiler -c -i "$1" -o "$TMPDIR/$filename.ll" 2>&1) \
-      && llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/*.ll > "$TMPDIR/$filename" \
+      && errormsg2=$(llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/*.ll 2>&1 > "$TMPDIR/$filename") \
       && chmod +x "$TMPDIR/$filename" || compilefail=true
   elif [ -n "$cpp" ]; then
     # Run C++ compiler.
@@ -121,16 +121,16 @@ function run_one {
       echo "$filename" >> "${fileoutput}.tests"
       echo "$errormsg" >> "${fileoutput}.err"
       echo "${STDERR[0]}" >> "${fileoutput}.exp.err"
-    elif [[ "$errormsg" == "${STDERR[0]}" ]]; then
+    elif [[ "$errormsg:$errormsg2" == "${STDERR[0]}" ]]; then
       [ $verbose -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
       if [ $verbose -gt 1 ]; then
-        echo "  The error message was: \"$errormsg\""
+        echo "  The error message was: \"$errormsg:$errormsg2\""
       else
         [ $verbose -gt 0 ] && echo -ne "\n"
       fi
     else
       fail=$(($fail + 1))
-      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg\""
+      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg:$errormsg2\""
     fi
     return
   fi
