@@ -811,12 +811,12 @@ process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++ 
     [ stackElementTypeDef, structTable, underflowCheck, IntermediateCode.print, crash, start, finish, inputFunc,
       eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
-      popInt, equal, greater, popInto, pushFrom, initialiseSymbolTable ] ++ generateFunctionsFoo input
+      popInt, equal, greater, popInto, pushFrom, initialiseSymbolTable ] ++ codegen input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input
-    d = fromList $ zipWith foo [0..] $ getAllCons input
-    foo index (Constant s) = (s, (length s, index)) --TODO rename foo to something meaningful e.g. createSymTable
-    generateFunctionsFoo input = execGlobalCodegen d $ generateFunctions input
+    constantPool = fromList $ zipWith createConstantPoolEntry [0..] $ getAllCons input
+    createConstantPoolEntry index (Constant s) = (s, (length s, index))
+    codegen input = execGlobalCodegen constantPool $ generateFunctions input
 
 -- vim:ts=2 sw=2 et
