@@ -34,13 +34,8 @@ define i32 @main() {
   call %stack_element* @push_string_cpy(i8* %number0)
   call %stack_element* @push_string_cpy(i8* %number1)
 
-<<<<<<< HEAD
-  call i32 @rem()
-  %result = call i8* @pop()
-=======
   call i32 @div()
   %result = call i8* @pop_string()
->>>>>>> master
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]*
               @popped, i32 0, i32 0), i8* %result)
 
@@ -62,13 +57,8 @@ define i32 @mult() {
 
   ; get second top of stack
   call void @underflow_assert()
-<<<<<<< HEAD
-  %number_b = call i8* @pop()
- 
-=======
   %number_b = call i8* @pop_string()
 
->>>>>>> master
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
   %is_zero_a = icmp slt i32 %ret_a, 0

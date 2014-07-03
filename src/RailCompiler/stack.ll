@@ -428,60 +428,6 @@ okay:
   ret i8* %mem
 }
 
-@number2 = private unnamed_addr constant [2 x i8] c"5\00"
-@number3 = private unnamed_addr constant [2 x i8] c"2\00"
-
-define i32 @main_() {
- %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
- %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
- %int_to_str = getelementptr [3 x i8]* @int_to_str, i8 0, i8 0
-
-
- %elm = call %stack_element* @stack_element_new(i8 42, i8* null, %stack_element* null)
- %type = call i8 @stack_element_get_type(%stack_element* %elm)
- call i32(i8*, ...)* @printf(i8* %int_to_str, i8 %type)
-
- %refCount = call i32 @stack_element_get_refcount(%stack_element* %elm)
- call i32(i8*, ...)* @printf(i8* %int_to_str, i32 %refCount)
-
-
- call void @eof_check()
- %i1 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
-
- call void @input()
- %i0 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
-
- call void @input()
- %i2 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i2)
-
- ; push two numbers on the stack
- %number2 = getelementptr [2 x i8]* @number2, i64 0, i64 0
- %number3 = getelementptr [2 x i8]* @number3, i64 0, i64 0
-
- call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number2)
- call %stack_element* @push_string_cpy(i8* %number2)
-
- call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number3)
- call %stack_element* @push_string_cpy(i8* %number3)
-
- call void @underflow_check()
- %size0 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
-
- call void @sub_int()
- %sum  = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
-
- call void @underflow_check()
- %size1 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
-
- ret i32 0
-}
-
 ;##############################################################################
 ;                                  init
 ;##############################################################################
