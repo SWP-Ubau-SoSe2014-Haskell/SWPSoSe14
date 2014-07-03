@@ -96,7 +96,8 @@ createGlobalString (Constant s) = globalVariableDefaults {
 -- TODO: Maybe rename these subfunctions?
 generateConstants :: [AST] -> [Global]
 generateConstants = map createGlobalString . getAllCons
-    
+
+-- |Get all 'Constant's in a module.
 getAllCons :: [AST] -> [Lexeme]
 getAllCons = concatMap generateCons
   where
@@ -111,7 +112,7 @@ getAllCons = concatMap generateCons
     checkCons _ = False
 
 --------------------------------------------------------------------------------
--- generate global variables for push and pop form and into variables
+-- |Generate global variables for push and pop from and into variables.
 createGlobalVariable :: Lexeme -> Global
 createGlobalVariable (Pop v) = globalVariableDefaults {
   Global.name = Name v,
@@ -128,6 +129,7 @@ createGlobalVariable (Pop v) = globalVariableDefaults {
     l = toInteger $ 1 + length v
     trans c = Int { integerBits = 8, integerValue = toInteger $ ord c }
 
+-- |Generate all global variable definitions for a module.
 generateVariables :: [AST] -> [Global]
 generateVariables = map createGlobalVariable . getAllVars
   where
@@ -770,6 +772,7 @@ generateFunction (name, lexemes) = do
     Global.basicBlocks = execCodegen dict $ generateBasicBlocks lexemes
   }
 
+-- |Create a new local variable (?).
 fresh :: Codegen Word
 fresh = do
   i <- gets count
@@ -780,6 +783,10 @@ fresh = do
 generateFunctions :: [AST] -> GlobalCodegen [Definition]
 generateFunctions = mapM generateFunction
 
+-- |Generate a global definition for a constant.
+--
+-- This is an unnamed, global constant, i. e. it has a numeric name
+-- like '@0'.
 generateGlobalDefinition :: Integer -> Global -> Definition
 generateGlobalDefinition index def = GlobalDefinition def {
   Global.name = UnName $ fromInteger index,
@@ -788,7 +795,11 @@ generateGlobalDefinition index def = GlobalDefinition def {
   Global.hasUnnamedAddr = True
 }
 
-generateGlobalDefinitionVar ::  Integer -> Global -> Definition
+-- |Generate a global definition for a variable name.
+--
+-- Such definitions are used to pass variable names to
+-- LLVM backend functions like 'pop_into()'.
+generateGlobalDefinitionVar :: Integer -> Global -> Definition
 generateGlobalDefinitionVar i def = GlobalDefinition def {
   Global.isConstant = True,
   Global.linkage = Internal,
