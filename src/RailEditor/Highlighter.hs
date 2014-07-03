@@ -131,10 +131,10 @@ highlightFct grid2D ip yOffset textAC
           y = fromIntegral $ posy curIP+yOffset
 -- colors all entry red in a rect from x,y to xMax,yMax
 -- This function is needed to recolor after editing
-paintItRed :: Double-- x coord start
-  -> Double--y coord str
-  -> Double--x coord end
-  -> Double--y coord end
+paintItRed :: TAC.Coord-- x coord start
+  -> TAC.Coord--y coord str
+  -> TAC.Coord--x coord end
+  -> TAC.Coord--y coord end
   -> TAC.TextAreaContent
   -> IO [IO()]
 paintItRed x y xMax yMax textAC =

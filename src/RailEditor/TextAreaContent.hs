@@ -19,6 +19,7 @@ module TextAreaContent (
 -- * Types
   TextAreaContent,
   Position,
+  Coord,
   ContentList,
   RGBColor(RGBColor),
 
@@ -52,13 +53,14 @@ import Data.Maybe
 import Control.Monad
 
 data RGBColor = RGBColor Double Double Double
-data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Integer,Integer))
+data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
 --data CharMap  = ChMap  (IORef (Map Position Char)) (IORef (Integer,Integer))
 -- chMap is a Map(y (x coord char)) where y and x are coords
-data CharMap  = ChMap  (IORef (Map Double (Map Double Char))) (IORef (Integer,Integer))
+data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord))
 
 data TextAreaContent = TAC {charMap :: CharMap, colorMap :: ColorMap}
-type Position = (Double,Double)
+type Coord = Int
+type Position = (Coord,Coord)
 type ContentList = [(Position,Char)]
 
 -- Constants
@@ -77,8 +79,8 @@ defaultChar = ' '
 -- Constructors
 
 -- | creates a new TextAreaContent
-init :: Integer -- ^ x-size
-  -> Integer -- ^ y-size
+init :: Coord -- ^ x-size
+  -> Coord -- ^ y-size
   -> IO TextAreaContent
 init x y = do
   size <- newIORef (x,y)
@@ -88,21 +90,18 @@ init x y = do
   let hMap = ChMap hmapR size
   return $ TAC hMap cMap
     where
-      hmap = fillCharMapWith (Map.insert 0 Map.empty Map.empty) defaultChar xD yD
-      cmap = fillMapWith Map.empty defaultColor xD yD
-      xD = fromInteger x :: Double
-      yD = fromInteger y :: Double
+      hmap = fillCharMapWith (Map.insert 0 Map.empty Map.empty) defaultChar (x,y)
+      cmap = fillMapWith Map.empty defaultColor x y
 
 --------------------
 -- Methods
 
 --fill a Map a (Map a b) with a specified content
-fillCharMapWith :: Map.Map Double (Map.Map Double Char) --Map of characters at position y x
+fillCharMapWith :: Map.Map Coord (Map.Map Coord Char) --Map of characters at position y x
   -> Char --Content
-  -> Double --Max x size
-  -> Double --Max y size
-  -> Map.Map Double (Map.Map Double Char)--Map with content at every y x coord (x*y operations)
-fillCharMapWith charMap content xBound yBound =
+  -> Position -- size
+  -> Map.Map Coord (Map.Map Coord Char)--Map with content at every y x coord (x*y operations)
+fillCharMapWith charMap content (xBound,yBound) =
   Prelude.foldl (\yMap yK -> 
     if (isNothing $ Map.lookup yK yMap) -- line Map nothing?
     then insert --insert the filled xMap into yMap
@@ -122,9 +121,9 @@ fillCharMapWith charMap content xBound yBound =
   )charMap [0..yBound]
 
 --fills a map with a specified content
-fillMapWith :: Map.Map Position a -> a -> Double -> Double -> Double -> Double -> Map.Map Position a
-fillMapWith map content _ _ 0.0 0.0 = Map.insert (0.0,0.0) content map
-fillMapWith map content xBound yBound 0.0 y = fillMapWith (Map.insert (0.0,y) content map) content xBound yBound xBound (pred y)
+fillMapWith :: Map.Map Position a -> a -> Coord -> Coord -> Coord -> Coord -> Map.Map Position a
+fillMapWith map content _ _ 0 0 = Map.insert (0,0) content map
+fillMapWith map content xBound yBound 0 y = fillMapWith (Map.insert (0,y) content map) content xBound yBound xBound (pred y)
 fillMapWith map content xBound yBound x y = fillMapWith (Map.insert (x,y) content map) content xBound yBound (pred x) y
 
 -- | creates a string by a TextAreaContent
@@ -135,7 +134,7 @@ serialize areaContent = do
   hmap <- readIORef hMap --get the CharMap
   (xMax,yMax) <- readIORef size --get the size of the CharMap
   --Fill the map with whitespaces
-  let wMap = fillCharMapWith hmap ' ' (fromIntegral xMax) (fromIntegral yMax)
+  let wMap = fillCharMapWith hmap ' ' (xMax,yMax)
   {-1. Take a line map
     2. fold that map to a line
     3. reverse ist drop ' ' and reverse it again
@@ -155,8 +154,8 @@ deserialize stringContent = do
   readStringListInEntryMap areaContent lined (0,0)
   return areaContent
     where
-      newX = toInteger $ maximum $ Prelude.map length lined
-      newY = toInteger $ length lined
+      newX = maximum $ Prelude.map length lined
+      newY = length lined
       lined = lines stringContent
 
 --subfunction for deserialization calls readStringInEntryMap for every line
@@ -184,9 +183,9 @@ resize :: TextAreaContent -> IO ()
 resize areaContent  = do
   let (ChMap _ size) = charMap areaContent
   (xm,ym) <- readIORef size
-  expandXTextAreaN areaContent (fromInteger xm :: Double,fromInteger ym :: Double) xm
+  expandXTextAreaN areaContent (xm,ym) xm
   (xm,ym) <- readIORef size
-  expandYTextAreaN areaContent (fromInteger xm :: Double,fromInteger ym :: Double) ym
+  expandYTextAreaN areaContent (xm,ym) ym
 
 --subfunction for resize
 expandXTextAreaN area (oldX,oldY) n
@@ -200,16 +199,14 @@ expandXTextArea areaContent (oldX,oldY)= do
   let (ChMap _ size) = charMap areaContent
   (xmax,ymax) <- readIORef size
   writeIORef size (succ xmax,ymax)
-  print "before"
-  print $ show(succ xmax,ymax)
   expandXTextAreaH areaContent (oldX,oldY)
 
 --subfunction for expandXTextArea
 expandXTextAreaH areaContent (oldX,oldY) = do
   if oldY == 0
   then do
-    putColor areaContent (succ oldX,0.0) defaultColor
-    putValue areaContent (succ oldX,0.0) defaultChar
+    putColor areaContent (succ oldX,0) defaultColor
+    putValue areaContent (succ oldX,0) defaultChar
   else do
     putValue areaContent (succ oldX,oldY) defaultChar
     putColor areaContent (succ oldX,oldY) defaultColor
@@ -246,13 +243,11 @@ putValue :: TextAreaContent
   -> Char -- ^ character
   -> IO ()
 putValue areaContent (x,y) character = do
-  (xMax,yMax) <- TextAreaContent.size areaContent
-  print "putValue"
-  print $ show(x,y)
-  print $ show(xMax,yMax)
+    (xMax,yMax) <- TextAreaContent.size areaContent
+  {-
   if (x > xMax || y > yMax)
   then error "putValue: Position out of Bounds"
-  else do
+  else do-}
     let 
       (ChMap hMap size) = charMap areaContent
       (CoMap cMap _) = colorMap areaContent
@@ -274,10 +269,10 @@ putColor :: TextAreaContent
   -> RGBColor -- ^ color to put
   -> IO ()
 putColor areaContent (x,y) color = do
-  (xMax,yMax) <- TextAreaContent.size areaContent
+ {- (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
   then error "putColor: Position out of Bounds"
-  else do
+  else do-}
     let (CoMap cMap _) = colorMap areaContent
     cmap <- readIORef cMap
     let cmap = Map.insert (x,y) color cmap
@@ -329,7 +324,7 @@ generateContentList areaContent function = do
   hmap <- readIORef hMap
   -- make the old map format from ChMap
   let 
-    foldIns :: Double -> Map.Map Double Char -> Map.Map Position Char -> Map.Map Position Char
+    foldIns :: Coord -> Map.Map Coord Char -> Map.Map Position Char -> Map.Map Position Char
     foldIns = 
       (\y lineMap posCharMap ->
         Map.foldWithKey (\x val posCharMap ->
@@ -345,5 +340,5 @@ size :: TextAreaContent
   -> IO (Position) -- ^ size of the TextAreaContent
 size areaContent = do 
   let (ChMap _ size) = charMap areaContent
-  (x,y) <- readIORef size
-  return (fromInteger x :: Double, fromInteger y :: Double)
+  s <- readIORef size
+  return s
