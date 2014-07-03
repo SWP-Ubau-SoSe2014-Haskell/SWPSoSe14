@@ -264,9 +264,9 @@ module AST (fromAST, toAST, parse, adjacent, valids)
     processescape :: (Char, IP)
     processescape
         | curchar /= '\\'   = (curchar, move ip Forward)
+        | curchar == '\\' && escsym == '\\' = ('\\', skip code ip 2)
         | esctrail /= '\\'  = error EH.strNonSymmetricEscape
         | otherwise         = case escsym of
-            '\\' -> ('\\', escip)
             '['  -> ('[', escip)
             ']'  -> (']', escip)
             'n'  -> ('\n', escip)
