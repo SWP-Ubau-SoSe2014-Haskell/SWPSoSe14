@@ -22,6 +22,7 @@ module SemanticalAnalysis (
  process :: IDT.SynAna2SemAna -> IDT.SemAna2InterCode
  process (IDT.ISS input)
   | null input = error EH.strEmptyProgram
+  | duplicatefunctions input = error EH.strDuplicateFunctions
   | nomain input = error EH.strMainMissing
   | not (all validfollowers input) = error EH.strUnknownNode
   | otherwise = IDT.ISI (concatMap splitlambda $ map check input)
@@ -55,10 +56,17 @@ module SemanticalAnalysis (
 
  -- looking for a main function
  nomain :: [IDT.AST] -> Bool
- nomain [] = True
- nomain ((name, _):xs)
-  | name == "main" = False
-	| otherwise = nomain xs
+ nomain input = "main" `notElem` allfunctions input
+
+ -- checking if there are two or more functions with the same name
+ duplicatefunctions :: [IDT.AST] -> Bool
+ duplicatefunctions input = length functions > length (nub functions)
+  where functions = allfunctions input
+
+ -- getting a list of every function
+ allfunctions :: [IDT.AST] -> [String]
+ allfunctions [] = []
+ allfunctions ((name, _):xs) = name:allfunctions xs
  
  -- this will return the exact same input if it's valid and will error otherwise
  check :: IDT.AST -> IDT.AST

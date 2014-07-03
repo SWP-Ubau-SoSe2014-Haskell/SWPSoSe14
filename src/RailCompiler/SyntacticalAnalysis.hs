@@ -18,6 +18,7 @@ module SyntacticalAnalysis (
  -- imports --
  import InterfaceDT as IDT
  import ErrorHandling as EH
+ import qualified Data.Map as Map
 
  -- functions --
  process :: IDT.Lexer2SynAna -> IDT.SynAna2SemAna
@@ -27,6 +28,8 @@ module SyntacticalAnalysis (
  
  -- |generates all pathes of a graph
  pathes :: [IDT.LexNode] -> [Int] -> [(Int, [Lexeme], Int)]
+ pathes [] _ = []
+ pathes _ [] = []
  pathes xs ys = map (\x-> findPath x xs ys) ys
  
  -- |generates one path depending on initial node
@@ -42,30 +45,27 @@ module SyntacticalAnalysis (
             |elem fol ys || fol==0 = [(lex, fol)]
             |otherwise             = (lex, fol) : generate fol xs
  
- -- |generates a list of all nodes, which are needed to be initial nodes of path:
- -- 1 as functionstart; conditional jmp; indegree > 1
- startNodes :: [IDT.LexNode] -> [Int]
- startNodes [] = []
- startNodes xs = 1:[x | x <- [2..(length xs)], isLambda x xs || isJunct0 x xs || (inDeg x xs > 1) || isJunct1 x xs]
-    where
-        isLambda :: Int -> [IDT.LexNode] -> Bool
-        isLambda x = any (\y -> Lambda x == snd' y)
-        isJunct0 :: Int -> [IDT.LexNode] -> Bool
-        isJunct0 x = any (\y -> Junction x == snd' y)
-        isJunct1 :: Int -> [IDT.LexNode] -> Bool
-        isJunct1 x = any (\y -> isJunct (snd' y) && x == trd' y)
-        isJunct :: Lexeme -> Bool
-        isJunct (Junction x) = True
-        isJunct _ = False
-        inDeg :: Int -> [IDT.LexNode] -> Int
-        inDeg x = length . filter (\y-> trd' y==x)
- 
  -- |fetch triple components
  fst' :: (a, b, c) -> a
  fst' (x, _, _) = x
  
- snd' :: (a, b, c) -> b
- snd' (_, x, _) = x
- 
- trd' :: (a, b, c) -> c
- trd' (_, _, x) = x
+ -- |generates a list of all nodes, which are needed to be initial nodes of path:
+ -- 1 as functionstart; conditional jmp; indegree > 1
+ startNodes :: [IDT.LexNode] -> [Int]
+-- startNodes xs = error (show (Map.toList (nodeCount xs Map.empty)))
+-- startNodes xs = error (show (fst' (head xs):(Map.keys $ Map.filter (/= 1) $ nodeCount xs Map.empty)))
+ startNodes [] = []
+ startNodes xs = fst' (head xs):filter (/=0) (Map.keys $ Map.filter (/= 1) $ nodeCount xs Map.empty)
+    where
+        -- result type: [(ID, Count)]
+        nodeCount :: [IDT.LexNode] -> Map.Map Int Int -> Map.Map Int Int
+        nodeCount [] res = res
+        -- we WANT junctions to be at the very end
+        nodeCount ((_, Junction x, y):xs) res = nodeCount xs $ incCount (incCount res x 2) y 2
+        nodeCount ((_, Lambda x, y):xs) res = nodeCount xs $ incCount (incCount res x 2) y 1
+        nodeCount ((_, _, y):xs) res = nodeCount xs $ incCount res y 1
+        -- update the count
+        incCount :: Map.Map Int Int -> Int -> Int-> Map.Map Int Int
+        incCount map id count
+            | Map.member id map = Map.adjust (count +) id map
+            | otherwise = Map.insert id count map

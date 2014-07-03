@@ -8,7 +8,7 @@ Stability   :  experimental
 
 This is the main-module (and entrypoint) for the Editor.
 -}
-module Editor (
+module Main (
                main -- main-function calling the editor
                     -- to be completed with missing required functions
               )
@@ -21,4 +21,4 @@ module Editor (
     
     -- main-function calling the editor
     main :: IO()
-    main = undefined -- TODO: implement this functions
+    main = MW.createMainWindow -- TODO: implement this functions
