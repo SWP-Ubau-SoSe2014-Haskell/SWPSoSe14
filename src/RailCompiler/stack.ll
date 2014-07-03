@@ -78,6 +78,8 @@ declare i32 @stack_element_get_refcount(%stack_element*)
 declare i8 @stack_element_get_type(%stack_element*)
 declare %stack_element* @stack_element_new(i8, i8*, %stack_element*)
 declare i64 @stack_get_size()
+declare void @stack_element_ref(%stack_element* %element)
+declare void @stack_element_unref(%stack_element* %element)
 
 
 ; Debugging stuff

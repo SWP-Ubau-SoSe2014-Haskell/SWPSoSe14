@@ -90,7 +90,7 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
 
 ; Decrement refcount of stack element
 ; If new refcount is zero, free the stack element and it's data
-define void @stack_element_free1(%stack_element* %element) {
+define void @stack_element_unref(%stack_element* %element) {
   %refcount = call i32(%stack_element*)* @stack_element_get_refcount(%stack_element* %element)
   %refcount_1 = sub i32 %refcount, 1
   %cond = icmp eq i32 %refcount_1, 0

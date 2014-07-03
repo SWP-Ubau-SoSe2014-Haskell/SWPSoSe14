@@ -18,7 +18,7 @@ declare void @push_int(i64)
 declare %stack_element* @pop_struct()
 declare i8* @stack_element_get_data(%stack_element* %element)
 declare i64 @stack_element_get_int_data(%stack_element* %element)
-declare void @stack_element_free1(%stack_element* %element)
+declare void @stack_element_unref(%stack_element* %element)
 
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 
@@ -67,8 +67,8 @@ loop2:
   %cond2 = icmp eq i8 %c2, 0
   br i1 %cond2, label %finished2, label %loop2
 finished2:
-  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem2)
-  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem1)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %elem2)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %elem1)
   call %stack_element* @push_string_ptr(i8* %result)
   ret void
 }
@@ -98,7 +98,7 @@ entry:
   %len = call i64(i8*)* @length(i8* %str)
 
   ; push length
-  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %elem)
   call void(i64)* @push_int(i64 %len)
   ret void
 }
@@ -188,8 +188,8 @@ loop2:
   %cond2 = icmp eq i8 %c2, 0
   br i1 %cond2, label %finished2, label %loop2
 finished2: 
-  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem2)
-  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem1)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %elem2)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %elem1)
   call %stack_element* @push_string_ptr(i8* %result2)
   call %stack_element* @push_string_ptr(i8* %result1)
   ret void
