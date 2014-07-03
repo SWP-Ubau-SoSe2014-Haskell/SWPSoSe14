@@ -88,6 +88,28 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
   ret %stack_element* %element1
 }
 
+; Decrement refcount of stack element
+; If new refcount is zero, free the stack element and it's data
+define void @stack_element_free1(%stack_element* %element) {
+  %refcount = call i32(%stack_element*)* @stack_element_get_refcount(%stack_element* %element)
+  %refcount_1 = sub i32 %refcount, 1
+  %cond = icmp eq i32 %refcount_1, 0
+  br i1 %cond, label %free_data, label %update_refcount
+
+free_data:
+  %data = call i8* @stack_element_get_data(%stack_element* %element)
+  call void @free(i8* %data)
+  %mem = bitcast %stack_element* %element to i8*
+  call void @free(i8* %mem)
+  br label %finished
+update_refcount:
+  call void(%stack_element*, i32)* @stack_element_set_refcount(%stack_element* %element, i32 %refcount_1)
+  br label %finished
+
+finished:
+  ret void
+}
+
 ; free() a stack element and optionally, free the data it contains as well
 ; (i. e. the memory pointed to by the dataPtr member).
 ;
@@ -154,6 +176,19 @@ define i8* @stack_element_get_data(%stack_element* %element) {
   %dataPtr0 = getelementptr %stack_element* %element, i32 0, i32 1
   %dataPtr1 = load i8** %dataPtr0
   ret i8* %dataPtr1
+}
+
+; Get data from stack as an in integer numeral
+define i64 @stack_element_get_int_data(%stack_element* %element) {
+  ; get raw data
+  %data = call i8*(%stack_element*)* @stack_element_get_data(%stack_element* %element)
+
+  ; convert to int, check for error
+  %top_int0 = call i32 @atol(i8* %data)
+  %top_int1 = sext i32 %top_int0 to i64
+
+ ; return
+ ret i64 %top_int1
 }
 
 ; Set the raw data pointer of a stack_element struct.

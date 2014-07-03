@@ -11,12 +11,14 @@
 
 %stack_element = type opaque
 
-declare i8* @pop_string()
+declare void @underflow_assert()
 declare %stack_element* @push_string_ptr(i8* %str)
 declare %stack_element* @push_string_cpy(i8* %str)
-declare i64 @pop_int()
 declare void @push_int(i64)
-declare void @underflow_assert()
+declare %stack_element* @pop_struct()
+declare i8* @stack_element_get_data(%stack_element* %element)
+declare i64 @stack_element_get_int_data(%stack_element* %element)
+declare void @stack_element_free1(%stack_element* %element)
 
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 
@@ -24,17 +26,15 @@ declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits lo
 define void @strapp() {
 entry:
   call void @underflow_assert() 
-  %str2 = call i8*()* @pop_string()
+  %elem2 = call %stack_element*()* @pop_struct()
+  %str2 = call i8*(%stack_element*)* @stack_element_get_data(%stack_element* %elem2)
   call void @underflow_assert() 
-  %str1 = call i8*()* @pop_string()
+  %elem1 = call %stack_element*()* @pop_struct()
+  %str1 = call i8*(%stack_element*)* @stack_element_get_data(%stack_element* %elem1)
 
-  ; compute length of input strings (TODO: maybe isolate strlen function for this purpose)
-  call %stack_element* @push_string_ptr(i8* %str1)
-  call void()* @strlen()
-  %len_str1 = call i64()* @pop_int()
-  call %stack_element* @push_string_ptr(i8* %str2)
-  call void()* @strlen()
-  %len_str2 = call i64()* @pop_int()
+  ; compute length of input strings
+  %len_str1 = call i64(i8*)* @length(i8* %str1)
+  %len_str2 = call i64(i8*)* @length(i8* %str2)
 
   ; allocate space for result string
   %len_result_1 = add i64 %len_str1, %len_str2
@@ -67,15 +67,14 @@ loop2:
   %cond2 = icmp eq i8 %c2, 0
   br i1 %cond2, label %finished2, label %loop2
 finished2:
+  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem2)
+  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem1)
   call %stack_element* @push_string_ptr(i8* %result)
   ret void
 }
 
-
-define void @strlen() {
+define i64 @length(i8* %str) {
 entry:
-  call void @underflow_assert() 
-  %str = call i8*()* @pop_string()
   br label %loop
 loop:
   %i = phi i64 [0, %entry ], [ %next_i, %loop ]
@@ -85,62 +84,77 @@ loop:
   %cond = icmp eq i8 %c, 0
   br i1 %cond, label %finished, label %loop
 finished:
-  call void(i64)* @push_int(i64 %i)
+  ret i64 %i
+}
+
+define void @strlen() {
+entry:  
+  ; pop string
+  call void @underflow_assert() 
+  %elem = call %stack_element*()* @pop_struct()
+  %str = call i8*(%stack_element*)* @stack_element_get_data(%stack_element* %elem)
+
+  ; compute length
+  %len = call i64(i8*)* @length(i8* %str)
+
+  ; push length
+  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem)
+  call void(i64)* @push_int(i64 %len)
   ret void
 }
 
-
-; DEPRECATED
-define void @streq() {
-entry:
-  call void @underflow_assert() 
-  %str1 = call i8*()* @pop_string()
-  call void @underflow_assert() 
-  %str2 = call i8*()* @pop_string()
-  br label %loop
-loop:
-  ; the phi instruction says that coming from the 'entry' label i is 1
-  ; otherwise (coming from 'cont') i will be 'next_i'
-  %i = phi i64 [ 1, %entry ], [ %next_i, %cont ]
-
-  ; the the actual character
-  %addr1 = getelementptr i8* %str1, i64 %i
-  %addr2 = getelementptr i8* %str2, i64 %i
-  %c1 = load i8* %addr1
-  %c2 = load i8* %addr2
-
-  ; if equal, jump to next character otherwise jump to 'fail' 
-  %cond = icmp eq i8 %c1, %c2
-  br i1 %cond, label %cont, label %fail
-
-cont:
-  %next_i = add i64 %i, 1
-  %cond2 = icmp eq i8 %c1, 0
-  br i1 %cond2, label %success, label %loop
-success:
-  %t = getelementptr i8* @true, i64 0
-  call %stack_element* @push_string_cpy(i8* %t)
-  ret void
-fail:
-  %f = getelementptr i8* @false, i64 0
-  call %stack_element* @push_string_cpy(i8* %f)
-  ret void
-}
-
+; LEGACY FUNCTION
+;define void @streq() {
+;entry:
+;  call void @underflow_assert() 
+;  %str1 = call i8*()* @pop_string()
+;  call void @underflow_assert() 
+;  %str2 = call i8*()* @pop_string()
+;  br label %loop
+;loop:
+;  ; the phi instruction says that coming from the 'entry' label i is 1
+;  ; otherwise (coming from 'cont') i will be 'next_i'
+;  %i = phi i64 [ 1, %entry ], [ %next_i, %cont ]
+;
+;  ; the the actual character
+;  %addr1 = getelementptr i8* %str1, i64 %i
+;  %addr2 = getelementptr i8* %str2, i64 %i
+;  %c1 = load i8* %addr1
+;  %c2 = load i8* %addr2
+;
+;  ; if equal, jump to next character otherwise jump to 'fail' 
+;  %cond = icmp eq i8 %c1, %c2
+;  br i1 %cond, label %cont, label %fail
+;
+;cont:
+;  %next_i = add i64 %i, 1
+;  %cond2 = icmp eq i8 %c1, 0
+;  br i1 %cond2, label %success, label %loop
+;success:
+;  %t = getelementptr i8* @true, i64 0
+;  call %stack_element* @push_string_cpy(i8* %t)
+;  ret void
+;fail:
+;  %f = getelementptr i8* @false, i64 0
+;  call %stack_element* @push_string_cpy(i8* %f)
+;  ret void
+;}
 
 define void @strcut() {
 entry:
+  call void @underflow_assert()
+  %elem2 = call %stack_element*()* @pop_struct()
+  %indx = call i64(%stack_element*)* @stack_element_get_int_data(%stack_element* %elem2)
+  ;%indx = call i64()* @pop_int()
   call void @underflow_assert() 
-  %indx = call i64()* @pop_int()
-  call void @underflow_assert() 
-  %str = call i8*()* @pop_string()
+  %elem1 = call %stack_element*()* @pop_struct()
+  %str = call i8*(%stack_element*)* @stack_element_get_data(%stack_element* %elem1)
+  ;%str = call i8*()* @pop_string()
 
   ; allocate space for result strings
   %len1_1 = add i64 %indx, 1
   %len1 = trunc i64 %len1_1 to i16
-  call %stack_element* @push_string_ptr(i8* %str)
-  call void()* @strlen()
-  %len_str = call i64()* @pop_int()
+  %len_str = call i64(i8*)* @length(i8* %str) 
   %len2_1 = sub i64 %len_str, %indx
   %len2_2 = add i64 %len2_1, 1
   %len2 = trunc i64 %len2_2 to i16
@@ -174,7 +188,11 @@ loop2:
   %cond2 = icmp eq i8 %c2, 0
   br i1 %cond2, label %finished2, label %loop2
 finished2: 
+  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem2)
+  call void(%stack_element*)* @stack_element_free1(%stack_element* %elem1)
   call %stack_element* @push_string_ptr(i8* %result2)
   call %stack_element* @push_string_ptr(i8* %result1)
   ret void
 }
+
+; vim:sw=2 ts=2 et
