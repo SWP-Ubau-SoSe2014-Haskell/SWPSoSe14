@@ -22,7 +22,7 @@ module RedoUndo (
 -- this has to be part of TAC
 -- TAC { ...  undoQueue: IORef ActionQueue, redoQueue: IORef ActionQueue }
     data Action = Remove String | Insert String | Replace String String | MoveTo Position
-		type ActionQueue = [(Action, Position)]
+    type ActionQueue = [(Action, Position)]
 
     -- functions --
     invert :: (Action, Position) -> (Action, Position)
@@ -65,7 +65,7 @@ module RedoUndo (
          redoqueue <- readIORef (redoQueue tac)
          undoqueue <- readIORef (undoQueue tac)
          let (newundo, newredo, action) = shiftaction (undoqueue, redoqueue)
-				 writeIORef (redoQueue tac) newredo
+         writeIORef (redoQueue tac) newredo
          writeIORef (undoQueue tac) newundo
          runaction action
 
@@ -77,6 +77,6 @@ module RedoUndo (
          redoqueue <- readIORef (redoQueue tac)
          undoqueue <- readIORef (undoQueue tac)
          let (newredo, newundo, action) = shiftaction (redoqueue, undoqueue)
-				 writeIORef (redoQueue tac) newredo
+         writeIORef (redoQueue tac) newredo
          writeIORef (undoQueue tac) newundo
          runaction action
