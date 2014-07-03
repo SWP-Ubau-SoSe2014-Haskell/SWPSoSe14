@@ -22,6 +22,8 @@ module TextAreaContent (
   Coord,
   ContentList,
   RGBColor(RGBColor),
+  TextAreaContent.Action,
+  ActionQueue,
 
 -- * Constructors
   TextAreaContent.init,   -- initializes both data structures
@@ -58,7 +60,11 @@ data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
 -- chMap is a Map(y (x coord char)) where y and x are coords
 data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord))
 
-data TextAreaContent = TAC {charMap :: CharMap, colorMap :: ColorMap}
+-- types for undoredo
+data Action = Remove String | Insert String | Replace String String | MoveTo Position
+type ActionQueue = [(TextAreaContent.Action, Position)]
+
+data TextAreaContent = TAC {charMap :: CharMap, colorMap :: ColorMap, undoQueue :: IORef ActionQueue, redoQueue :: IORef ActionQueue }
 type Coord = Int
 type Position = (Coord,Coord)
 type ContentList = [(Position,Char)]
@@ -86,9 +92,11 @@ init x y = do
   size <- newIORef (x,y)
   hmapR <- newIORef Map.empty
   cmapR <- newIORef Map.empty
+  undoQ <- newIORef []
+  redoQ <- newIORef []
   let cMap = CoMap cmapR size
   let hMap = ChMap hmapR size
-  return $ TAC hMap cMap
+  return $ TAC hMap cMap undoQ redoQ
     where
       hmap = fillCharMapWith (Map.insert 0 Map.empty Map.empty) defaultChar (x,y)
       cmap = fillMapWith Map.empty defaultColor x y
