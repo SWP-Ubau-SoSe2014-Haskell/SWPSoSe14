@@ -121,16 +121,16 @@ function run_one {
       echo "$filename" >> "${fileoutput}.tests"
       echo "$errormsg" >> "${fileoutput}.err"
       echo "${STDERR[0]}" >> "${fileoutput}.exp.err"
-    elif [[ "$errormsg:$errormsg2" == "${STDERR[0]}" ]]; then
+    elif [[ "$errormsg$errormsg2" == "${STDERR[0]}" ]]; then
       [ $verbose -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
       if [ $verbose -gt 1 ]; then
-        echo "  The error message was: \"$errormsg:$errormsg2\""
+        echo "  The error message was: \"$errormsg$errormsg2\""
       else
         [ $verbose -gt 0 ] && echo -ne "\n"
       fi
     else
       fail=$(($fail + 1))
-      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg:$errormsg2\""
+      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg$errormsg2\""
     fi
     return
   fi
