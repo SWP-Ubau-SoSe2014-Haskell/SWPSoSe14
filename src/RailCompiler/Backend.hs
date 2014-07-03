@@ -15,23 +15,20 @@ module Backend (
 where
 
 -- imports --
-import InterfaceDT as IDT
 import ErrorHandling as EH
+import InterfaceDT as IDT
 
+import Control.Monad.Error
 import LLVM.General.AST
-import qualified LLVM.General.AST as AST
+import LLVM.General.AST.Global
 import LLVM.General.Context
 import LLVM.General.Module
-import Control.Monad.Error
-import LLVM.General.AST.Global
-
+import qualified LLVM.General.AST as AST
 
 -- functions --
 -- |Converts the internal LLVM representation into textual LLVM IR.
 process :: IDT.CodeOpt2Backend -> IDT.Backend2Output
-process input = output
-  where
-    output = IDT.IBO $ generateOutput input
+process input = IDT.IBO $ generateOutput input
 
 -- |Uses the Haskell LLVM bindings to convert the internal LLVM
 -- representation into textual LLVM IR.
