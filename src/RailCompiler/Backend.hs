@@ -39,6 +39,4 @@ generateOutput :: IDT.CodeOpt2Backend -> IO String
 generateOutput (IDT.ICB mod) = do
   s <- withContext $ \context ->
     runErrorT $ withModuleFromAST context mod $ \m -> moduleLLVMAssembly m
-  case s of
-    Left err -> return err
-    Right ll -> return ll
+  either error return s
