@@ -37,6 +37,7 @@ strInvalidMovement      = "Invalid movement."
 strMainMissing          = "No 'main' Method found."
 strUnknownNode          = "Unknown Node in AST."
 strEmptyProgram         = "Empty Program."
+strDuplicateFunctions   = "Duplicate Functions found."
 
 -- IntermediateCode-Errors
 

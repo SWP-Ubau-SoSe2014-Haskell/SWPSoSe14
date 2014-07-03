@@ -1,18 +1,44 @@
-; Module      : LLVM backend - stack implementation (and some misc. functions)
-; Description : Contains our stack implementation in LLVM and also some functions
-;               which have not yet been split out into their own modules.
+; Module      : LLVM backend - stack helper functions (and some misc. functions)
+; Description : Contains helper functions for working with the stack and also
+;               some functions which have not yet been split out into their own modules.
 ; Maintainers : Tilman Blumenbach, Sascha Zinke, Maximilian Claus, Tudor Soroceanu,
 ;               Philipp Borgers, Lyudmila Vaseva, Marcus Hoffmann, Michal Ajchman
 ; License     : MIT
 ;
-; These functions are used by our LLVM backend and most of them operate directly on
-; the stack. Many also directly crash (in Rail terms: properly exit) the program.
+; Beware: Many of these functions directly crash (in Rail terms: properly exit) the program.
 
-@stack = global [1000 x i8*] undef ; stack containing pointers to i8
-@sp = global i64 0 ; global stack pointer (or rather: current number of elements)
-@lookahead = global i32 -1  ; current lookahead for input from stdin.
-                            ; -1 means no lookahead done yet.
 
+; Types
+
+; See linked_stack.ll for the definition.
+%stack_element = type opaque
+
+; Misnamed struct returned by get_stack_elem() (which, unfortunately,
+; is also misnamed). This is not the data type used for real stack elements,
+; but more like a container used to store conversion results (string to numerical
+; value).
+;
+; C definition was as follows:
+;
+;  typedef enum {INT = 1, FLOAT = 2, STRING = 3} elem_type;
+;  struct stack_elem {
+;      elem_type type;
+;      union {
+;          int ival;
+;          float fval;
+;          char *sval;
+;      };
+;  };
+%struct.stack_elem = type { i32, %union.anon }
+%union.anon = type { i8* }
+
+; struct for the symbol table
+%struct.table = type {i8*, i8*, %struct.table*}
+
+
+; Global variables
+@lookahead = global i32 -1            ; Current lookahead for input from stdin,
+                                      ; -1 means no lookahead done yet.
 
 ; Constants
 @to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
@@ -23,6 +49,7 @@
 @crash_cust_str_fmt = private unnamed_addr constant [24 x i8] c"Crash: Custom error: %s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
 @err_eof = unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
+@err_oom = unnamed_addr constant [15 x i8] c"Out of memory!\00"
 @err_type = unnamed_addr constant [14 x i8] c"Invalid type!\00"
 @err_zero = unnamed_addr constant [18 x i8] c"Division by zero!\00"
 
@@ -32,40 +59,35 @@
 
 @stderr = global %FILE* undef
 
-declare signext i32 @atol(i8*)
 declare i64 @strtol(i8*, i8**, i32 )
-declare signext i32 @snprintf(i8*, ...)
 declare signext i32 @printf(i8*, ...)
 declare %FILE* @fdopen(i32, i8*)
 declare signext i32 @fprintf(%FILE*, i8*, ...)
 declare float @strtof(i8*, i8**)
 declare signext i32 @getchar()
-declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare i8* @calloc(i16 zeroext, i16 zeroext)
+declare i8* @strdup(i8*)
 declare void @exit(i32 signext)
+
+declare i64 @pop_int()
+declare i8* @pop_string()
+declare void @push_int(i64)
+declare %stack_element* @push_string_cpy(i8*)
+declare %stack_element* @push_string_ptr(i8*)
+declare i32 @stack_element_get_refcount(%stack_element*)
+declare i8 @stack_element_get_type(%stack_element*)
+declare %stack_element* @stack_element_new(i8, i8*, %stack_element*)
+declare i64 @stack_get_size()
 
 
 ; Debugging stuff
 @pushing = unnamed_addr constant [14 x i8] c"Pushing [%s]\0A\00"
 @popped  = unnamed_addr constant [13 x i8] c"Popped [%s]\0a\00"
 @msg = private unnamed_addr constant [5 x i8] c"msg\0a\00"
+@no_element = private unnamed_addr constant [18 x i8] c"No such Element!\0A\00"
 
-
-@int_to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
-@float_to_str  = private unnamed_addr constant [3 x i8] c"%f\00"
-
-;typedef enum {INT = 1, FLOAT = 2, STRING = 3} elem_type;
-;struct stack_elem {
-;    elem_type type;
-;    union {
-;        int ival;
-;        float fval;
-;        char *sval;
-;    };
-;};
-%struct.stack_elem = type { i32, %union.anon }
-%union.anon = type { i8* }
-
+@int_to_str = unnamed_addr constant [3 x i8] c"%i\00"
+@float_to_str = unnamed_addr constant [3 x i8] c"%f\00"
 
 @.str = private unnamed_addr constant [33 x i8] c"call int add with a=%i and b=%i\0A\00", align 1
 @.str1 = private unnamed_addr constant [35 x i8] c"call float add with a=%f and b=%f\0A\00", align 1
@@ -74,12 +96,6 @@ declare void @exit(i32 signext)
 
 
 ; Function definitions
-
-; Get number of element on the stack
-define i64 @stack_get_size() {
-  %sp = load i64* @sp
-  ret i64 %sp
-}
 
 ; Push the stack size onto the stack
 define void @underflow_check() {
@@ -108,11 +124,10 @@ uas_okay:
 
 ; Pop stack and print result string
 define void @print() {
-  ; TODO: Check if the top stack element is a string and crash if it is not.
   call void @underflow_assert()
 
   %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
-  %val = call i8* @pop()
+  %val = call i8* @pop_string()
   call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
 
   ret void
@@ -120,7 +135,6 @@ define void @print() {
 
 ; Pop stack, print result string to stderr and exit the program.
 define void @crash(i1 %is_custom_error) {
-  ; TODO: Check if the top stack element is a string and crash if it is not.
   call void @underflow_assert()
 
   br i1 %is_custom_error, label %custom_error, label %raw_error
@@ -135,7 +149,7 @@ raw_error:
 
 end:
   %fmt = phi i8* [%raw_fmt, %raw_error], [%cust_fmt, %custom_error]
-  %val = call i8* @pop()
+  %val = call i8* @pop_string()
   %stderr = load %FILE** @stderr
   call i32(%FILE*, i8*, ...)* @fprintf(%FILE* %stderr, i8* %fmt, i8* %val)
 
@@ -154,15 +168,15 @@ define void @input() {
 
 error:
   %at_eof = getelementptr [9 x i8]* @err_eof, i64 0, i64 0
-  call void @push(i8* %at_eof)
+  call %stack_element* @push_string_cpy(i8* %at_eof)
   call void @crash(i1 0)
   ret void
 
 push:
   %byte = trunc i32 %read to i8
-  %buffer_addr = call i8* @calloc(i16 1, i16 2)
+  %buffer_addr = call i8* @xcalloc(i16 1, i16 2)
   store i8 %byte, i8* %buffer_addr
-  call void @push(i8* %buffer_addr)
+  call %stack_element* @push_string_ptr(i8* %buffer_addr)
 
   ret void
 }
@@ -200,126 +214,114 @@ define void @eof_check() {
 
 at_eof:
   %true = getelementptr [2 x i8]* @true, i8 0, i8 0
-  call void @push(i8* %true)
+  call %stack_element* @push_string_cpy(i8* %true)
   ret void
 
 not_at_eof:
   %false = getelementptr [2 x i8]* @false, i8 0, i8 0
-  call void @push(i8* %false)
+  call %stack_element* @push_string_cpy(i8* %false)
 
   ret void
 }
 
-define void @push(i8* %str_ptr) {
-  ; dereferencing @sp by loading value into memory
-  %sp   = load i64* @sp
-
-  ; get position on the stack, the stack pointer points to. this is the top of
-  ; the stack.
-  ; nice getelementptr FAQ: http://llvm.org/docs/GetElementPtr.html
-  ;                     value of pointer type,  index,    field
-  %top = getelementptr [1000 x i8*]* @stack,   i8 0,     i64 %sp
-
-  ; the contents of memory are updated to contain %str_ptr at the location
-  ; specified by the %addr operand
-  store i8* %str_ptr, i8** %top
-
-  ; increase stack pointer to point to new free, top of stack
-  %newsp = add i64 %sp, 1
-  store i64 %newsp, i64* @sp
-
-  ret void
-}
-
-; pops element from stack and converts in integer
-; returns the element, in case of error undefined
-define i64 @pop_int(){
-  ; pop
-  %top = call i8* @pop()
-
-  ; convert to int, check for error
-  %top_int0 = call i32 @atol(i8* %top)
-  %top_int1 = sext i32 %top_int0 to i64
-
-  ; return
-  ret i64 %top_int1
-}
-
-define void @push_float(double %top_float)
-{
-  ; allocate memory to store string in
-  ; TODO: Make sure this is free()'d at _some_ point during
-  ;       program execution.
-  %buffer_addr = call i8* @malloc(i16 128)
-  %to_str_ptr = getelementptr [3 x i8]* @float_to_str, i64 0, i64 0
-
-  ; convert to string
-  call i32(i8*, ...)* @snprintf(
-          i8* %buffer_addr, i16 128, i8* %to_str_ptr, double %top_float)
-
-  ; push on stack
-  call void(i8*)* @push(i8* %buffer_addr)
-
-  ret void
-}
-
-define void @push_int(i64 %top_int)
-{
-  ; allocate memory to store string in
-  ; TODO: Make sure this is free()'d at _some_ point during
-  ;       program execution.
-  %buffer_addr = call i8* @malloc(i16 128)
-  %to_str_ptr = getelementptr [3 x i8]* @int_to_str, i64 0, i64 0
-
-  ; convert to string
-  call i32(i8*, ...)* @snprintf(
-          i8* %buffer_addr, i16 128, i8* %to_str_ptr, i64 %top_int)
-
-  ; push on stack
-  call void(i8*)* @push(i8* %buffer_addr)
-
-  ret void
-}
-
-
-define i8* @peek() {
-  %sp   = load i64* @sp
-  %top_of_stack = sub i64 %sp, 1
-  %addr = getelementptr [1000 x i8*]* @stack, i8 0, i64 %top_of_stack
-  %val = load i8** %addr
-  ret i8* %val
-}
-
-define i8* @pop() {
-  %val = call i8*()* @peek()
-  %sp = load i64* @sp
-  %top_of_stack = sub i64 %sp, 1
-  store i64 %top_of_stack, i64* @sp
-  ret i8* %val
-}
 
 define i32 @finish(){
   ret i32 0
 }
 
 ; Popping a pointer from the stack into a variable
-define void @pop_into(i8** %var_ptr) {
+define void @pop_into(%struct.table* %t, i8* %name){
   call void @underflow_assert()
-  %val_ptr = call i8* @pop()
-  store i8* %val_ptr, i8** %var_ptr
+  %n_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 0
+  %name_t = load i8** %n_ptr
+
+  %is_null = icmp eq i8* %name_t, null
+  br i1 %is_null, label %insert, label %search
+insert:
+  ; store name
+  store i8* %name, i8** %n_ptr
+  
+  ; pop value from stack and store value
+  %value = call i8*()* @pop_string()
+  %v_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 1
+  store i8* %value, i8** %v_ptr
+
+  ; create new element and append to table
+  %new_elem = alloca %struct.table
+  ; initialise new element with null
+  call void @initialise(%struct.table* %new_elem)
+
+  %next_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 2
+  store %struct.table* %new_elem, %struct.table** %next_ptr
+
+  br label %end
+
+search:
+  %is_equal = icmp eq i8* %name_t, %name
+  br i1 %is_equal, label %insert2, label %search_further
+
+insert2:
+  %value2 = call i8*()* @pop_string()
+  %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
+  store i8* %value2, i8** %v_ptr_found
+
+  br label %end
+
+search_further:
+  %next_ptr_recursive = getelementptr inbounds %struct.table* %t, i64 0, i32 2
+  %next_ptr_recursive2 = bitcast %struct.table** %next_ptr_recursive to %struct.table*
+  call void @pop_into(%struct.table* %next_ptr_recursive2, i8* %name) 
+  br label %end
+
+end:
   ret void
 }
 
 ; Pushing a pointer from a variable onto the stack
-define void @push_from(i8** %var_ptr) {
-  %val = load i8** %var_ptr
-  call void @push (i8* %val)
+define void @push_from(%struct.table* %t, i8* %name){
+  %n_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 0
+  %name_t = load i8** %n_ptr
+
+  %is_null = icmp eq i8* %name_t, null
+  br i1 %is_null, label %no_such_elem, label %search
+no_such_elem:
+  %no_elem = getelementptr [18 x i8]* @no_element, i64 0, i64 0
+  call i32(i8*, ...)* @printf(i8* %no_elem)
+  br label %end
+
+search:
+  %is_equal = icmp eq i8* %name_t, %name
+  br i1 %is_equal, label %push_onto_stack, label %search_further
+
+push_onto_stack:
+  %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
+  %value_to_push = load i8** %v_ptr_found
+  call %stack_element* @push_string_ptr(i8* %value_to_push)
+
+  br label %end
+
+search_further:
+  %next_ptr_recursive = getelementptr inbounds %struct.table* %t, i64 0, i32 2
+  %next_ptr_recursive2 = bitcast %struct.table** %next_ptr_recursive to %struct.table*
+  call void @push_from(%struct.table* %next_ptr_recursive2, i8* %name) 
+  br label %end
+
+end:
+  ret void
+}
+
+; initialise the symbol table with the first element = null
+define void @initialise(%struct.table* %t){
+  %1 = getelementptr inbounds %struct.table* %t, i64 0, i32 0
+  store i8* null, i8** %1
   ret void
 }
 
 ; Function Attrs: nounwind uwtable
 ; Takes a string, determines the type it is representing and returns the
-; corresponding stack element structure.
+; corresponding stack element structure. Not that this is NOT an actual
+; stack element structure, but more like a container used to store the conversion
+; results (string to numerical value).
 define i32 @get_stack_elem(i8* %string, %struct.stack_elem* %elem) #0 {
   %1 = alloca i32, align 4
   %2 = alloca i8*, align 8
@@ -390,23 +392,69 @@ define i32 @get_stack_elem(i8* %string, %struct.stack_elem* %elem) #0 {
   ret i32 %40
 }
 
+; "Fatal" version of calloc(3): crash()es the program on errors.
+define i8* @xcalloc(i16 zeroext %nmemb, i16 zeroext %size) {
+  %mem = call i8* @calloc(i16 %nmemb, i16 %size)
+  %is_null = icmp eq i8* %mem, null
+  br i1 %is_null, label %bail_out, label %okay
+
+bail_out:
+  ; Oopsie, out of memory. Try to bail out politely.
+  %oom_str = getelementptr [15 x i8]* @err_oom, i32 0, i32 0
+  call %stack_element* @push_string_cpy(i8* %oom_str)
+  call void @crash(i1 0)
+
+  ret i8* null
+
+okay:
+  ret i8* %mem
+}
+
+; "Fatal" version of strdup(3): crash()es the program on errors.
+define i8* @xstrdup(i8* %str) {
+  %mem = call i8* @strdup(i8* %str)
+  %is_null = icmp eq i8* %mem, null
+  br i1 %is_null, label %bail_out, label %okay
+
+bail_out:
+  ; Oopsie, out of memory. Try to bail out politely.
+  %oom_str = getelementptr [15 x i8]* @err_oom, i32 0, i32 0
+  call %stack_element* @push_string_cpy(i8* %oom_str)
+  call void @crash(i1 0)
+
+  ret i8* null
+
+okay:
+  ret i8* %mem
+}
+
 @number2 = private unnamed_addr constant [2 x i8] c"5\00"
 @number3 = private unnamed_addr constant [2 x i8] c"2\00"
 
 define i32 @main_() {
  %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
  %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
+ %int_to_str = getelementptr [3 x i8]* @int_to_str, i8 0, i8 0
+
+
+ %elm = call %stack_element* @stack_element_new(i8 42, i8* null, %stack_element* null)
+ %type = call i8 @stack_element_get_type(%stack_element* %elm)
+ call i32(i8*, ...)* @printf(i8* %int_to_str, i8 %type)
+
+ %refCount = call i32 @stack_element_get_refcount(%stack_element* %elm)
+ call i32(i8*, ...)* @printf(i8* %int_to_str, i32 %refCount)
+
 
  call void @eof_check()
- %i1 = call i8*()* @pop()
+ %i1 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
 
  call void @input()
- %i0 = call i8*()* @pop()
+ %i0 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
 
  call void @input()
- %i2 = call i8*()* @pop()
+ %i2 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i2)
 
  ; push two numbers on the stack
@@ -414,21 +462,21 @@ define i32 @main_() {
  %number3 = getelementptr [2 x i8]* @number3, i64 0, i64 0
 
  call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number2)
- call void(i8*)* @push(i8* %number2)
+ call %stack_element* @push_string_cpy(i8* %number2)
 
  call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number3)
- call void(i8*)* @push(i8* %number3)
+ call %stack_element* @push_string_cpy(i8* %number3)
 
  call void @underflow_check()
- %size0 = call i8*()* @pop()
+ %size0 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
 
  call void @sub_int()
- %sum  = call i8*()* @pop()
+ %sum  = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
 
  call void @underflow_check()
- %size1 = call i8*()* @pop()
+ %size1 = call i8*()* @pop_string()
  call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
 
  ret i32 0
