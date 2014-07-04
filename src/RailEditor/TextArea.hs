@@ -121,7 +121,7 @@ initTextAreaWithContent areaContent = do
     tac <- readIORef areaRef --TextAreaContent
     let
       key = Events.eventKeyName event
-      val = Events.eventKey event
+      val = Events.eventKeyVal event
     --TODO capture before size and after size and resize the TextArea
     pos <- KeyHandler.handleKey tac pos key val
     writeIORef posRef pos
