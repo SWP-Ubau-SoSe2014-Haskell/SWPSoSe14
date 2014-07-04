@@ -55,7 +55,7 @@ import Data.IORef
 import Data.Maybe
 import Control.Monad
 
-data RGBColor = RGBColor Double Double Double
+data RGBColor = RGBColor Double Double Double deriving Show
 data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
 --data CharMap  = ChMap  (IORef (Map Position Char)) (IORef (Integer,Integer))
 -- chMap is a Map(y (x coord char)) where y and x are coords
@@ -98,9 +98,9 @@ init x y = do
   let cMap = CoMap cmapR size
   let hMap = ChMap hmapR size
   return $ TAC hMap cMap undoQ redoQ
-    where
-      hmap = fillCharMapWith (Map.insert 0 Map.empty Map.empty) defaultChar (x,y)
-      cmap = fillMapWith Map.empty defaultColor x y
+--    where
+--      hmap = fillCharMapWith (Map.insert 0 Map.empty Map.empty) defaultChar (x,y)
+--      cmap = fillMapWith Map.empty defaultColor x y
 
 --------------------
 -- Methods
@@ -284,8 +284,7 @@ putColor areaContent (x,y) color = do
   else do-}
     let (CoMap cMap _) = colorMap areaContent
     cmap <- readIORef cMap
-    let cmap = Map.insert (x,y) color cmap
-    writeIORef cMap cmap
+    writeIORef cMap (Map.insert (x,y) color cmap)
 
 -- / sets a cell
 putCell :: TextAreaContent
@@ -322,17 +321,14 @@ getCell areaContent (x,y) = do
   hmap <- readIORef hMap
   cmap <- readIORef cMap
   let valMap =  Map.lookup y hmap
-  let mayColor =  Map.lookup (x,y) cmap
+  let color =  Map.findWithDefault defaultColor (x,y) cmap --now lazy
   case (isNothing valMap) of
     True -> return Nothing
     _ -> do
       let mayValue = Map.lookup x $ fromJust valMap
       case (isNothing mayValue) of
        True -> return Nothing
-       _ -> 
-         case (isNothing mayColor) of
-          True -> return $ Just (fromJust mayValue, defaultColor)
-          _ -> return $ Just (fromJust mayValue, fromJust mayColor)
+       _ -> return $ Just (fromJust mayValue, color)
 
 generateContentList :: TextAreaContent
   -> (Position -> Bool)

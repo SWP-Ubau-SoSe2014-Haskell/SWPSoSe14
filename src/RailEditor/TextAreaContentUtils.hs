@@ -8,7 +8,20 @@ Stability   :  experimental
 
 -}
 
-module TextAreaContentUtils where
+module TextAreaContentUtils (
+-- * Detail
+--
+-- | 'TextAreaContentUtils' serves methods to move Characters in TextAreaContent.
+
+-- * Types
+  Direction,
+
+-- * Methods
+  moveChars,
+  findLastChar,
+  moveLinesUp,
+  moveLinesDownXShift
+  ) where
 
 import Graphics.UI.Gtk
 import Data.IORef
@@ -16,92 +29,140 @@ import Data.Maybe
 import Data.Map as Map
 import Control.Monad
 
-import TextAreaContent
+import qualified TextAreaContent as TAC
 
-data ContentEntry = ContentEntry Position Char
+type Direction = (TAC.Coord,TAC.Coord)
 
-bef = 15.0
-hef = 15.0
+-- / calculates Destination depending on Direction
+calculateDest :: TAC.Position
+  -> Direction
+  -> TAC.Position
+calculateDest (stX,stY) (dirX,dirY) = (stX+dirX,stY+dirY)
 
-captureReturn :: TextAreaContent -> Position -> IO ContentList
-captureReturn areaContent (x,y) = do
-  content <- enter areaContent (x,y)
-  return content
+-- / moves Contents into a Direction
+moveChar :: TAC.TextAreaContent
+  -> TAC.Position
+  -> Direction
+  -> IO()
+moveChar area from dir = do
+  x <- TAC.getCell area from
+  unless (isNothing x) $ do
+    let
+      (char,col) = fromJust x
+      to = calculateDest from dir
+    TAC.putCell area to (char,col)
+    TAC.deleteCell area from
+    return ()
 
-addCharacter :: TextAreaContent -> ContentEntry -> IO () -- Map (remove)
-addCharacter areaContent entry@(ContentEntry pos char) = do
-  key <- getCell areaContent pos
-  when (isJust key) $ do	-- overwrite mode (no shifting of subsequent characters)
-    let (k,_) = fromJust key
-    when (k /= char) $ do
-      res <- deleteCell areaContent pos
+-- / moves amount of Characters of one line
+moveChars :: TAC.TextAreaContent
+  -> TAC.Coord
+  -> TAC.Coord
+  -> TAC.Coord
+  -> Direction
+  -> IO()
+moveChars area stX endX line dir =
+  unless (stX > endX) $
+    if snd dir == 0 && fst dir > 0
+    then do
+      moveChar area (endX,line) dir
+      moveChars area stX (endX-1) line dir
       return ()
-  putValue areaContent pos char
+    else do
+      moveChar area (stX,line) dir
+      moveChars area (stX+1) endX line dir
+      return ()
 
-enter :: TextAreaContent -> Position -> IO ContentList
-enter areaContent (x1,y1) = do
-  newList <- generateContentList areaContent (\(x2,y2) -> x2 >= x1 && y2 == y1 || y2 > y1)
-  shiftDownCharacters areaContent newList
-  return newList
+-- / searchs for last character in Line and returns x-Position, if Line is empty
+--   return -1
+findLastChar :: TAC.TextAreaContent
+  -> TAC.Coord
+  -> IO TAC.Coord
+findLastChar area line = do
+  size <- TAC.size area
+  findLastCharHelper area (fst size) line
+  where
+    findLastCharHelper area x line =
+      if x<0
+      then return (-1)
+      else do
+        cont <- TAC.getCell area (x,line)
+        if isJust cont
+        then return x
+        else findLastCharHelper area (x-1) line
 
-shiftDownCharacters :: TextAreaContent -> ContentList -> IO ()
-shiftDownCharacters _ [] = return ()
-shiftDownCharacters areaContent (((x,y), char):tail) = do
-  shiftDownCharacters areaContent tail
-  putValue areaContent (x,y+hef) char
-  res <- deleteCell areaContent (x,y)
-  return ()
+-- / searchs for last written Line
+findLastWrittenLine :: TAC.TextAreaContent
+  -> IO TAC.Coord
+findLastWrittenLine area = do
+  size <- TAC.size area
+  findLastWrittenLineHelper area (snd size)
+  where
+    findLastWrittenLineHelper area line =
+      if line<0
+      then return(-1)
+      else do
+        finalSelf <- findLastChar area line
+        if finalSelf == (-1)
+        then findLastWrittenLineHelper area (line-1)
+        else return line
 
-backSpaceLine :: Double -> TextAreaContent -> Adjustment -> IO (ContentList,Position,ContentList) 
-backSpaceLine y1 areaContent hAdjustment = do
-  previousLine <- generateContentList areaContent (\(_,y) -> y == y1-hef)
-  let shift = if Prelude.null previousLine then 0 else bef
-  let (x2,y2) = if Prelude.null previousLine then (0,y1-hef) else fst $ maximum previousLine
-  firstLine <- shiftUpFirstLine areaContent (x2+shift,y2) y1 hAdjustment
-  subsequentLines <- shiftUpSubsequentLines areaContent (x2+shift,y2) y1 hAdjustment  
-  return (firstLine,(x2+shift,y2),reverse subsequentLines)
+-- / moves Lines up
+moveLinesUp :: TAC.TextAreaContent
+  -> TAC.Coord
+  -> TAC.Coord
+  -> TAC.Coord
+  -> IO()
+moveLinesUp area line stY finY =
+  unless (line<=0 || line>finY) $ do
+    lastSelf <- findLastChar area line
+    if lastSelf==(-1)
+    then moveLinesUp area (line+1) stY finY
+    else
+      if line == stY
+      then do
+        lastPrev <- findLastChar area line
+        moveChars area 0 lastSelf line (lastPrev+1, -1)
+        moveLinesUp area (line+1) stY finY
+      else do
+        moveChars area 0 lastSelf line (0,-1)
+        moveLinesUp area (line+1) stY finY
 
-shiftUpFirstLine :: TextAreaContent -> Position -> Double -> Adjustment -> IO ContentList
-shiftUpFirstLine areaContent pos y1 hAdjustment = do
-  currentLine <- generateContentList areaContent (\(_,y) -> y == y1) -- depends on entry mode  
-  shiftUpCharacters areaContent pos currentLine
-  return currentLine
+moveLinesDownXShift :: TAC.TextAreaContent
+  -> TAC.Position
+  -> Bool
+  -> IO()
+moveLinesDownXShift area (posX,line) xShift = do
+  lastLine <- findLastWrittenLine area
+  lastSelf <- findLastChar area line
+  unless (line<lastLine || line<0) $
+    if line==lastLine
+    then 
+      moveChars area posX lastSelf line $
+        if xShift then (-posX,1) else (0,1)
+    else
+      if xShift
+      then do
+        moveLinesVertDown area (line+1)
+        moveChars area posX lastSelf line (-posX,1)
+      else do
+        moveLinesVertDown area (line+1)
+        moveChars area posX lastSelf line (0,1)
 
-shiftUpSubsequentLines :: TextAreaContent -> Position -> Double -> Adjustment -> IO ContentList -- dep: shiftCharacters + Map
-shiftUpSubsequentLines areaContent pos y1 hAdjustment = do
-  nextLinesMap <- generateContentList areaContent (\(_,y) -> y > y1)
-  shiftCharacters areaContent nextLinesMap 0 (-hef)
-  return nextLinesMap
+moveLinesVertDown :: TAC.TextAreaContent
+  -> TAC.Coord
+  -> IO()
+moveLinesVertDown area line = do
+  lastLine <- findLastWrittenLine area
+  moveDownHelper area lastLine line
+  where
+    moveDownHelper area line stY =
+      unless (line<stY) $ do
+        lastSelf <- findLastChar area line
+        if lastSelf==(-1)
+        then moveDownHelper area (line-1) stY
+        else do
+          moveChars area 0 lastSelf line (0,1)
+          moveDownHelper area (line-1) stY
 
-shiftUpCharacters :: TextAreaContent -> Position -> ContentList -> IO () -- dep: addToContent + Map
-shiftUpCharacters _ _ [] = return ()
-shiftUpCharacters areaContent (x1,y1) (((x2,y2),char):xs) = do
-  deleteCell areaContent (x2,y2)
-  putValue areaContent (x2+x1,y1) char
-  shiftUpCharacters areaContent (x1,y1) xs
 
-shiftLeftLine :: TextAreaContent -> Position -> Adjustment -> IO ContentList -- dep: shiftCharacters + Map
-shiftLeftLine areaContent (x,y) hAdjustment = do
-  deleteCell areaContent (x,y)
-  currentLineList <- generateContentList areaContent (\(x2,y2) -> x2 > x && y2 == y) -- depends on entry mode 
-  shiftCharacters areaContent currentLineList (-bef) 0
-  return $ reverse currentLineList
-
-shiftCharacters :: TextAreaContent -> ContentList -> Double -> Double -> IO () -- dep: addToContent + Map
-shiftCharacters _ [] _ _ = return ()
-shiftCharacters areaContent ((pos@(x,y),char):xs) bef hef = do
-  deleteCell areaContent pos
-  putValue areaContent (x+bef,y+hef) char
-  shiftCharacters areaContent xs bef hef
-
-updatePosition :: Position -> IO Position
-updatePosition (x,y) = 
-  return (leftX,topY)
-  where leftX = getMultiplier x bef 1
-        topY  = getMultiplier y hef 1
-  
-getMultiplier :: Double -> Double -> Double -> Double
-getMultiplier a b count
-  | a > newValue = getMultiplier a b (count+1)
-  | otherwise = b * (count-1)
-  where newValue = b * count

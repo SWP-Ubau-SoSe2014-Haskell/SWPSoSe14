@@ -119,9 +119,11 @@ initTextAreaWithContent areaContent = do
     readIORef posRef >>= clearCursor textArea
     pos@(x,y) <- readIORef posRef
     tac <- readIORef areaRef --TextAreaContent
-    let key = Events.eventKeyName event
+    let
+      key = Events.eventKeyName event
+      val = Events.eventKey event
     --TODO capture before size and after size and resize the TextArea
-    pos <- KeyHandler.handleKey tac pos key
+    pos <- KeyHandler.handleKey tac pos key val
     writeIORef posRef pos
    -- runActions textArea actions --On the visible part of TextArea
     HIGH.highlight tac
