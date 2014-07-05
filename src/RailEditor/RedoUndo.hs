@@ -19,64 +19,59 @@ module RedoUndo (
     import qualified TextAreaContent as TAC
     import qualified TextAreaContentUtils as TACU
 
--- this has to be part of TAC
--- TAC { ...  undoQueue: IORef ActionQueue, redoQueue: IORef ActionQueue }
-    data Action = Remove String | Insert String | Replace String String | MoveTo Position
-		type ActionQueue = [(Action, Position)]
-
     -- functions --
-    invert :: (Action, Position) -> (Action, Position)
-    invert (Remove string, pos) = (Insert string, pos)
-    invert (Insert string, pos) = (Remove string, pos)
-    invert (Replace a b, pos) = (Replace b a, pos)
-    invert (MoveTo a, b) = (MoveTo b, a)
+    invert :: (TAC.Action, TAC.Position) -> (TAC.Action, TAC.Position)
+    invert (TAC.Remove string, pos) = (TAC.Insert string, pos)
+    invert (TAC.Insert string, pos) = (TAC.Remove string, pos)
+    invert (TAC.Replace a b, pos) = (TAC.Replace b a, pos)
+    invert (TAC.MoveTo a, b) = (TAC.MoveTo b, a)
 
     -- add a given function to our queues
-    addaction :: TextAreaContent -> Action -> Position -> IO ()
+    addaction :: TAC.TextAreaContent -> TAC.Action -> TAC.Position -> IO ()
     addaction tac action position
      | not (null redoqueue) = do
-        writeIORef (redoQueue tac) []
+        writeIORef (TAC.redoQueue tac) []
         addaction tac action position
      | otherwise = do
-        undoqueue <- readIORef (undoQueue tac)
-        writeIORef (undoQueue tac) (invert (action, position):undoqueue)
+        undoqueue <- readIORef (TAC.undoQueue tac)
+        writeIORef (TAC.undoQueue tac) (invert (action, position):undoqueue)
 
     -- gets the action to to and move it from one queue to the opposite one
-    shiftaction :: (ActionQueue, ActionQueue) -> (ActionQueue, ActionQueue, Action)
+    shiftaction :: (TAC.ActionQueue, TAC.ActionQueue) -> (TAC.ActionQueue, TAC.ActionQueue, TAC.Action)
     shiftaction (from, to) = (tail from, invert (head from):to, head from)
 
     -- convert something from the keyhandler to an action
-    toaction :: KeyPress -> Action
+    toaction :: ??? -> TAC.Action
     toaction = undefined
 
     -- run whatever action given
-    runaction :: Action -> IO ()
+    runaction :: TAC.Action -> IO ()
     runaction = undefined
 
     -- something was done in the editor
-    action :: TextAreaContent -> KeyPress -> IO ()
+    action :: TAC.TextAreaContent -> ??? -> IO ()
     action tac keypress = addaction tac (toaction keypress)
 
     -- allows to undo actions in the editor
-    undo :: TextAreaContent -> IO ()
+    undo :: TAC.TextAreaContent -> IO ()
     undo tac
-      | null (undoQueue tac) = return ()
+      | null (TAC.undoQueue tac) = return ()
       | otherwise = do
-         redoqueue <- readIORef (redoQueue tac)
-         undoqueue <- readIORef (undoQueue tac)
+         redoqueue <- readIORef (TAC.redoQueue tac)
+         undoqueue <- readIORef (TAC.undoQueue tac)
          let (newundo, newredo, action) = shiftaction (undoqueue, redoqueue)
-				 writeIORef (redoQueue tac) newredo
-         writeIORef (undoQueue tac) newundo
+         writeIORef (TAC.redoQueue tac) newredo
+         writeIORef (TAC.undoQueue tac) newundo
          runaction action
 
     -- allows to redo actions in the editor
-    redo :: TextAreaContent -> IO ()
+    redo :: TAC.TextAreaContent -> IO ()
     redo tac
-      | null (redoQueue tac) = return ()
+      | null (TAC.redoQueue tac) = return ()
       | otherwise = do
-         redoqueue <- readIORef (redoQueue tac)
-         undoqueue <- readIORef (undoQueue tac)
+         redoqueue <- readIORef (TAC.redoQueue tac)
+         undoqueue <- readIORef (TAC.undoQueue tac)
          let (newredo, newundo, action) = shiftaction (redoqueue, undoqueue)
-				 writeIORef (redoQueue tac) newredo
-         writeIORef (undoQueue tac) newundo
+         writeIORef (TAC.redoQueue tac) newredo
+         writeIORef (TAC.undoQueue tac) newundo
          runaction action
