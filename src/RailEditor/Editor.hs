@@ -13,12 +13,11 @@ module Main (
                     -- to be completed with missing required functions
               )
   where
-    
+
     -- imports --
-    import qualified MainWindow as MW
-    
+import qualified MainWindow
     -- functions --
-    
+
     -- main-function calling the editor
-    main :: IO()
-    main = MW.createMainWindow -- TODO: implement this functions
+main :: IO ()
+main = MainWindow.create

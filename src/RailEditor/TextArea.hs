@@ -18,6 +18,8 @@ module TextArea(
   initTextArea,
 -- * Constants
 -- * Methods
+  textAreaContent,
+  setTextAreaContent,
   getTextAreaContainer -- This function should be used to get a widget to place in MainWindow
   )where
     
