@@ -43,7 +43,7 @@ import qualified Graphics.UI.Gtk.Gdk.GC as GC
 data TextArea = TA { drawingArea :: GTK.DrawingArea,
     textAreaContent :: IORef (TAC.TextAreaContent), --The TAC
     scrolledWindow :: GTK.ScrolledWindow, --The part to bind it in a container
-    currentPosition :: IORef (TAC.Position), --The current position of cursor
+    currentPosition :: IORef (TAC.Position), --The current position of cursor without hef and bef
     vAdjustment :: GTK.Adjustment, --needed to create a scrolledWindow
     hAdjustment :: GTK.Adjustment } --needed to create a scrolledWindow
 
@@ -115,24 +115,31 @@ initTextAreaWithContent areaContent = do
     It starts the heyHandler the highlighter and redraw the textAreaContent.
   -}
   GTK.onKeyPress drawArea $ \event -> do
-    let drawArea = drawingArea textArea
-        posRef   = currentPosition textArea
-        areaRef  = textAreaContent textArea
+    let 
+      drawArea = drawingArea textArea
+      posRef   = currentPosition textArea
+      areaRef  = textAreaContent textArea
+      key = Events.eventKeyName event
+      val = Events.eventKeyVal event
     readIORef posRef >>= clearCursor textArea
     pos@(x,y) <- readIORef posRef
     tac <- readIORef areaRef --TextAreaContent
-    let
-      key = Events.eventKeyName event
-      val = Events.eventKeyVal event
-    --TODO capture before size and after size and resize the TextArea
+    sizeBefore@(xB,yB) <- TAC.size tac
     pos <- KeyHandler.handleKey tac pos key val
+    sizeAfter@(xA,yA) <- TAC.size tac
+ 
+    --expand the drawWindow when needed
+    when (not(TAC.eqPos sizeBefore sizeAfter)) $ do
+      extendDrawingAreaHorizontally textArea (xA-xB)
+      extendDrawingAreaVertically textArea (yA-yB)
+ 
     writeIORef posRef pos
    -- runActions textArea actions --On the visible part of TextArea
     HIGH.highlight tac
-    showCursor textArea pos
     redrawContent textArea
+    showCursor textArea pos
     return $ Events.eventSent event
-    
+ 
   {-
     Called when the application starts
     It setting the cursor and draw the textAreaContent
@@ -145,6 +152,7 @@ initTextAreaWithContent areaContent = do
     redrawContent textArea
     return sent
   return textArea
+
 
 {-
   This function setup the DrawArea using GTK.DrawingArea.
@@ -159,9 +167,11 @@ setUpDrawingArea = do
 
 --This handles a mouse button press event
 handleButtonPress :: TextArea -> TAC.Position -> IO (TAC.Position)  
-handleButtonPress textArea pos = do
-  showCursor textArea pos
-  return pos
+handleButtonPress textArea (x,y) = do
+  let curPosIORef = currentPosition textArea
+  showCursor textArea newPos
+  return newPos
+  where newPos = ((div x bef),(div y hef))-- position without hef and bef
 
 {-
   This function renders a character at the given position.
@@ -181,7 +191,7 @@ renderScene textArea (x,y) char (TAC.RGBColor r g b) = do
 --This function returns the y coord in relation to drawingArea    
 yCoord :: TAC.Coord -> TAC.Coord
 yCoord 0 = hef
-yCoord y = (y*hef)
+yCoord y = (y*hef)+hef
 
 --This function returns the  coord in relation to drawingArea  
 xCoord :: TAC.Coord -> TAC.Coord
@@ -240,7 +250,9 @@ redrawContent textArea = do
   let tacIORef = textAreaContent textArea
   tac <- readIORef tacIORef
   s@(xMax,yMax) <- TAC.size tac
-  checkAndDraw tac [0..xMax] [0..yMax]
+  --Function from Control.Monad Monad m => [a] -> (a -> m b) -> m ()
+  conPos <- TAC.getOccupiedPositions tac
+  forM_ conPos (\pos -> draw tac pos)
   where
     -- Call renderScene to 
     draw:: TAC.TextAreaContent -> TAC.Position -> IO()
@@ -254,18 +266,7 @@ redrawContent textArea = do
           char = fst $ fromJust $ mayCell
         renderScene textArea (x,y) char col
       return ()
-    --This call draw on every possible coord  
-    checkAndDraw :: TAC.TextAreaContent -> [TAC.Coord] -> [TAC.Coord] -> IO ()
-    checkAndDraw _ [] _ = return ()
-    checkAndDraw tac (x:xs) ys = do
-      checkAndDrawHelp tac x ys
-      checkAndDraw tac xs ys
-    checkAndDrawHelp :: TAC.TextAreaContent -> TAC.Coord -> [TAC.Coord] -> IO ()
-    checkAndDrawHelp _ _ [] = return ()
-    checkAndDrawHelp tac x (y:ys) = do
-      draw tac (x,y)
-      checkAndDrawHelp tac x ys
-      
+
 --Draws a cursor at the position.
 --The function adds the TACU offsets
 showCursor :: TextArea -> TAC.Position -> IO ()
@@ -274,7 +275,7 @@ showCursor textArea (x,y) = do
   drawWindow <- GTK.widgetGetDrawWindow drawArea
   gc <- GC.gcNew drawWindow
   GC.gcSetValues gc $ GC.newGCValues { GC.foreground = defaultCursorColor }
-  GTK.drawRectangle drawWindow gc True x y 2 hef
+  GTK.drawRectangle drawWindow gc True (curX (x*bef)) (curY (y*hef)) 2 hef
   return ()
 
 -- delets the cursor at the given position.
@@ -282,15 +283,26 @@ clearCursor :: TextArea -> TAC.Position -> IO ()
 clearCursor textArea (x,y) = do
   let drawArea = drawingArea textArea
   drawWindow <- GTK.widgetGetDrawWindow drawArea
-  GTK.drawWindowClearArea drawWindow (fromIntegral x) (fromIntegral y) 2 (fromIntegral(hef))
+  GTK.drawWindowClearArea drawWindow 
+    (fromIntegral (curX (x*bef))) 
+    (fromIntegral (curY (y*hef)))
+    2
+    (fromIntegral(hef))
+
+--Coords for the cursor to fit the cells of characters
+curX x = abs(x-(mod x bef)-1)
+curY y = y-(mod y hef)
+
 {-
   This function extends the TextAre horizontal.
   It should be called after KeyHandler 
   if prev TAC.size tac < after TAC.size tac
 -}
-extendDrawingAreaHorizontally :: TextArea -> GTK.Adjustment -> TAC.Coord -> IO ()
-extendDrawingAreaHorizontally textArea adjustment x = do 
-  let drawArea = drawingArea textArea
+extendDrawingAreaHorizontally :: TextArea -> TAC.Coord -> IO ()
+extendDrawingAreaHorizontally textArea x = do 
+  let 
+    drawArea = drawingArea textArea
+    adjustment = hAdjustment textArea
   (w,h) <- GTK.widgetGetSizeRequest drawArea
   value <- GTK.adjustmentGetValue adjustment
   when (width + round(value) - x - bef < bef) $ do
@@ -302,9 +314,11 @@ extendDrawingAreaHorizontally textArea adjustment x = do
   It should be called after KeyHandler 
   if prev TAC.size tac < after TAC.size tac
 -}
-extendDrawingAreaVertically :: TextArea -> GTK.Adjustment -> TAC.Coord -> IO ()
-extendDrawingAreaVertically textArea adjustment y = do 
-  let drawArea = drawingArea textArea
+extendDrawingAreaVertically :: TextArea -> TAC.Coord -> IO ()
+extendDrawingAreaVertically textArea y = do 
+  let 
+    drawArea = drawingArea textArea
+    adjustment = vAdjustment textArea
   (w,h) <- GTK.widgetGetSizeRequest drawArea
   value <- GTK.adjustmentGetValue adjustment
   when (height + round(value) - y - hef < hef) $ do
