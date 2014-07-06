@@ -120,10 +120,12 @@ initTextAreaWithContent areaContent = do
     pos@(x,y) <- readIORef posRef
     tac <- readIORef areaRef --TextAreaContent
     let
+      modif = Events.eventModifier event
       key = Events.eventKeyName event
       val = Events.eventKeyVal event
+      modus = "Normal"
     --TODO capture before size and after size and resize the TextArea
-    pos <- KeyHandler.handleKey tac pos key val
+    pos <- KeyHandler.handleKey tac pos modus modif key val
     writeIORef posRef pos
    -- runActions textArea actions --On the visible part of TextArea
     HIGH.highlight tac

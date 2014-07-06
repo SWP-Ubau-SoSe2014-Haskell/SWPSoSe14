@@ -19,36 +19,158 @@ import Data.Maybe
 import TextAreaContent as TAC
 import TextAreaContentUtils as TACU
 
+--handleKey tac pos modus modif key val
+handleKey :: TAC.TextAreaContent
+  -> Position
+  -> String
+  -> [Modifier]
+  -> String
+  -> KeyVal
+  -> IO(TAC.Position)
+handleKey tac pos modus modif key val = 
+  case modus of
+    "Normal" -> handleKeyNorm tac pos modif key val
+    "Insert" -> handleKeyIns tac pos modif key val
+    "Special" -> handleKeySpec tac pos modif key val
 
-handleKey :: TAC.TextAreaContent -> Position -> String -> KeyVal -> IO(TAC.Position)
-handleKey tac (x,y) key val = 
+handleKeyNorm :: TAC.TextAreaContent
+  -> Position
+  -> [Modifier]
+  -> String
+  -> KeyVal
+  -> IO(TAC.Position)
+handleKeyNorm tac pos@(x,y) modif key val =
   if isJust $ keyToChar val
-  then do
-    putStrLn "1"
-    let char = fromJust $ keyToChar val
-    putStrLn "2"
-    handlePrintKeyEinfg tac (x,y) char
-    putStrLn "3"
-    return (((x+1),y))
-  else return (5,6)
+  then handlePrintKeyNorm tac pos val
+  else do
+    if isArrow key
+    then handleArrowsNorm key pos tac
+    else
+      case key of
+        "BackSpace" -> handleBackSpace tac pos
+        "Return" -> handleReturn tac pos
+        "Tab" -> handleTab tac pos modif
+        "Delete" -> handleDelete tac pos
+        "Begin" -> return (0,y)
+        "End" -> do
+          finX <- TACU.findLastChar tac y
+          return ((if finX==(-1) then 0 else finX),y)
+        _ -> return pos
 
-handlePrintKeyEinfg :: TAC.TextAreaContent -> TAC.Position -> Char -> IO()
-handlePrintKeyEinfg tac pos val = do
-  putCell tac pos (val,TAC.defaultColor)
---handlePrintKeyNorm
+handleKeyIns :: TAC.TextAreaContent
+  -> Position
+  -> [Modifier]
+  -> String
+  -> KeyVal
+  -> IO(TAC.Position)
+handleKeyIns tac pos@(x,y) modif key val =
+  if isJust $ keyToChar val
+  then handlePrintKeyIns tac pos val
+  else
+    if isArrow key
+    then handleArrowsNorm key pos tac
+    else
+      case key of
+        "BackSpace" -> handleBackSpace tac pos
+        "Return" -> handleReturn tac pos
+        "Tab" -> handleTab tac pos modif
+        "Delete" -> handleDelete tac pos
+        "Begin" -> return (0,y)
+        "End" -> do
+          finX <- TACU.findLastChar tac y
+          return ((if finX==(-1) then 0 else finX),y)
+        _ -> return pos
 
---handleBackspace
+handleKeySpec :: TAC.TextAreaContent
+  -> Position
+  -> [Modifier]
+  -> String
+  -> KeyVal
+  -> IO(TAC.Position)
+handleKeySpec tac pos@(x,y) modif key val =
+  if isJust $ keyToChar val
+  then handlePrintKeyIns tac pos val
+  else
+    if isArrow key
+    then
+      handleArrowsSpec key pos tac
+    else
+      case key of
+        "BackSpace" -> handleBackSpace tac pos
+        "ReturnSpec" -> handleReturn tac pos
+        "Tab" -> handleTab tac pos modif
+        "Delete" -> handleDelete tac pos
+        "Begin" -> return (0,y)
+        "End" -> do
+          finX <- TACU.findLastChar tac y
+          return ((if finX==(-1) then 0 else finX),y)
+        _ -> return pos
 
---handleReturnRail
+handlePrintKeyIns :: TAC.TextAreaContent -> TAC.Position -> KeyVal -> IO(TAC.Position)
+handlePrintKeyIns tac pos@(x,y) val = do
+  let char = fromJust $ keyToChar val
+  TAC.putCell tac pos (char,TAC.defaultColor)
+  return (x+1,y)
 
---handleReturn
+handlePrintKeyNorm :: TAC.TextAreaContent -> TAC.Position -> KeyVal -> IO(TAC.Position)
+handlePrintKeyNorm tac (x,y) val = do
+  finX <- TACU.findLastChar tac y
+  let char = fromJust $ keyToChar val
+  TACU.moveChars tac x finX y (1,0)
+  TAC.putCell tac (x,y) (char,TAC.defaultColor)
+  return (x+1,y)
 
---handleTab
+isArrow :: String
+  -> Bool
+isArrow key = elem key ["Left", "Right", "Up", "Down"]
 
---handleShiftTab
+--TODO adjust
+handleArrowsNorm :: String
+  -> TAC.Position
+  -> TAC.TextAreaContent
+  -> IO(TAC.Position)
+handleArrowsNorm key pos@(x,y) tac = do
+  (maxX,maxY) <- TAC.size tac
+  case key of
+    "Left" -> return $ if x==0 then (x,y) else (x-1,y)
+    "Right" -> return $ if x==maxX then (x,y) else (x+1,y)
+    "Up" -> return $ if y==0 then (x,y) else (x,y-1)
+    "Down" -> return $ if y==maxY then (x,y) else (x,y+1)
 
---handleDelete
+handleArrowsSpec :: String
+  -> TAC.Position
+  -> TAC.TextAreaContent
+  -> IO(TAC.Position)
+handleArrowsSpec key pos@(x,y) tac = do
+  (maxX,maxY) <- TAC.size tac
+  case key of
+    "Left" -> return $ if x==0 then (x,y) else (x-1,y)
+    "Right" -> return $ if x==maxX then (x,y) else (x+1,y)
+    "Up" -> return $ if y==0 then (x,y) else (x,y-1)
+    "Down" -> return $ if y==maxY then (x,y) else (x,y+1)
 
---handlePos1
+handleBackSpace tac (x,y) = 
+  case (x,y) of
+    (0,0) -> return (0,0)
+    (0,_) -> do
+      finXPrev <- TACU.findLastChar tac (y-1)
+      TACU.moveLinesUp tac y
+      return((finXPrev+1),y-1)
+    (_,_) -> do
+      finX <- TACU.findLastChar tac y
+      TAC.deleteCell tac (x-1,y)
+      TACU.moveChars tac x (finX+1) y (-1,0)
+      return (x-1,y)
 
---handleEnd
+handleReturnRail tac (x,y) = return(x,y)
+
+handleReturn tac pos@(x,y) = do
+  moveLinesDownXShift tac pos True
+  return (0,y+1)
+
+handleTab tac (x,y) modif = return(x,y)
+
+handleShiftTab tac (x,y) = return(x,y)
+
+handleDelete tac (x,y) = return(x,y)
+
