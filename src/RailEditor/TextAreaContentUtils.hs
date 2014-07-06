@@ -19,6 +19,7 @@ module TextAreaContentUtils (
 -- * Methods
   moveChars,
   findLastChar,
+  findLastCharBefore,
   moveLinesUp,
   moveLinesDownXShift
   ) where
@@ -80,16 +81,20 @@ findLastChar :: TAC.TextAreaContent
   -> IO TAC.Coord
 findLastChar area line = do
   size <- TAC.size area
-  findLastCharHelper area (fst size) line
-  where
-    findLastCharHelper area x line =
-      if x<0
-      then return (-1)
-      else do
-        cont <- TAC.getCell area (x,line)
-        if isJust cont
-        then return x
-        else findLastCharHelper area (x-1) line
+  findLastCharBefore area (fst size) line
+
+findLastCharBefore :: TAC.TextAreaContent
+  -> TAC.Coord
+  -> TAC.Coord
+  -> IO TAC.Coord
+findLastCharBefore area x line =
+  if x<0
+  then return (-1)
+  else do
+    cont <- TAC.getCell area (x,line)
+    if isJust cont
+    then return x
+    else findLastCharBefore area (x-1) line
 
 -- / searchs for last written Line
 findLastWrittenLine :: TAC.TextAreaContent
@@ -110,23 +115,25 @@ findLastWrittenLine area = do
 -- / moves Lines up
 moveLinesUp :: TAC.TextAreaContent
   -> TAC.Coord
-  -> TAC.Coord
-  -> TAC.Coord
   -> IO()
-moveLinesUp area line stY finY =
-  unless (line<=0 || line>finY) $ do
-    lastSelf <- findLastChar area line
-    if lastSelf==(-1)
-    then moveLinesUp area (line+1) stY finY
-    else
-      if line == stY
-      then do
-        lastPrev <- findLastChar area line
-        moveChars area 0 lastSelf line (lastPrev+1, -1)
-        moveLinesUp area (line+1) stY finY
-      else do
-        moveChars area 0 lastSelf line (0,-1)
-        moveLinesUp area (line+1) stY finY
+moveLinesUp area line = do
+  finY <- findLastWrittenLine area
+  moveLinesUpHelper area line line finY
+  where
+      moveLinesUpHelper area line stY finY = 
+        unless (line<=0 || line>finY) $ do
+          lastSelf <- findLastChar area line
+          if lastSelf==(-1)
+          then moveLinesUpHelper area (line+1) stY finY
+          else
+            if line == stY
+            then do
+              lastPrev <- findLastChar area line
+              moveChars area 0 lastSelf line (lastPrev+1, -1)
+              moveLinesUpHelper area (line+1) stY finY
+            else do
+              moveChars area 0 lastSelf line (0,-1)
+              moveLinesUpHelper area (line+1) stY finY
 
 moveLinesDownXShift :: TAC.TextAreaContent
   -> TAC.Position

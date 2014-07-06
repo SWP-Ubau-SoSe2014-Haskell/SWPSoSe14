@@ -119,20 +119,22 @@ initTextAreaWithContent areaContent = do
       drawArea = drawingArea textArea
       posRef   = currentPosition textArea
       areaRef  = textAreaContent textArea
+      modif = Events.eventModifier event
       key = Events.eventKeyName event
       val = Events.eventKeyVal event
+      modus = "Normal"
     readIORef posRef >>= clearCursor textArea
     pos@(x,y) <- readIORef posRef
     tac <- readIORef areaRef --TextAreaContent
     sizeBefore@(xB,yB) <- TAC.size tac
-    pos <- KeyHandler.handleKey tac pos key val
+    pos <- KeyHandler.handleKey tac pos modus modif key val
     sizeAfter@(xA,yA) <- TAC.size tac
  
     --expand the drawWindow when needed
     when (not(TAC.eqPos sizeBefore sizeAfter)) $ do
       extendDrawingAreaHorizontally textArea (xA-xB)
       extendDrawingAreaVertically textArea (yA-yB)
- 
+      
     writeIORef posRef pos
    -- runActions textArea actions --On the visible part of TextArea
     HIGH.highlight tac
