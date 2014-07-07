@@ -37,9 +37,9 @@ handleKey tac pos modus modif key val =
     else History.undo tac pos
   else
     case modus of
-      "Normal" -> handleKeyNorm tac pos modif key val
-      "Insert" -> handleKeyIns tac pos modif key val
-      "Special" -> handleKeySpec tac pos modif key val
+      "Insert" -> handleKeyNorm tac pos modif key val
+      "Replace" -> handleKeyIns tac pos modif key val
+      "Smart" -> handleKeySpec tac pos modif key val
 
 handleKeyNorm :: TAC.TextAreaContent
   -> Position
@@ -145,10 +145,38 @@ handleArrowsNorm :: String
 handleArrowsNorm key pos@(x,y) tac = do
   (maxX,maxY) <- TAC.size tac
   case key of
-    "Left" -> return $ if x==0 then (x,y) else (x-1,y)
-    "Right" -> return $ if x==maxX then (x,y) else (x+1,y)
-    "Up" -> return $ if y==0 then (x,y) else (x,y-1)
-    "Down" -> return $ if y==maxY then (x,y) else (x,y+1)
+    "Left" ->
+      if x==0 && y==0
+      then return (x,y)
+      else
+        if x==0
+        then do
+          finPrev <- TACU.findLastChar tac (y-1)
+          return (finPrev+1,y-1)
+        else return (x-1,y)
+    "Right" ->
+      if x==maxX && y==maxY
+      then return(x,y)
+      else 
+        if x==maxX
+        then return (0,y+1)
+        else return (x+1,y)
+    "Up" ->
+      if y==0
+      then return (x,y)
+      else do
+        finPrev <- TACU.findLastChar tac (y-1)
+        if finPrev<x
+        then return (finPrev+1,y-1)
+        else return (x,y-1)
+    "Down" ->
+      if y==maxY
+      then return (x,y)
+      else do
+        finNext <- TACU.findLastChar tac (y+1)
+        if finNext<x
+        then return (finNext+1,y+1)
+        else return (x,y+1)
 
 handleArrowsSpec :: String
   -> TAC.Position
@@ -157,8 +185,20 @@ handleArrowsSpec :: String
 handleArrowsSpec key pos@(x,y) tac = do
   (maxX,maxY) <- TAC.size tac
   case key of
-    "Left" -> return $ if x==0 then (x,y) else (x-1,y)
-    "Right" -> return $ if x==maxX then (x,y) else (x+1,y)
+    "Left" -> return $
+      if x==0 && y==0
+      then (x,y)
+      else
+        if x==0
+        then (maxX,y-1)
+        else (x-1,y)
+    "Right" -> return $
+      if x==maxX && y==maxY
+      then (x,y)
+      else
+        if x==maxX
+        then (0,y+1)
+        else (x+1,y)
     "Up" -> return $ if y==0 then (x,y) else (x,y-1)
     "Down" -> return $ if y==maxY then (x,y) else (x,y+1)
 
@@ -171,9 +211,12 @@ handleBackSpace tac (x,y) =
       return(finXPrev+1,y-1)
     (_,_) -> do
       finX <- TACU.findLastChar tac y
-      TAC.deleteCell tac (x-1,y)
-      TACU.moveChars tac x finX y (-1,0)
-      return (x-1,y)
+      if finX==(-1)
+      then return(0,y)
+      else do
+        TAC.deleteCell tac (x-1,y)
+        TACU.moveChars tac x finX y (-1,0)
+        return (x-1,y)
 
 handleReturnRail tac pos@(x,y) = do
   moveLinesDownXShift tac pos False

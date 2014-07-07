@@ -122,7 +122,7 @@ initTextAreaWithContent areaContent = do
       modif = Events.eventModifier event
       key = Events.eventKeyName event
       val = Events.eventKeyVal event
-      modus = "Normal"
+      modus = "Insert"
     readIORef posRef >>= clearCursor textArea
     pos@(x,y) <- readIORef posRef
     tac <- readIORef areaRef --TextAreaContent
