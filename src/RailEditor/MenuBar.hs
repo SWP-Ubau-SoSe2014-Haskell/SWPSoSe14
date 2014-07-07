@@ -19,6 +19,7 @@ module MenuBar (
 
 import TextArea
 import TextAreaContent
+import qualified Highlighter as HIGH
 import Execute
 import Graphics.UI.Gtk
 import qualified Control.Exception as Exc
@@ -50,7 +51,7 @@ fileChooserEventHandler window area fileChooser response mode
         content <- readFile path
         newAreaContent <- deserialize content
         setTextAreaContent area newAreaContent
---        syntaxHighlighting areaContent
+        HIGH.highlight newAreaContent
         widgetDestroy fileChooser
         return()
       "SaveFile" -> do

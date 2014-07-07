@@ -127,6 +127,7 @@ initTextAreaWithContent areaContent = do
     pos@(x,y) <- readIORef posRef
     tac <- readIORef areaRef --TextAreaContent
     sizeBefore@(xB,yB) <- TAC.size tac
+    removeContent textArea
     pos <- KeyHandler.handleKey tac pos modus modif key val
     sizeAfter@(xA,yA) <- TAC.size tac
  
@@ -136,8 +137,10 @@ initTextAreaWithContent areaContent = do
       extendDrawingAreaVertically textArea (yA-yB)
       
     writeIORef posRef pos
+    
    -- runActions textArea actions --On the visible part of TextArea
     HIGH.highlight tac
+    
     redrawContent textArea
     showCursor textArea pos
     return $ Events.eventSent event
