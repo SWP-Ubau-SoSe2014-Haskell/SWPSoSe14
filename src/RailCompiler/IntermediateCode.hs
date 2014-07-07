@@ -19,6 +19,8 @@ module IntermediateCode(process) where
 -- imports --
 import ErrorHandling as EH
 import InterfaceDT as IDT
+import FunctionDeclarations
+import TypeDefinitions
 
 import Control.Applicative
 import Control.Monad.State
@@ -145,240 +147,8 @@ generateVariables = map createGlobalVariable . getAllVars
     checkVars :: Lexeme -> Bool
     checkVars (Pop v) = True
     checkVars _ = False
+
 --------------------------------------------------------------------------------
-
--- |Opaque type definition for the stack_element struct, defined in stack.ll.
-stackElementTypeDef :: Definition
-stackElementTypeDef = TypeDefinition (Name "stack_element") Nothing
-
--- |Pointer type for 'i8*' used e.g. as "string" pointer
-bytePointerType :: Type
-bytePointerType = PointerType {
-  pointerReferent = IntegerType 8,
-  pointerAddrSpace = AddrSpace 0
-}
-
--- |Pointer type for 'i8**' used as variable pointer
-bytePointerTypeVar :: Type
-bytePointerTypeVar = PointerType {
-  pointerReferent = PointerType {
-    pointerReferent = IntegerType 8,
-    pointerAddrSpace = AddrSpace 0
-  },
-  pointerAddrSpace = AddrSpace 0
-}
-
--- |Pointer type: %stack_element* (see stack.ll).
-stackElementPointerType :: Type
-stackElementPointerType = PointerType {
-    pointerReferent = NamedTypeReference $ Name "stack_element",
-    pointerAddrSpace = AddrSpace 0
-}
-
--- |Function declaration for 'start'.
-start :: Definition
-start = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "start",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'underflow_check'.
-underflowCheck :: Definition
-underflowCheck = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "underflow_check",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'print'.
-print :: Definition
-print = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "print",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'crash'.
-crash :: Definition
-crash = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "crash",
-  Global.returnType = VoidType,
-  Global.parameters = ([ Parameter (IntegerType 1) (Name "is_custom_error") [] ], False)
-}
-
--- |Function declaration for 'finish'.
-finish :: Definition
-finish = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "finish",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'input'.
-inputFunc :: Definition
-inputFunc = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "input",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'eof_check'.
-eofCheck :: Definition
-eofCheck = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "eof_check",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'add'.
-add :: Definition
-add = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "add",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'rem'.
-rem1 :: Definition
-rem1 = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "rem",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'sub'.
-sub :: Definition
-sub = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "sub",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'mul'.
-mul :: Definition
-mul = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "mult",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'div'.
-div1 :: Definition
-div1 = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "div",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for pushing constants.
-pushStringCpy :: Definition
-pushStringCpy = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "push_string_cpy",
-  Global.returnType = stackElementPointerType,
-  Global.parameters = ([ Parameter bytePointerType (UnName 0) [] ], False)
-}
-
--- |Function declaration for 'pop'.
-pop :: Definition
-pop = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "pop",
-  Global.returnType = bytePointerType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'peek'
-peek :: Definition
-peek = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "peek",
-  Global.returnType = bytePointerType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'streq'
-streq :: Definition
-streq = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "streq",
-  Global.returnType = bytePointerType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'strlen'
-strlen :: Definition
-strlen = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "strlen",
-  Global.returnType = bytePointerType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'strapp'
-strapp :: Definition
-strapp = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "strapp",
-  Global.returnType = bytePointerType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'strcut'.
-strcut :: Definition
-strcut = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "strcut",
-  Global.returnType = bytePointerType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'pop_int'
-popInt :: Definition
-popInt = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "pop_int",
-  Global.returnType = IntegerType 64,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'equal'
-equal :: Definition
-equal = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "equal",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'greater'
-greater :: Definition
-greater = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "greater",
-  Global.returnType = VoidType,
-  Global.parameters = ([], False)
-}
-
--- |Function declaration for 'pop_into'
-popInto :: Definition
-popInto = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "pop_into",
-  Global.returnType = VoidType,
-  Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name  
-    "struct.table") (AddrSpace 0)) (UnName 0) [], 
-    Parameter bytePointerType (UnName 0) [] ], False)
-}
-
--- |Function declaration for 'push_from'
-pushFrom :: Definition
-pushFrom = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "push_from",
-  Global.returnType = VoidType,
-  Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name  
-    "struct.table") (AddrSpace 0)) (UnName 0) [], 
-    Parameter bytePointerType (UnName 0) [] ], False)
-}
-
--- |Function declaration for initialising of the symbol table
-initialiseSymbolTable :: Definition
-initialiseSymbolTable = GlobalDefinition $ Global.functionDefaults {
-  Global.name = Name "initialise",
-  Global.returnType = VoidType,
-  Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
-    Name "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
-}
 
 -- |Struct declaration for the symbol table
 structTable :: Definition
@@ -409,7 +179,7 @@ generateInstruction (Junction label) = do
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "pop_int",
+    function = Right $ ConstantOperand $ GlobalReference $ Name "pop_bool",
     arguments = [],
     functionAttributes = [],
     metadata = []
@@ -809,14 +579,14 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 -- |Entry point into module.
 process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++ 
-    [ stackElementTypeDef, structTable, underflowCheck, IntermediateCode.print, crash, start, finish, inputFunc,
+    [ stackElementTypeDef, structTable, underflowCheck, FunctionDeclarations.print, crash, start, finish, inputFunc,
       eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
-      popInt, equal, greater, popInto, pushFrom, initialiseSymbolTable ] ++ generateFunctionsFoo input
+      popInt, equal, greater, popInto, pushFrom, popBool, initialiseSymbolTable ] ++ codegen input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input
-    d = fromList $ zipWith foo [0..] $ getAllCons input
-    foo index (Constant s) = (s, (length s, index)) --TODO rename foo to something meaningful e.g. createSymTable
-    generateFunctionsFoo input = execGlobalCodegen d $ generateFunctions input
+    constantPool = fromList $ zipWith createConstantPoolEntry [0..] $ getAllCons input
+    createConstantPoolEntry index (Constant s) = (s, (length s, index))
+    codegen input = execGlobalCodegen constantPool $ generateFunctions input
 
 -- vim:ts=2 sw=2 et

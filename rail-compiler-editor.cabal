@@ -30,6 +30,8 @@ library
     Preprocessor
     SemanticalAnalysis
     SyntacticalAnalysis
+    FunctionDeclarations
+    TypeDefinitions
   hs-source-dirs: src/RailCompiler
   default-language: Haskell2010
 
