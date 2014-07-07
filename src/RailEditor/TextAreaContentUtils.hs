@@ -128,7 +128,7 @@ moveLinesUp area line = do
           else
             if line == stY
             then do
-              lastPrev <- findLastChar area line
+              lastPrev <- findLastChar area (line-1)
               moveChars area 0 lastSelf line (lastPrev+1, -1)
               moveLinesUpHelper area (line+1) stY finY
             else do
@@ -142,7 +142,7 @@ moveLinesDownXShift :: TAC.TextAreaContent
 moveLinesDownXShift area (posX,line) xShift = do
   lastLine <- findLastWrittenLine area
   lastSelf <- findLastChar area line
-  unless (line<lastLine || line<0) $
+  unless (line>lastLine || line<0) $
     if line==lastLine
     then 
       moveChars area posX lastSelf line $

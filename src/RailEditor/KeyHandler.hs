@@ -29,10 +29,17 @@ handleKey :: TAC.TextAreaContent
   -> KeyVal
   -> IO(TAC.Position)
 handleKey tac pos modus modif key val = 
-  case modus of
-    "Normal" -> handleKeyNorm tac pos modif key val
-    "Insert" -> handleKeyIns tac pos modif key val
-    "Special" -> handleKeySpec tac pos modif key val
+  if (elem Control modif && 
+    keyToChar val == Just 'z')
+  then
+    if elem Shift modif
+    then History.redo tac
+    else History.undo tac
+  else
+    case modus of
+      "Normal" -> handleKeyNorm tac pos modif key val
+      "Insert" -> handleKeyIns tac pos modif key val
+      "Special" -> handleKeySpec tac pos modif key val
 
 handleKeyNorm :: TAC.TextAreaContent
   -> Position
@@ -55,7 +62,7 @@ handleKeyNorm tac pos@(x,y) modif key val =
         "Begin" -> return (0,y)
         "End" -> do
           finX <- TACU.findLastChar tac y
-          return ((if finX==(-1) then 0 else finX),y)
+          return ((if finX==(-1) then 0 else finX+1),y)
         _ -> return pos
 
 handleKeyIns :: TAC.TextAreaContent
@@ -79,7 +86,7 @@ handleKeyIns tac pos@(x,y) modif key val =
         "Begin" -> return (0,y)
         "End" -> do
           finX <- TACU.findLastChar tac y
-          return ((if finX==(-1) then 0 else finX),y)
+          return ((if finX==(-1) then 0 else finX+1),y)
         _ -> return pos
 
 handleKeySpec :: TAC.TextAreaContent
@@ -178,6 +185,7 @@ handleReturn tac pos@(x,y) = do
 handleTab tac pos@(x,y) modif = do
   prevCharX <- TACU.findLastCharBefore tac (x-1) y
   finX <- TACU.findLastChar tac y
+  putStrLn $ show modif
   case modif of
     [Shift] -> do
       if prevCharX == (-1)
@@ -198,7 +206,7 @@ handleDelete tac (x,y) = do
   finX <- TACU.findLastChar tac y
   if x==finX
   then do
-    moveLinesUp tac y
+    moveLinesUp tac (y+1)
     return (x,y)
   else do
     TAC.deleteCell tac (x+1,y)
