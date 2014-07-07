@@ -138,7 +138,6 @@ initTextAreaWithContent areaContent = do
       
     writeIORef posRef pos
     
-   -- runActions textArea actions --On the visible part of TextArea
     HIGH.highlight tac
     
     redrawContent textArea
@@ -205,6 +204,11 @@ xCoord x = (x*bef)
 -- removes the content from Text Area
 removeContent :: TextArea -> IO ()
 removeContent textArea = do
+  let drawArea = drawingArea textArea
+  drawWindow <- GTK.widgetGetDrawWindow drawArea
+  GTK.drawWindowClearArea drawWindow 0 0 600 400
+  
+{-
   drawWindow <- GTK.widgetGetDrawWindow drawArea
   tac <- readIORef tacIORef
   s@(xMax,yMax) <- TAC.size tac
@@ -237,7 +241,7 @@ removeContent textArea = do
     checkAndClearHelp drawWindow x (y:ys) = do
       clear drawWindow (x,y)
       checkAndClearHelp drawWindow x ys
-
+-}
 {-
   This Function removes the caracter at given position
   The function should be called in renderScene to avoid overwriting.

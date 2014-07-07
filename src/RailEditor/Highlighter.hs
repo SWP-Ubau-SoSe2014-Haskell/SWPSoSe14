@@ -35,6 +35,7 @@ highlight textAC = do
   EXC.catch (do
     let positionedGrid =  getGrid2dFromPreProc2Lexer $ PRE.process  (IIP code)
     (xm,ym) <- TAC.size textAC
+    paintItRed textAC
     highlightFcts positionedGrid textAC
     return ()
     ) handleErrors
