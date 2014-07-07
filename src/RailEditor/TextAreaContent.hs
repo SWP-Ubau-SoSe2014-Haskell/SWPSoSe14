@@ -22,7 +22,7 @@ module TextAreaContent (
   Coord,
   ContentList,
   RGBColor(RGBColor),
-  TextAreaContent.Action,
+  TextAreaContent.Action(Remove, Insert, Replace, MoveTo, Concat),
   ActionQueue,
 
 -- * Constructors
@@ -36,6 +36,7 @@ module TextAreaContent (
   blue,
   red,
   defaultColor,
+  defaultChar,
 
 -- * Methods
   serialize,
@@ -48,7 +49,9 @@ module TextAreaContent (
   deleteCell,
   eqPos,
   TextAreaContent.size,
-  generateContentList
+  generateContentList,
+  redoQueue,
+  undoQueue
   ) where
 
 import Graphics.UI.Gtk
@@ -70,7 +73,7 @@ data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord)
 data ContentPositions = ConPos (IORef ([Position]))
 
 -- types for undoredo
-data Action = Remove String | Insert String | Replace String String | MoveTo Position
+data Action = Remove String | Insert String | Replace String String | MoveTo Position | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
 data TextAreaContent = 

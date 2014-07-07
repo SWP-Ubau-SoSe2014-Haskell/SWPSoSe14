@@ -171,5 +171,3 @@ moveLinesVertDown area line = do
         else do
           moveChars area 0 lastSelf line (0,1)
           moveDownHelper area (line-1) stY
-
-
