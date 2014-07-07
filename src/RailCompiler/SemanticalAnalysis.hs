@@ -87,11 +87,11 @@ module SemanticalAnalysis (
  -- this will return the exact same input if it's valid and will error otherwise
  checknode :: (Int, [Lexeme], Int) -> (Int, [Lexeme], Int)
  checknode (id, lexeme, following)
-   | following == 0 && not (last lexeme `elem` [Finish, Boom] || isvalidjunction (last lexeme)) = error EH.strInvalidMovement
+   | following == 0 && not (last lexeme `elem` [Finish, Boom] || isinvalidjunction (last lexeme)) = error EH.strInvalidMovement
    | otherwise = (id, map checklexeme lexeme, following)
 	where
-   isvalidjunction (Junction x) = x /= 0
-   isvalidjunction _ = False
+   isinvalidjunction (Junction x) = x == 0
+   isinvalidjunction _ = False
 
  -- this will return the exact same input if it's valid and will error otherwise
  checklexeme :: Lexeme -> Lexeme
