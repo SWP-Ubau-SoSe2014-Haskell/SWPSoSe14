@@ -47,9 +47,10 @@ handleKeyNorm :: TAC.TextAreaContent
   -> String
   -> KeyVal
   -> IO(TAC.Position)
-handleKeyNorm tac pos@(x,y) modif key val =
-  if isJust $ keyToChar val
-  then handlePrintKeyNorm tac pos val
+handleKeyNorm tac pos@(x,y) modif key val = do
+  putStrLn key
+  if ((isJust $ keyToChar val) || key=="dead_circumflex")
+  then handlePrintKeyNorm tac pos key val
   else do
     if isArrow key
     then handleArrowsNorm key pos tac
@@ -59,7 +60,7 @@ handleKeyNorm tac pos@(x,y) modif key val =
         "Return" -> handleReturn tac pos
         "Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
-        "Begin" -> return (0,y)
+        "Home" -> return (0,y)
         "End" -> do
           finX <- TACU.findLastChar tac y
           return ((if finX==(-1) then 0 else finX+1),y)
@@ -72,8 +73,8 @@ handleKeyIns :: TAC.TextAreaContent
   -> KeyVal
   -> IO(TAC.Position)
 handleKeyIns tac pos@(x,y) modif key val =
-  if isJust $ keyToChar val
-  then handlePrintKeyIns tac pos val
+  if ((isJust $ keyToChar val) || key=="dead_circumflex")
+  then handlePrintKeyIns tac pos key val
   else
     if isArrow key
     then handleArrowsNorm key pos tac
@@ -83,7 +84,7 @@ handleKeyIns tac pos@(x,y) modif key val =
         "Return" -> handleReturn tac pos
         "Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
-        "Begin" -> return (0,y)
+        "Home" -> return (0,y)
         "End" -> do
           finX <- TACU.findLastChar tac y
           return ((if finX==(-1) then 0 else finX+1),y)
@@ -96,8 +97,8 @@ handleKeySpec :: TAC.TextAreaContent
   -> KeyVal
   -> IO(TAC.Position)
 handleKeySpec tac pos@(x,y) modif key val =
-  if isJust $ keyToChar val
-  then handlePrintKeyIns tac pos val
+  if ((isJust $ keyToChar val) || key=="dead_circumflex")
+  then handlePrintKeyIns tac pos key val
   else
     if isArrow key
     then
@@ -108,25 +109,25 @@ handleKeySpec tac pos@(x,y) modif key val =
         "ReturnSpec" -> handleReturnRail tac pos
         "Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
-        "Begin" -> return (0,y)
+        "Home" -> return (0,y)
         "End" -> do
           finX <- TACU.findLastChar tac y
           return (finX+1,y)
         _ -> return pos
 
-handlePrintKeyIns :: TAC.TextAreaContent -> TAC.Position -> KeyVal -> IO(TAC.Position)
-handlePrintKeyIns tac pos@(x,y) val = do
-  let char = fromJust $ keyToChar val
+handlePrintKeyIns :: TAC.TextAreaContent -> TAC.Position -> String -> KeyVal -> IO(TAC.Position)
+handlePrintKeyIns tac pos@(x,y) key val = do
+  let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   cell <- TAC.getCell tac pos
   let (curchar, _) = if isNothing cell then (' ', TAC.defaultColor) else fromJust cell
   History.action tac pos (TAC.Replace [curchar] [char])
   TAC.putCell tac pos (char,TAC.defaultColor)
   return (x+1,y)
 
-handlePrintKeyNorm :: TAC.TextAreaContent -> TAC.Position -> KeyVal -> IO(TAC.Position)
-handlePrintKeyNorm tac pos@(x,y) val = do
+handlePrintKeyNorm :: TAC.TextAreaContent -> TAC.Position -> String -> KeyVal -> IO(TAC.Position)
+handlePrintKeyNorm tac pos@(x,y) key val = do
   finX <- TACU.findLastChar tac y
-  let char = fromJust $ keyToChar val
+  let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   History.action tac pos (TAC.Insert [char])
   TACU.moveChars tac x finX y (1,0)
   TAC.putCell tac (x,y) (char,TAC.defaultColor)
@@ -204,12 +205,12 @@ handleTab tac pos@(x,y) modif = do
 
 handleDelete tac (x,y) = do
   finX <- TACU.findLastChar tac y
-  if x==finX
+  if x==finX+1
   then do
     moveLinesUp tac (y+1)
     return (x,y)
   else do
-    TAC.deleteCell tac (x+1,y)
-    TACU.moveChars tac (x+2) finX y (-1,0)
+    TAC.deleteCell tac (x,y)
+    TACU.moveChars tac (x+1) (finX+1) y (-1,0)
     return(x,y)
 
