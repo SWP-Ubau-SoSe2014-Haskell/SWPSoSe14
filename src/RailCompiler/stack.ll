@@ -33,7 +33,6 @@
 %union.anon = type { i8* }
 
 ; struct for the symbol table
-;;;%struct.table = type {i8*, i8*, %struct.table*}
 %struct.table = type {i8*, %stack_element*, %struct.table*}
 
 ; Global variables
@@ -72,6 +71,7 @@ declare void @exit(i32 signext)
 
 declare %stack_element* @pop_struct()
 declare void @push_struct(%stack_element*)
+declare i8* @stack_element_get_data(%stack_element* %element)
 declare i64 @pop_int()
 declare i8* @pop_string()
 declare void @push_int(i64)
@@ -132,8 +132,10 @@ define void @print() {
   call void @underflow_assert()
 
   %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
-  %val = call i8* @pop_string()
+  %elem = call %stack_element*()* @pop_struct()
+  %val = call i8*(%stack_element*)* @stack_element_get_data(%stack_element* %elem)
   call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %elem)
 
   ret void
 }
@@ -248,9 +250,8 @@ insert:
   ; pop value from stack and store value
 
   %value = call %stack_element*()* @pop_struct()
-  ;;;%value = call i8*()* @pop_string()
+  call void @stack_element_ref(%stack_element* %value)
   %v_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  ;;;store i8* %value, i8** %v_ptr
   store %stack_element* %value, %stack_element** %v_ptr
 
   ; create new element and append to table
@@ -269,9 +270,10 @@ search:
 
 insert2:
   %value2 = call %stack_element*()* @pop_struct()
-  ;;;%value2 = call i8*()* @pop_string()
+  call void @stack_element_ref(%stack_element* %value2)
   %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  ;;;store i8* %value2, i8** %v_ptr_found
+  %old_value = load %stack_element** %v_ptr_found
+  call void @stack_element_unref(%stack_element* %old_value)
   store %stack_element* %value2, %stack_element** %v_ptr_found
 
   br label %end
@@ -304,9 +306,8 @@ search:
 
 push_onto_stack:
   %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  ;;;%value_to_push = load i8** %v_ptr_found
   %value_to_push = load %stack_element** %v_ptr_found
-  ;;;call %stack_element* @push_string_ptr(i8* %value_to_push)
+  call void @stack_element_ref(%stack_element* %value_to_push)
   call void @push_struct(%stack_element* %value_to_push)
 
   br label %end
