@@ -178,6 +178,14 @@ popInt = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- |Function declaration for 'pop_bool'
+popBool :: Definition
+popBool = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "pop_bool",
+  Global.returnType = IntegerType 64,
+  Global.parameters = ([], False)
+}
+
 -- |Function declaration for 'equal'
 equal :: Definition
 equal = GlobalDefinition $ Global.functionDefaults {
