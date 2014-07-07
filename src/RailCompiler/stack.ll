@@ -41,17 +41,18 @@
                                       ; -1 means no lookahead done yet.
 
 ; Constants
-@to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
-@true = unnamed_addr constant [2 x i8] c"1\00"
-@false = unnamed_addr constant [2 x i8] c"0\00"
-@write_mode = global [2 x i8] c"w\00"
-@printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
+@err_numeric = unnamed_addr constant [56 x i8] c"Failed to check whether stack elem is of type numeric!\0A\00"
 @crash_cust_str_fmt = private unnamed_addr constant [24 x i8] c"Crash: Custom error: %s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
-@err_eof = unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
+@err_zero = unnamed_addr constant [18 x i8] c"Division by zero!\00"
+@printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 @err_oom = unnamed_addr constant [15 x i8] c"Out of memory!\00"
 @err_type = unnamed_addr constant [14 x i8] c"Invalid type!\00"
-@err_zero = unnamed_addr constant [18 x i8] c"Division by zero!\00"
+@to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
+@err_eof = unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
+@false = unnamed_addr constant [2 x i8] c"0\00"
+@true = unnamed_addr constant [2 x i8] c"1\00"
+@write_mode = global [2 x i8] c"w\00"
 
 
 ; External declarations
@@ -85,7 +86,7 @@ declare void @stack_element_unref(%stack_element* %element)
 ; Debugging stuff
 @pushing = unnamed_addr constant [14 x i8] c"Pushing [%s]\0A\00"
 @popped  = unnamed_addr constant [13 x i8] c"Popped [%s]\0a\00"
-@msg = private unnamed_addr constant [5 x i8] c"msg\0a\00"
+@msg = unnamed_addr constant [5 x i8] c"msg\0a\00"
 @no_element = private unnamed_addr constant [18 x i8] c"No such Element!\0A\00"
 
 @int_to_str = unnamed_addr constant [3 x i8] c"%i\00"
@@ -137,8 +138,8 @@ define void @print() {
 
 ; Pop stack, print result string to stderr and exit the program.
 define void @crash(i1 %is_custom_error) {
+  call void @start()
   call void @underflow_assert()
-
   br i1 %is_custom_error, label %custom_error, label %raw_error
 
 custom_error:
@@ -154,7 +155,6 @@ end:
   %val = call i8* @pop_string()
   %stderr = load %FILE** @stderr
   call i32(%FILE*, i8*, ...)* @fprintf(%FILE* %stderr, i8* %fmt, i8* %val)
-
   ; Now, crash!
   call void @exit(i32 1)
 
