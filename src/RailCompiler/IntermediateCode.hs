@@ -179,7 +179,7 @@ generateInstruction (Junction label) = do
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "pop_int",
+    function = Right $ ConstantOperand $ GlobalReference $ Name "pop_bool",
     arguments = [],
     functionAttributes = [],
     metadata = []
@@ -581,7 +581,7 @@ process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
 process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++ 
     [ stackElementTypeDef, structTable, underflowCheck, FunctionDeclarations.print, crash, start, finish, inputFunc,
       eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
-      popInt, equal, greater, popInto, pushFrom, initialiseSymbolTable ] ++ codegen input
+      popInt, equal, greater, popInto, pushFrom, popBool, initialiseSymbolTable ] ++ codegen input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input
