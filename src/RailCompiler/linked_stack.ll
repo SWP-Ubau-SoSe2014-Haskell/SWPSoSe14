@@ -336,8 +336,8 @@ define %stack_element* @push_string_cpy(i8* %str) {
   ret %stack_element* %ret
 }
 
-; pops element from stack and converts in integer
-; returns the element, in case of error undefined
+; pops element from stack and converts to integer
+; returns the element, in case of error returns undefined
 define i64 @pop_int(){
   ; pop
   %top = call i8* @pop_string()
