@@ -120,9 +120,7 @@ handlePrintKeyNorm :: TAC.TextAreaContent -> TAC.Position -> KeyVal -> IO(TAC.Po
 handlePrintKeyNorm tac pos@(x,y) val = do
   finX <- TACU.findLastChar tac y
   let char = fromJust $ keyToChar val
-  cell <- TAC.getCell tac pos
-  let (curchar, _) = if isNothing cell then (' ', TAC.defaultColor) else fromJust cell
-  History.action tac pos (TAC.Replace [curchar] [char])
+  History.action tac pos (TAC.Insert [char])
   TACU.moveChars tac x finX y (1,0)
   TAC.putCell tac (x,y) (char,TAC.defaultColor)
   return (x+1,y)

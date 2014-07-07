@@ -43,8 +43,15 @@ module RedoUndo (
     shiftaction (from, to) = (tail from, invert (head from):to, head from)
 
     -- run whatever action given
-    runaction :: (TAC.Action, TAC.Position) -> IO ()
-    runaction = undefined
+    runaction :: TAC.TextAreaContent -> (TAC.Action, TAC.Position) -> IO ()
+    runaction tac (TAC.Concat act1 act2, pos) = undefined
+    runaction tac (TAC.Remove string, pos) = undefined
+    runaction tac (TAC.Insert string, pos) = undefined
+    runaction tac (TAC.Replace a [], pos) = return ()
+    runaction tac (TAC.Replace a (x:xs), pos) = do
+      TAC.putCell tac pos (x, TAC.defaultColor)
+      runaction tac (TAC.Replace a xs, pos)
+    runaction tac (TAC.MoveTo a, b) = undefined
 
     -- allows to undo actions in the editor
     undo :: TAC.TextAreaContent -> IO ()
@@ -56,7 +63,7 @@ module RedoUndo (
         let (newundo, newredo, action) = shiftaction (undoqueue, redoqueue)
         writeIORef (TAC.redoQueue tac) newredo
         writeIORef (TAC.undoQueue tac) newundo
-        runaction action
+        runaction tac action
 
     -- allows to redo actions in the editor
     redo :: TAC.TextAreaContent -> IO ()
@@ -68,4 +75,4 @@ module RedoUndo (
         let (newredo, newundo, action) = shiftaction (redoqueue, undoqueue)
         writeIORef (TAC.redoQueue tac) newredo
         writeIORef (TAC.undoQueue tac) newundo
-        runaction action
+        runaction tac action
