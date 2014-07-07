@@ -33,8 +33,8 @@
 %union.anon = type { i8* }
 
 ; struct for the symbol table
-%struct.table = type {i8*, i8*, %struct.table*}
-
+;;;%struct.table = type {i8*, i8*, %struct.table*}
+%struct.table = type {i8*, %stack_element*, %struct.table*}
 
 ; Global variables
 @lookahead = global i32 -1            ; Current lookahead for input from stdin,
@@ -70,6 +70,8 @@ declare i8* @calloc(i16 zeroext, i16 zeroext)
 declare i8* @strdup(i8*)
 declare void @exit(i32 signext)
 
+declare %stack_element* @pop_struct()
+declare void @push_struct(%stack_element*)
 declare i64 @pop_int()
 declare i8* @pop_string()
 declare void @push_int(i64)
@@ -244,9 +246,12 @@ insert:
   store i8* %name, i8** %n_ptr
   
   ; pop value from stack and store value
-  %value = call i8*()* @pop_string()
+
+  %value = call %stack_element*()* @pop_struct()
+  ;;;%value = call i8*()* @pop_string()
   %v_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  store i8* %value, i8** %v_ptr
+  ;;;store i8* %value, i8** %v_ptr
+  store %stack_element* %value, %stack_element** %v_ptr
 
   ; create new element and append to table
   %new_elem = alloca %struct.table
@@ -263,9 +268,11 @@ search:
   br i1 %is_equal, label %insert2, label %search_further
 
 insert2:
-  %value2 = call i8*()* @pop_string()
+  %value2 = call %stack_element*()* @pop_struct()
+  ;;;%value2 = call i8*()* @pop_string()
   %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  store i8* %value2, i8** %v_ptr_found
+  ;;;store i8* %value2, i8** %v_ptr_found
+  store %stack_element* %value2, %stack_element** %v_ptr_found
 
   br label %end
 
@@ -297,8 +304,10 @@ search:
 
 push_onto_stack:
   %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  %value_to_push = load i8** %v_ptr_found
-  call %stack_element* @push_string_ptr(i8* %value_to_push)
+  ;;;%value_to_push = load i8** %v_ptr_found
+  %value_to_push = load %stack_element** %v_ptr_found
+  ;;;call %stack_element* @push_string_ptr(i8* %value_to_push)
+  call void @push_struct(%stack_element* %value_to_push)
 
   br label %end
 
