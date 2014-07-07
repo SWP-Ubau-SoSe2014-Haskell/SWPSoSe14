@@ -48,6 +48,7 @@ module TextAreaContent (
   getCell,
   deleteCell,
   eqPos,
+  deleteColors,
   TextAreaContent.size,
   generateContentList,
   redoQueue,
@@ -97,7 +98,7 @@ gold  = RGBColor 1.0                  0.46433203631647213 0.0
 black = RGBColor 0                    0                   0
 white = RGBColor 1.0                  1.0                 1.0
 
-defaultColor = black
+defaultColor = red
 defaultChar = ' '
 
 
@@ -306,7 +307,12 @@ putColor areaContent (x,y) color = do
     let (CoMap cMap _) = colorMap areaContent
     cmap <- readIORef cMap
     writeIORef cMap (Map.insert (x,y) color cmap)
-    
+
+deleteColors :: TextAreaContent -> IO ()
+deleteColors tac = do
+  let(CoMap cMap _) = colorMap tac
+  modifyIORef cMap (\_ -> Map.empty)
+
 -- | Returns the occupied positions in TAC
 getOccupiedPositions :: TextAreaContent
   -> IO([Position])

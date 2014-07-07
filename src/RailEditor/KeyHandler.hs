@@ -33,8 +33,8 @@ handleKey tac pos modus modif key val =
     keyToChar val == Just 'z')
   then
     if elem Shift modif
-    then History.redo tac
-    else History.undo tac
+    then History.redo tac pos
+    else History.undo tac pos
   else
     case modus of
       "Normal" -> handleKeyNorm tac pos modif key val

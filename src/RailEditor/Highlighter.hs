@@ -35,7 +35,7 @@ highlight textAC = do
   EXC.catch (do
     let positionedGrid =  getGrid2dFromPreProc2Lexer $ PRE.process  (IIP code)
     (xm,ym) <- TAC.size textAC
- --   paintItRed 0 0 xm ym textAC --TODO Do it efficient using redo/undo to get the current pressed entry
+    paintItRed textAC
     highlightFcts positionedGrid textAC
     return ()
     ) handleErrors
@@ -98,18 +98,23 @@ highlightFct grid2D ip yOffset textAC
     Just (Call str) -> colorStrCommand str TAC.green
     _ -> do
       cBlue
+      cGold
       highlightFct grid2D nextIP yOffset textAC
     where
       (lex, parseIP) = parse grid2D ip
       nextIP = step grid2D parseIP
       xC = fromIntegral $ posx ip
       yC = fromIntegral $ posy ip+yOffset
+      -- colors Start and finish gold
+      cGold ::IO ()
+      cGold | fromJust lex `elem` [Start,Finish] = TAC.putColor textAC (xC,yC) TAC.gold
+            | otherwise = return()
       -- colors rail-builtins blue
       cBlue :: IO ()
       cBlue | fromJust lex `elem` [NOP,Boom,EOF,Input,Output,IDT.Underflow,
               RType,Add1,Divide,Multiply,Subtract,Remainder,Cut,Append,Size,Nil,
               Cons,Breakup,Greater,Equal] = TAC.putColor textAC (xC,yC) TAC.blue
-            |otherwise = return()
+            | otherwise = return()
       --function to color commands with strings like [], {}
       colorStrCommand :: String -> TAC.RGBColor -> IO IP
       colorStrCommand str color = do
@@ -129,16 +134,12 @@ highlightFct grid2D ip yOffset textAC
         where
           x = fromIntegral $ posx curIP
           y = fromIntegral $ posy curIP+yOffset
--- colors all entry red in a rect from x,y to xMax,yMax
+          
+-- colors all entry red
 -- This function is needed to recolor after editing
-paintItRed :: TAC.Coord-- x coord start
-  -> TAC.Coord--y coord str
-  -> TAC.Coord--x coord end
-  -> TAC.Coord--y coord end
-  -> TAC.TextAreaContent
-  -> IO [IO()]
-paintItRed x y xMax yMax textAC =
-  return [TAC.putColor textAC (xs,ys) TAC.red | xs <- [x..xMax], ys <- [y..yMax]]
+paintItRed :: TAC.TextAreaContent -> IO ()
+paintItRed tac = do
+  TAC.deleteColors tac
   
 
   

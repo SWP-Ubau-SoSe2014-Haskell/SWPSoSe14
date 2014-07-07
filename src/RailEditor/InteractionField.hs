@@ -32,7 +32,7 @@ create = do
   viewStackFunc <- Gtk.textViewNewWithBuffer bufferStackFunc
   labelStackVar <- Gtk.labelNewWithMnemonic "Variablestack"
   viewStackVar <- Gtk.textViewNewWithBuffer bufferStackVar
-
+   
   buttonPopUpIn <- Gtk.buttonNewWithLabel ""
   setButtonProps buttonPopUpIn
   buttonPopUpOut <- Gtk.buttonNewWithLabel ""
