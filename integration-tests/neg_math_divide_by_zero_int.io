@@ -1,2 +1,3 @@
 #
+%
 Division by zero!
