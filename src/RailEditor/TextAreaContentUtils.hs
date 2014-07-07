@@ -142,7 +142,7 @@ moveLinesDownXShift :: TAC.TextAreaContent
 moveLinesDownXShift area (posX,line) xShift = do
   lastLine <- findLastWrittenLine area
   lastSelf <- findLastChar area line
-  unless (line<lastLine || line<0) $
+  unless (line>lastLine || line<0) $
     if line==lastLine
     then 
       moveChars area posX lastSelf line $
