@@ -97,13 +97,13 @@ handleKeySpec tac pos@(x,y) modif key val =
     else
       case key of
         "BackSpace" -> handleBackSpace tac pos
-        "ReturnSpec" -> handleReturn tac pos
+        "ReturnSpec" -> handleReturnRail tac pos
         "Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
         "Begin" -> return (0,y)
         "End" -> do
           finX <- TACU.findLastChar tac y
-          return ((if finX==(-1) then 0 else finX),y)
+          return (finX+1,y)
         _ -> return pos
 
 handlePrintKeyIns :: TAC.TextAreaContent -> TAC.Position -> KeyVal -> IO(TAC.Position)
@@ -155,22 +155,48 @@ handleBackSpace tac (x,y) =
     (0,_) -> do
       finXPrev <- TACU.findLastChar tac (y-1)
       TACU.moveLinesUp tac y
-      return((finXPrev+1),y-1)
+      return(finXPrev+1,y-1)
     (_,_) -> do
       finX <- TACU.findLastChar tac y
       TAC.deleteCell tac (x-1,y)
-      TACU.moveChars tac x (finX+1) y (-1,0)
+      TACU.moveChars tac x finX y (-1,0)
       return (x-1,y)
 
-handleReturnRail tac (x,y) = return(x,y)
+handleReturnRail tac pos@(x,y) = do
+  moveLinesDownXShift tac pos False
+  return (x,y+1)
 
 handleReturn tac pos@(x,y) = do
   moveLinesDownXShift tac pos True
   return (0,y+1)
 
-handleTab tac (x,y) modif = return(x,y)
+handleTab tac pos@(x,y) modif = do
+  prevCharX <- TACU.findLastCharBefore tac (x-1) y
+  finX <- TACU.findLastChar tac y
+  case modif of
+    [Shift] -> do
+      if prevCharX == (-1)
+      then
+        if x>3
+        then do
+          TACU.moveChars tac x finX y (-4,0)
+          return (x-4,y)
+        else do
+          TACU.moveChars tac x finX y (-x,0)
+          return (0,y)
+      else return pos
+    _ -> do
+      TACU.moveChars tac x finX y (4,0)
+      return(x+4,y)
 
-handleShiftTab tac (x,y) = return(x,y)
-
-handleDelete tac (x,y) = return(x,y)
+handleDelete tac (x,y) = do
+  finX <- TACU.findLastChar tac y
+  if x==finX
+  then do
+    moveLinesUp tac y
+    return (x,y)
+  else do
+    TAC.deleteCell tac (x+1,y)
+    TACU.moveChars tac (x+2) finX y (-1,0)
+    return(x,y)
 
