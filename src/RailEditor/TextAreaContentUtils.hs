@@ -128,7 +128,7 @@ moveLinesUp area line = do
           else
             if line == stY
             then do
-              lastPrev <- findLastChar area line
+              lastPrev <- findLastChar area (line-1)
               moveChars area 0 lastSelf line (lastPrev+1, -1)
               moveLinesUpHelper area (line+1) stY finY
             else do
