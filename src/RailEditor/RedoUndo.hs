@@ -54,7 +54,7 @@ module RedoUndo (
     runaction tac (TAC.MoveTo a, b) = undefined
 
     -- allows to undo actions in the editor
-    undo :: TAC.TextAreaContent -> IO ()
+    undo :: TAC.TextAreaContent -> IO (TAC.Position)
     undo tac = do
       undoqueue <- readIORef (TAC.undoQueue tac)
       when (not (null undoqueue)) $ do
@@ -64,9 +64,10 @@ module RedoUndo (
         writeIORef (TAC.redoQueue tac) newredo
         writeIORef (TAC.undoQueue tac) newundo
         runaction tac action
+      return (0, 0)
 
     -- allows to redo actions in the editor
-    redo :: TAC.TextAreaContent -> IO ()
+    redo :: TAC.TextAreaContent -> IO (TAC.Position)
     redo tac = do
       redoqueue <- readIORef (TAC.redoQueue tac)
       when (not (null redoqueue)) $ do
@@ -76,3 +77,4 @@ module RedoUndo (
         writeIORef (TAC.redoQueue tac) newredo
         writeIORef (TAC.undoQueue tac) newundo
         runaction tac action
+      return (0, 0)
