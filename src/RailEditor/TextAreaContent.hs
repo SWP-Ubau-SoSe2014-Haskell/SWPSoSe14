@@ -22,7 +22,7 @@ module TextAreaContent (
   Coord,
   ContentList,
   RGBColor(RGBColor),
-  TextAreaContent.Action,
+  TextAreaContent.Action(Remove, Insert, Replace, MoveTo, Concat),
   ActionQueue,
 
 -- * Constructors
@@ -36,6 +36,7 @@ module TextAreaContent (
   blue,
   red,
   defaultColor,
+  defaultChar,
 
 -- * Methods
   serialize,
@@ -43,29 +44,47 @@ module TextAreaContent (
   putValue,
   putColor,
   putCell,
+  getOccupiedPositions,
   getCell,
   deleteCell,
+  eqPos,
   TextAreaContent.size,
-  generateContentList
+  generateContentList,
+  redoQueue,
+  undoQueue
   ) where
 
 import Graphics.UI.Gtk
 import Data.Map as Map
 import Data.IORef
 import Data.Maybe
+import qualified Data.List as List
 import Control.Monad
 
 data RGBColor = RGBColor Double Double Double deriving Show
 data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
---data CharMap  = ChMap  (IORef (Map Position Char)) (IORef (Integer,Integer))
 -- chMap is a Map(y (x coord char)) where y and x are coords
 data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord))
+{- TODO CHANGE ALL FUNCTIONS WERE POSITIONS OCCUR
+  This is the dataType to remember current occupied cells
+  Its is important to increase the speed of redrawContent from theta(n²)
+  to O(n²). In avarage cases it should be much faster.
+-}
+data ContentPositions = ConPos (IORef ([Position]))
 
 -- types for undoredo
-data Action = Remove String | Insert String | Replace String String | MoveTo Position
+data Action = Remove String | Insert String | Replace String String | MoveTo Position | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
-data TextAreaContent = TAC {charMap :: CharMap, colorMap :: ColorMap, undoQueue :: IORef ActionQueue, redoQueue :: IORef ActionQueue }
+data TextAreaContent = 
+  TAC {
+    charMap :: CharMap,
+    colorMap :: ColorMap,
+    conPos :: ContentPositions,
+    undoQueue :: IORef ActionQueue,
+    redoQueue :: IORef ActionQueue 
+  }
+  
 type Coord = Int
 type Position = (Coord,Coord)
 type ContentList = [(Position,Char)]
@@ -93,17 +112,21 @@ init x y = do
   size <- newIORef (x,y)
   hmapR <- newIORef Map.empty
   cmapR <- newIORef Map.empty
+  contPL <- newIORef []
   undoQ <- newIORef []
   redoQ <- newIORef []
-  let cMap = CoMap cmapR size
-  let hMap = ChMap hmapR size
-  return $ TAC hMap cMap undoQ redoQ
---    where
---      hmap = fillCharMapWith (Map.insert 0 Map.empty Map.empty) defaultChar (x,y)
---      cmap = fillMapWith Map.empty defaultColor x y
+  let 
+    cMap = CoMap cmapR size
+    hMap = ChMap hmapR size
+    contP = ConPos contPL
+  return $ TAC hMap cMap contP undoQ redoQ
 
 --------------------
 -- Methods
+
+--To compare Positions
+eqPos :: Position -> Position -> Bool
+eqPos (x,y) (u,v) = (x==u)&&(y==v)
 
 --fill a Map a (Map a b) with a specified content
 fillCharMapWith :: Map.Map Coord (Map.Map Coord Char) --Map of characters at position y x
@@ -143,29 +166,27 @@ serialize areaContent = do
   hmap <- readIORef hMap --get the CharMap
   (xMax,yMax) <- readIORef size --get the size of the CharMap
   --Fill the map with whitespaces
-  let wMap = fillCharMapWith hmap ' ' (xMax,yMax)
-  {-1. Take a line map
-    2. fold that map to a line
-    3. reverse ist drop ' ' and reverse it again
-    4. append \n
-    5. goto 1. until Map.fold is finish
-  -}
-  return $ Map.fold (\lineMap code -> 
-    ((reverse . dropWhile (== ' ') . reverse)
-    (Map.fold (\char line ->line++[char]) "" lineMap))++['\n'] ) "" wMap
-    
+  let 
+    wMap = fillCharMapWith hmap ' ' (xMax,yMax)
+    listOfLines = assocs hmap
+  foldM (\code (y,lineMap) -> do
+      let lineList = assocs lineMap
+      l <- foldM (\line (x,char) -> return $ line++[char]) "" lineList
+      let cleanLine = ((reverse . dropWhile (== ' ') . reverse) l)++['\n']
+      return $ code++cleanLine
+    ) "" listOfLines
+   
 -- | creates a TextAreaContent by a string
 deserialize :: String
   -> IO TextAreaContent
 deserialize stringContent = do
   areaContent <- TextAreaContent.init newX newY
-  let (ChMap hMap _) = charMap areaContent
   readStringListInEntryMap areaContent lined (0,0)
   return areaContent
-    where
-      newX = maximum $ Prelude.map length lined
-      newY = length lined
-      lined = lines stringContent
+  where
+    newX = maximum $ Prelude.map length lined
+    newY = length lined
+    lined = lines stringContent
 
 --subfunction for deserialization calls readStringInEntryMap for every line
 readStringListInEntryMap :: TextAreaContent
@@ -247,16 +268,19 @@ expandYTextAreaH areaContent (oldX,oldY) = do
     expandXTextAreaH areaContent (pred oldX,oldY)
 
 -- | sets the character for a cell identified by a coordinate
+-- If the coords are out of bounds the function resizes the TAC.
 putValue :: TextAreaContent
   -> Position -- ^ coordinates of the required cell
   -> Char -- ^ character
   -> IO ()
 putValue areaContent (x,y) character = do
-    (xMax,yMax) <- TextAreaContent.size areaContent
-  {-
+  (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
-  then error "putValue: Position out of Bounds"
-  else do-}
+  then do 
+    resize areaContent
+    putValue areaContent (x,y) character
+  else do
+    putPos areaContent (x,y)
     let 
       (ChMap hMap size) = charMap areaContent
       (CoMap cMap _) = colorMap areaContent
@@ -265,27 +289,46 @@ putValue areaContent (x,y) character = do
     if (isNothing lineMap) 
     then modifyIORef hMap (Map.insert y (Map.insert x character Map.empty))
     else modifyIORef hMap (Map.insert y (Map.insert x character $ fromJust lineMap))
-    {-
-    No need to set a a defaultColor, because it's only important to save highlighted chars.
-    This improves performance in highlighter.
-    cmap <- readIORef cMap
-    let color = Map.lookup (x,y) cmap
-    when (isNothing color) $ modifyIORef cMap (Map.insert (x,y) defaultColor)
-    -}
+
 -- | sets the color of a cell identified by 
+-- If the coords are out of bounds the function resizes the TAC.
 putColor :: TextAreaContent
   -> Position -- ^ coordinates of the required cell
   -> RGBColor -- ^ color to put
   -> IO ()
 putColor areaContent (x,y) color = do
- {- (xMax,yMax) <- TextAreaContent.size areaContent
+  (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
-  then error "putColor: Position out of Bounds"
-  else do-}
+  then do 
+    resize areaContent
+    putColor areaContent (x,y) color
+  else do
     let (CoMap cMap _) = colorMap areaContent
     cmap <- readIORef cMap
     writeIORef cMap (Map.insert (x,y) color cmap)
-
+    
+-- | Returns the occupied positions in TAC
+getOccupiedPositions :: TextAreaContent
+  -> IO([Position])
+getOccupiedPositions tac = readIORef conPosIORef
+  where (ConPos conPosIORef) = conPos tac
+  
+-- | puts a position to the list of occupied
+putPos :: TextAreaContent
+  -> Position
+  -> IO()
+putPos tac pos = do
+ let (ConPos conPosIORef) = conPos tac
+ modifyIORef conPosIORef (\conPL -> conPL++[pos])
+ 
+-- | delets a position from list of occupied positions 
+deletePos :: TextAreaContent
+  -> Position
+  -> IO ()
+deletePos tac pos = do
+  let (ConPos conPosIORef) = conPos tac
+  modifyIORef conPosIORef (\conPL -> List.delete pos conPL)
+ 
 -- / sets a cell
 putCell :: TextAreaContent
   -> Position -- ^ coordinates of the required cell
@@ -300,13 +343,16 @@ deleteCell :: TextAreaContent
   -> Position
   -> IO (Bool)
 deleteCell areaContent (x,y) = do
-  let (ChMap hMap _) = charMap  areaContent
-  let (CoMap cMap _) = colorMap areaContent
+  let 
+    (ChMap hMap _) = charMap  areaContent
+    (CoMap cMap _) = colorMap areaContent
+    (ConPos conPosIORef) = conPos areaContent
   (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
   then return False
   else do
     let delete = (\m -> Map.delete x (fromJust $ Map.lookup y m))
+    deletePos areaContent (x,y)
     modifyIORef hMap (\m -> Map.insert y (delete m) m)
     modifyIORef cMap (Map.delete (x,y))
     return True
