@@ -36,7 +36,7 @@
 
 ; Constants
 @err_type_mismatch = private unnamed_addr constant [16 x i8] c"Type mismatch!\0A\00"
-
+@err_not_bool = private unnamed_addr constant [29 x i8] c"Stack value was not 0 or 1!\0A\00"
 
 ; External declarations
 
@@ -348,6 +348,25 @@ define i64 @pop_int(){
 
   ; return
   ret i64 %top_int1
+}
+
+define i64 @pop_bool(){
+  ;pop an int element from stack
+  %top = call i64 @pop_int()
+
+  ;check whether it is 0 or 1
+  switch i64 %top, label %error [ i64 0, label %its_bool
+                                  i64 1, label %its_bool ]
+
+error:
+  ; Bail out!
+  %err_not_bool = getelementptr [29 x i8]* @err_not_bool, i8 0, i8 0
+  call %stack_element* @push_string_cpy(i8* %err_not_bool)
+  call void @crash(i1 0)
+  ret i64 -1
+
+its_bool:
+  ret i64 %top
 }
 
 define void @push_int(i64 %top_int)
