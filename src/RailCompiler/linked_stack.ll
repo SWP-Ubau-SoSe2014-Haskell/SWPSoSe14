@@ -404,14 +404,11 @@ define i8* @pop_string() {
 ; The string must already be allocated _ON THE HEAP_.
 define %stack_element* @push_string_ptr(i8* %str) {
   ; 1. Create and push a new stack_element.
+  ;    NB: Stack size is incremented by push_struct().
   %elem = call %stack_element* @stack_element_new(i8 0, i8* %str)
   call void @push_struct(%stack_element* %elem)
 
-  ; 2. Increment stack size.
-  %stack_size0 = call i64 @stack_get_size()
-  %stack_size1 = add i64 %stack_size0, 1
-  store i64 %stack_size1, i64* @stack_size
-
+  ; 2. That's it!
   ret %stack_element* %elem
 }
 
