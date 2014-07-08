@@ -287,6 +287,21 @@ define %stack_element* @pop_struct() {
   ret %stack_element* %stack
 }
 
+; Push a stack_element struct onto the stack
+define void @push_struct(%stack_element* %element) {
+  ; 1. Push new element by updating it's pointer to the first element of the current stack
+  %curr_head = load %stack_element** @stack
+  call void @stack_element_set_next(%stack_element* %element, %stack_element* %curr_head)
+  store %stack_element* %element, %stack_element** @stack
+
+  ; 2. Increment stack size.
+  %stack_size0 = call i64 @stack_get_size()
+  %stack_size1 = add i64 %stack_size0, 1
+  store i64 %stack_size1, i64* @stack_size
+
+  ret void
+}
+
 ; Pop a string from the stack.
 ;
 ; Crashes if the type of the topmost element is not "string".
