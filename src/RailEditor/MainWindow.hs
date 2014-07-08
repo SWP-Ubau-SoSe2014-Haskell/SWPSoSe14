@@ -31,7 +31,8 @@ create = do
   ta <- TA.initTextAreaWithContent tac
   lwin <- TA.getTextAreaContainer ta
 
-  boxView <- IAF.create
+  interDT <- IAF.create
+  let boxView = IAF.getContainer interDT
   hboxInfoLine <- FB.create
 
   boxLay <- Gtk.hBoxNew False 0
@@ -39,17 +40,16 @@ create = do
   vSep <- Gtk.vSeparatorNew
   Gtk.boxPackStart boxLay vSep Gtk.PackNatural 2
   Gtk.boxPackEnd boxLay boxView Gtk.PackNatural 1
-   
+
   table <- Gtk.tableNew 5 1 False
-  
-  --JUST FOR TESTING
-  bufferOut <- Gtk.textBufferNew Nothing
+
+  let bufferOut = IAF.getOutputBuffer interDT
+  let bufferIn  = IAF.getInputBuffer interDT
 
   menuBar <- MB.create window ta bufferOut
   extraBar <- TB.create
 
   vSepa <- Gtk.hSeparatorNew
-  
 
   Gtk.tableAttach table menuBar 0 1 0 1 [Gtk.Fill] [Gtk.Fill] 0 0
   Gtk.tableAttach table extraBar 0 1 1 2 [Gtk.Fill] [Gtk.Fill] 0 0
@@ -57,7 +57,6 @@ create = do
   Gtk.tableAttach table vSepa 0 1 3 4 [Gtk.Fill] [Gtk.Fill] 0 0
   Gtk.tableAttach table hboxInfoLine 0 1 4 5 [Gtk.Fill] [Gtk.Fill] 2 2
 
- 
   Gtk.set window [Gtk.containerChild Gtk.:= table,
               Gtk.windowDefaultHeight Gtk.:= 550,
               Gtk.windowDefaultWidth Gtk.:= 850,
