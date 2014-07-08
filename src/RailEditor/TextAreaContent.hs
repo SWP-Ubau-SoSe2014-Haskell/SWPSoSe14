@@ -209,64 +209,16 @@ readStringInEntryMap tac (s:ss) (x,y) = do
   putValue tac (x,y) s
   readStringInEntryMap tac ss (succ x,y)
 
---quadruples the size of the TextAreaContent
+--set the size(x,y) to (x+1,y+1)
 resize :: TextAreaContent -> IO ()
 resize areaContent  = do
-  let (ChMap _ size) = charMap areaContent
-  (xm,ym) <- readIORef size
-  expandXTextAreaN areaContent (xm,ym) xm
-  (xm,ym) <- readIORef size
-  expandYTextAreaN areaContent (xm,ym) ym
-
---subfunction for resize
-expandXTextAreaN area (oldX,oldY) n
-  | n == 0 = return ()
-  | otherwise = do
-    expandXTextArea area (oldX,oldY)
-    expandXTextAreaN area (succ oldX,oldY) (n-1)
-
---subfunction for expandXTextAreaN
-expandXTextArea areaContent (oldX,oldY)= do
-  let (ChMap _ size) = charMap areaContent
-  (xmax,ymax) <- readIORef size
-  writeIORef size (succ xmax,ymax)
-  expandXTextAreaH areaContent (oldX,oldY)
-
---subfunction for expandXTextArea
-expandXTextAreaH areaContent (oldX,oldY) = do
-  if oldY == 0
-  then do
-    putColor areaContent (succ oldX,0) defaultColor
-    putValue areaContent (succ oldX,0) defaultChar
-  else do
-    putValue areaContent (succ oldX,oldY) defaultChar
-    putColor areaContent (succ oldX,oldY) defaultColor
-    expandXTextAreaH areaContent (oldX,pred oldY)
-
---subfunction for resize
-expandYTextAreaN areaContent (oldX,oldY) n
-  | n <= 0 = return ()
-  | otherwise = do
-    expandYTextArea areaContent (oldX,oldY)
-    expandYTextAreaN areaContent (oldX,succ oldY) (n-1)
-
---subfunction for expandYTextAreaN
-expandYTextArea areaContent (oldX,oldY)= do
-  let (ChMap _ size) = charMap areaContent
-  (xmax,ymax) <- readIORef size
-  writeIORef size (xmax,succ ymax)
-  expandYTextAreaH areaContent (oldX,oldY)
-  
---subfunction for expandYTextArea
-expandYTextAreaH areaContent (oldX,oldY) = do
-  if oldX == 0
-  then do
-    putValue areaContent (0,succ oldY) defaultChar
-    putColor areaContent (0, succ oldY) defaultColor
-  else do
-    putValue areaContent (oldX,succ oldY) defaultChar
-    putColor areaContent (oldX, succ oldY) defaultColor
-    expandXTextAreaH areaContent (pred oldX,oldY)
+  let 
+    (ChMap charMapIORef charSize) = charMap areaContent
+    (CoMap colorMapIORef colorSize) = colorMap areaContent
+  (xm,ym) <- readIORef charSize
+  modifyIORef charMapIORef (\cmap -> Map.insert (ym+1) Map.empty cmap)
+  writeIORef charSize (xm+1,ym+1)
+  modifyIORef colorSize (\_ -> (xm+1,ym+1))
 
 -- | sets the character for a cell identified by a coordinate
 -- If the coords are out of bounds the function resizes the TAC.
@@ -276,7 +228,7 @@ putValue :: TextAreaContent
   -> IO ()
 putValue areaContent (x,y) character = do
   (xMax,yMax) <- TextAreaContent.size areaContent
-  if (x > xMax || y > yMax)
+  if (y > yMax || x > xMax)
   then do 
     resize areaContent
     putValue areaContent (x,y) character
@@ -288,8 +240,8 @@ putValue areaContent (x,y) character = do
     valHMap <- readIORef hMap
     let lineMap = Map.lookup y valHMap
     if (isNothing lineMap) 
-    then modifyIORef hMap (Map.insert y (Map.insert x character Map.empty))
-    else modifyIORef hMap (Map.insert y (Map.insert x character $ fromJust lineMap))
+    then modifyIORef' hMap (Map.insert y (Map.insert x character Map.empty))
+    else modifyIORef' hMap (Map.insert y (Map.insert x character $ fromJust lineMap))
 
 -- | sets the color of a cell identified by 
 -- If the coords are out of bounds the function resizes the TAC.
@@ -300,13 +252,13 @@ putColor :: TextAreaContent
 putColor areaContent (x,y) color = do
   (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
-  then do 
+  then do
+    print "resize"
     resize areaContent
     putColor areaContent (x,y) color
   else do
     let (CoMap cMap _) = colorMap areaContent
-    cmap <- readIORef cMap
-    writeIORef cMap (Map.insert (x,y) color cmap)
+    modifyIORef' cMap (\cmap -> Map.insert (x,y) color cmap)
 
 deleteColors :: TextAreaContent -> IO ()
 deleteColors tac = do
