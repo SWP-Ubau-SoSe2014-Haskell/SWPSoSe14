@@ -9,14 +9,23 @@ Stability   :  experimental
 The InteractionField-module depicts the interaction-field on the right side of the main-window that contains the input, output, function-stack, variable-stack.
 -}
 module InteractionField (
-  create
+-- *Constructors
+  create,
+-- *Types
+  InteractionDT,
+-- *Methods
+  getContainer,
+  getInputBuffer,
+  getOutputBuffer
                         )
   where
-    
+
     -- imports --
 
 import qualified Graphics.UI.Gtk as Gtk
     -- functions --
+
+data InteractionDT = InterDT { getContainer :: Gtk.VBox, getInputBuffer :: Gtk.TextBuffer, getOutputBuffer :: Gtk.TextBuffer}
 
 create = do
   bufferIn <- Gtk.textBufferNew Nothing
@@ -32,7 +41,7 @@ create = do
   viewStackFunc <- Gtk.textViewNewWithBuffer bufferStackFunc
   labelStackVar <- Gtk.labelNewWithMnemonic "Variablestack"
   viewStackVar <- Gtk.textViewNewWithBuffer bufferStackVar
-   
+
   buttonPopUpIn <- Gtk.buttonNewWithLabel ""
   setButtonProps buttonPopUpIn
   buttonPopUpOut <- Gtk.buttonNewWithLabel ""
@@ -96,7 +105,8 @@ create = do
   outSap <- Gtk.hSeparatorNew
   Gtk.boxPackStart boxView outSap Gtk.PackNatural 2
   Gtk.boxPackStart boxView boxStack Gtk.PackGrow 1
-  return boxView
+
+  return $ InterDT boxView bufferIn bufferOut
 
 textViewWindowShow textBuffer title = do
   window <- Gtk.windowNew
