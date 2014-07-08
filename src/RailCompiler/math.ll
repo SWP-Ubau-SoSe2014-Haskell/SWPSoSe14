@@ -16,9 +16,12 @@
 %struct.stack_elem = type { i32, %union.anon }
 %union.anon = type { i8* }
 
+declare i8* @stack_element_get_data(%stack_element* %element)
+declare void @stack_element_unref(%stack_element* %element)
 declare i32 @get_stack_elem(i8*, %struct.stack_elem*)
 declare %stack_element* @push_string_ptr(i8* %str)
 declare %stack_element* @push_string_cpy(i8* %str)
+declare %stack_element* @pop_struct()
 declare signext i32 @printf(i8*, ...)
 declare void @push_float(double)
 declare void @underflow_assert()
@@ -56,11 +59,15 @@ define i32 @mult() {
 
   ; get top of stack
   call void @underflow_assert()
-  %number_a = call i8* @pop_string()
+  %struct_a = call %stack_element*()* @pop_struct()
+  %number_a = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_a)
 
   ; get second top of stack
   call void @underflow_assert()
-  %number_b = call i8* @pop_string()
+  %struct_b = call %stack_element*()* @pop_struct()
+  %number_b = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_b)
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -151,10 +158,14 @@ exit_with_invalid_type:
   br label %exit_with_failure
 
 exit_with_failure:
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   call void @crash(i1 0)
   br label %exit
 
 exit:
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   %result = load i32* %func_result
   ret i32 %result
 }
@@ -170,11 +181,15 @@ define i32 @rem() {
 
   ; get top of stack
   call void @underflow_assert()
-  %number_a = call i8* @pop_string()
+  %struct_a = call %stack_element*()* @pop_struct()
+  %number_a = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_a)
 
   ; get second top of stack
   call void @underflow_assert()
-  %number_b = call i8* @pop_string()
+  %struct_b = call %stack_element*()* @pop_struct()
+  %number_b = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_b)
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -264,10 +279,14 @@ exit_with_invalid_type:
   br label %exit_with_failure
 
 exit_with_failure:
-  store i32 -1, i32* %func_result
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
+  call void @crash(i1 0)
   br label %exit
 
 exit:
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   %result = load i32* %func_result
   ret i32 %result
 }
@@ -283,11 +302,15 @@ define i32 @sub() {
 
   ; get top of stack
   call void @underflow_assert()
-  %number_a = call i8* @pop_string()
+  %struct_a = call %stack_element*()* @pop_struct()
+  %number_a = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_a)
 
   ; get second top of stack
   call void @underflow_assert()
-  %number_b = call i8* @pop_string()
+  %struct_b = call %stack_element*()* @pop_struct()
+  %number_b = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_b)
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -376,10 +399,14 @@ exit_with_invalid_type:
   br label %exit_with_failure
 
 exit_with_failure:
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   call void @crash(i1 0)
   br label %exit
 
 exit:
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   %result = load i32* %func_result
   ret i32 %result
 }
@@ -395,11 +422,15 @@ define i32 @add() {
 
   ; get top of stack
   call void @underflow_assert()
-  %number_a = call i8* @pop_string()
+  %struct_a = call %stack_element*()* @pop_struct()
+  %number_a = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_a)
 
   ; get second top of stack
   call void @underflow_assert()
-  %number_b = call i8* @pop_string()
+  %struct_b = call %stack_element*()* @pop_struct()
+  %number_b = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_b)
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -483,6 +514,8 @@ exit_with_invalid_type:
   br label %exit_with_failure
 
 exit_with_failure:  
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   call void @crash(i1 0)
   br label %exit
 
@@ -491,6 +524,8 @@ exit_with_success:
   br label %exit
 
 exit:
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   %result = load i32* %func_result
   ret i32 %result
 }
@@ -505,12 +540,16 @@ define i32 @div() {
   %new_elem_b = alloca %struct.stack_elem, align 8
 
   ; get top of stack
-  call void @underflow_assert() 
-  %number_a = call i8* @pop_string()
+  call void @underflow_assert()
+  %struct_a = call %stack_element*()* @pop_struct()
+  %number_a = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_a)
 
   ; get second top of stack
-  call void @underflow_assert() 
-  %number_b = call i8* @pop_string()
+  call void @underflow_assert()
+  %struct_b = call %stack_element*()* @pop_struct()
+  %number_b = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_b)
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -617,10 +656,14 @@ exit_with_invalid_type:
   br label %exit_with_failure
 
 exit_with_failure:
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   call void @crash(i1 0)
   br label %exit
 
 exit:
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   %result = load i32* %func_result
   ret i32 %result
 }
