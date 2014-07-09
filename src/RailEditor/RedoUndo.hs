@@ -47,19 +47,17 @@ module RedoUndo (
     runaction tac (TAC.Remove [], actpos) = return actpos
     runaction tac (TAC.Remove (x:xs), actpos) = do
       if x == '\n'
-      then TACU.moveLinesVertDown tac (snd actpos)
-      else
-        TAC.deleteCell tac actpos >> return ()
-        --wtf finX?
-        --TACU.moveChars tac x finX y (1,0)
+      then TACU.moveLinesUp tac (snd actpos)
+      else do
+        TAC.deleteCell tac actpos
+        TACU.moveChars tac actpos (-1,0)
       runaction tac (TAC.Remove xs, actpos)
     runaction tac (TAC.Insert [], actpos) = return actpos
     runaction tac (TAC.Insert (x:xs), actpos) = do
       if x == '\n'
-      then TACU.moveLinesUp tac (snd actpos)
-      else
-        --wtf finX?
-        --TACU.moveChars tac x finX y (1,0)
+      then TACU.moveLinesDownXShift tac actpos True
+      else do
+        TACU.moveChars tac actpos (1,0)
         TAC.putCell tac actpos (x, TAC.defaultColor)
       runaction tac (TAC.Insert xs, actpos)
     runaction tac (TAC.Replace a [], actpos) = return actpos
