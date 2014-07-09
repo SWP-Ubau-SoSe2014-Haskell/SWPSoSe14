@@ -10,7 +10,6 @@
 @err_type = external global [14 x i8]
 @err_zero = external global [18 x i8]
 @popped = external global [13 x i8]
-@msg = external global [5 x i8]
 
 %stack_element = type opaque
 %struct.stack_elem = type { i32, %union.anon }
