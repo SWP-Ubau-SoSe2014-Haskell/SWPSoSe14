@@ -26,6 +26,8 @@ module TLexer (
  testLexer14 = "Turning on Lexeme: " ~: crash @=? run [" \\", "  \\#"]
  testLexer15 = "Lambda: " ~: IDT.ILS [("main",[(1, Start, 2), (2, Lambda 3, 5), (3, Underflow, 4), (4, Finish, 0), (5, Finish, 0)])] @=? run [" \\", "#--&u#"]
  testLexer16 = "Empty Lambda: " ~: IDT.ILS [("main",[(1, Start, 2), (2, Lambda 0, 3), (3, Finish, 0)])] @=? run [" \\", "#--&"]
+ testLexer17 = "\\\\ Escaping: " ~: res [Constant "\\"] @=? run [" \\-[\\\\]#"]
+ testLexer18 = "Dot Command: " ~: crash @=? run [" .", "  #"]
 
  -- helper functions
  run :: [String] -> IDT.Lexer2SynAna
@@ -40,4 +42,4 @@ module TLexer (
  crash :: IDT.Lexer2SynAna
  crash = IDT.ILS [("main", [(1, Start, 0)])]
  
- testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05, testLexer06, testLexer07, testLexer08, testLexer09, testLexer10, testLexer11, testLexer12, testLexer13, testLexer14, testLexer15, testLexer16]
+ testModule = [testLexer01, testLexer02, testLexer03, testLexer04, testLexer05, testLexer06, testLexer07, testLexer08, testLexer09, testLexer10, testLexer11, testLexer12, testLexer13, testLexer14, testLexer15, testLexer16, testLexer17, testLexer18]

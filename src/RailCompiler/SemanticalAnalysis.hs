@@ -25,17 +25,29 @@ module SemanticalAnalysis (
   | duplicatefunctions input = error EH.strDuplicateFunctions
   | nomain input = error EH.strMainMissing
   | not (all validfollowers input) = error EH.strUnknownNode
-  | otherwise = IDT.ISI (concatMap splitlambda $ map check input)
+  | otherwise = IDT.ISI (map fixcalls (concatMap splitlambda $ map check input))
+
+ -- since every function besides main has been renamed i norder to enable lambdas, calls have to be modified
+ fixcalls :: IDT.AST -> IDT.AST
+ fixcalls (funcname, paths) = (funcname, map fixpathcall paths)
+  where
+   fixpathcall (id, lexemes, follower) = (id, map fixlistcall lexemes, follower)
+   fixlistcall (Call func) = Call (if func == "" then "" else newfunc func)
+   fixlistcall lexeme = lexeme
+ 
+ -- we add a g_ to every function name to make sure lambda names do not collide
+ newfunc :: String -> String
+ newfunc name = if name == "main" then "main" else "g_" ++ name
 
  -- splits lambdas into own functions
  splitlambda :: IDT.AST -> [IDT.AST]
- splitlambda func@(funcname, lexemes) = func : lambdafuncs 1
+ splitlambda func@(funcname, paths) = func : lambdafuncs 1
   where
    lambdafuncs offset
     | offset > maximum (fst (getids func)) = []
-    | islambda offset = (funcname ++ "!" ++ show offset, (1, [NOP], offset):tail lexemes):lambdafuncs (offset + 1)
+    | islambda offset = ("l_" ++ funcname ++ "_" ++ show offset, (1, [NOP], offset):tail paths):lambdafuncs (offset + 1)
     | otherwise = lambdafuncs (offset + 1)
-   islambda x = any (\(_, lex, _) -> Lambda x `elem` lex) lexemes
+   islambda x = any (\(_, lex, _) -> Lambda x `elem` lex) paths
 
  -- checks if there are unknown followers
  validfollowers :: IDT.AST -> Bool
@@ -75,11 +87,11 @@ module SemanticalAnalysis (
  -- this will return the exact same input if it's valid and will error otherwise
  checknode :: (Int, [Lexeme], Int) -> (Int, [Lexeme], Int)
  checknode (id, lexeme, following)
-   | following == 0 && not (last lexeme `elem` [Finish, Boom] || isvalidjunction (last lexeme)) = error EH.strInvalidMovement
+   | following == 0 && not (last lexeme `elem` [Finish, Boom] || isinvalidjunction (last lexeme)) = error EH.strInvalidMovement
    | otherwise = (id, map checklexeme lexeme, following)
 	where
-   isvalidjunction (Junction x) = x /= 0
-   isvalidjunction _ = False
+   isinvalidjunction (Junction x) = x == 0
+   isinvalidjunction _ = False
 
  -- this will return the exact same input if it's valid and will error otherwise
  checklexeme :: Lexeme -> Lexeme
