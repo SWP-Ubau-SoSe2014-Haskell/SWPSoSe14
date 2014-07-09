@@ -126,18 +126,16 @@ handlePrintKeyIns tac pos@(x,y) key val = do
 
 handlePrintKeyNorm :: TAC.TextAreaContent -> TAC.Position -> String -> KeyVal -> IO(TAC.Position)
 handlePrintKeyNorm tac pos@(x,y) key val = do
-  finX <- TACU.findLastChar tac y
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   History.action tac pos (TAC.Insert [char])
-  TACU.moveChars tac x finX y (1,0)
-  TAC.putCell tac (x,y) (char,TAC.defaultColor)
+  TACU.moveChars tac pos (1,0)
+  TAC.putCell tac pos (char,TAC.defaultColor)
   return (x+1,y)
 
 isArrow :: String
   -> Bool
 isArrow key = elem key ["Left", "Right", "Up", "Down"]
 
---TODO adjust
 handleArrowsNorm :: String
   -> TAC.Position
   -> TAC.TextAreaContent
@@ -219,7 +217,7 @@ handleBackSpace tac (x,y) =
         let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
         History.action tac (x-1,y) (TAC.Remove [curchar])
         TAC.deleteCell tac (x-1,y)
-        TACU.moveChars tac x finX y (-1,0)
+        TACU.moveChars tac (x,y) (-1,0)
         return (x-1,y)
 
 handleReturnRail tac pos@(x,y) = do
@@ -243,16 +241,16 @@ handleTab tac pos@(x,y) modif = do
         if x>3
         then do
           History.action tac (x-4,y) (TAC.Remove "    ")
-          TACU.moveChars tac x finX y (-4,0)
+          TACU.moveChars tac pos (-4,0)
           return (x-4,y)
         else do
           History.action tac (0,y) (TAC.Remove (take x (repeat ' ')))
-          TACU.moveChars tac x finX y (-x,0)
+          TACU.moveChars tac pos (-x,0)
           return (0,y)
       else return pos
     _ -> do
       History.action tac pos (TAC.Insert "    ")
-      TACU.moveChars tac x finX y (4,0)
+      TACU.moveChars tac pos (4,0)
       return(x+4,y)
 
 handleDelete tac pos@(x,y) = do
@@ -267,6 +265,6 @@ handleDelete tac pos@(x,y) = do
     let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
     History.action tac pos (TAC.Remove [curchar])
     TAC.deleteCell tac (x,y)
-    TACU.moveChars tac (x+1) (finX+1) y (-1,0)
-    return(x,y)
+    TACU.moveChars tac (x+1,y) (-1,0)
+    return pos
 
