@@ -20,6 +20,7 @@ module TextArea(
 -- * Methods
   textAreaContent,
   setTextAreaContent,
+  drawingArea,
   getTextAreaContainer -- This function should be used to get a widget to place in MainWindow
   )where
     
@@ -116,7 +117,8 @@ initTextAreaWithContent areaContent = do
   GTK.scrolledWindowAddWithViewport scrwin drawArea
   posRef <- newIORef (0,0)
   let textArea = TA drawArea areaRef scrwin posRef veAdjustment hoAdjustment
-  
+
+
   {-This function is called when the user press a mouse button.
     It calls the handleButtonPress function.  
   -}
@@ -126,7 +128,7 @@ initTextAreaWithContent areaContent = do
     readIORef posRef >>= clearCursor textArea
     handleButtonPress textArea (round(Events.eventX event),round(Events.eventY event)) >>= writeIORef posRef
     return $ Events.eventSent event
-    
+
   {-
     This function is called when the user presses a key.
     It starts the heyHandler the highlighter and redraw the textAreaContent.
