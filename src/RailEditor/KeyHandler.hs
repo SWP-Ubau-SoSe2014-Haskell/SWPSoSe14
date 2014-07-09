@@ -48,6 +48,8 @@ handleKeyNorm :: TAC.TextAreaContent
   -> KeyVal
   -> IO(TAC.Position)
 handleKeyNorm tac pos@(x,y) modif key val = do
+  putStrLn $ show modif
+  putStrLn key
   if ((isJust $ keyToChar val) || key=="dead_circumflex")
   then handlePrintKeyNorm tac pos key val
   else do
@@ -58,6 +60,7 @@ handleKeyNorm tac pos@(x,y) modif key val = do
         "BackSpace" -> handleBackSpace tac pos
         "Return" -> handleReturn tac pos
         "Tab" -> handleTab tac pos modif
+        "ISO_Left_Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
         "Home" -> return (0,y)
         "End" -> do
@@ -82,6 +85,7 @@ handleKeyIns tac pos@(x,y) modif key val =
         "BackSpace" -> handleBackSpace tac pos
         "Return" -> handleReturn tac pos
         "Tab" -> handleTab tac pos modif
+        "ISO_Left_Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
         "Home" -> return (0,y)
         "End" -> do
@@ -107,6 +111,7 @@ handleKeySpec tac pos@(x,y) modif key val =
         "BackSpace" -> handleBackSpace tac pos
         "ReturnSpec" -> handleReturnRail tac pos
         "Tab" -> handleTab tac pos modif
+        "ISO_Left_Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
         "Home" -> return (0,y)
         "End" -> do
@@ -232,7 +237,6 @@ handleReturn tac pos@(x,y) = do
 handleTab tac pos@(x,y) modif = do
   prevCharX <- TACU.findLastCharBefore tac (x-1) y
   finX <- TACU.findLastChar tac y
-  --putStrLn $ show modif
   case modif of
     [Shift] -> do
       if prevCharX == (-1)
