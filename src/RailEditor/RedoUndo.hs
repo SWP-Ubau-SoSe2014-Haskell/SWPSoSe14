@@ -27,6 +27,8 @@ module RedoUndo (
     invert (TAC.Remove string, pos) = (TAC.Insert string, pos)
     invert (TAC.Insert string, pos) = (TAC.Remove string, pos)
     invert (TAC.Replace a b, pos) = (TAC.Replace b a, pos)
+    invert (TAC.RemoveLine, (x, y)) = (TAC.InsertLine, (x, y-1))
+    invert (TAC.InsertLine, (x, y)) = (TAC.RemoveLine, (x, y+1))
 
     -- add a given function to our queues
     action :: TAC.TextAreaContent -> TAC.Position -> TAC.Action -> IO ()
@@ -46,11 +48,8 @@ module RedoUndo (
       runaction tac act1 >> runaction tac act2
     runaction tac (TAC.Remove [], actpos) = return actpos
     runaction tac (TAC.Remove (x:xs), actpos) = do
-      if x == '\n'
-      then TACU.moveLinesUp tac (snd actpos)
-      else do
-        TAC.deleteCell tac actpos
-        TACU.moveChars tac actpos (-1,0)
+      TAC.deleteCell tac actpos
+      TACU.moveChars tac actpos (-1,0)
       runaction tac (TAC.Remove xs, actpos)
     runaction tac (TAC.Insert [], actpos) = return actpos
     runaction tac (TAC.Insert (x:xs), actpos) = do
@@ -64,6 +63,12 @@ module RedoUndo (
     runaction tac (TAC.Replace a (x:xs), actpos) = do
       TAC.putCell tac actpos (x, TAC.defaultColor)
       runaction tac (TAC.Replace a xs, actpos)
+    runaction tac (TAC.RemoveLine, (x, y)) = do
+      TACU.moveLinesUp tac y
+      return (x, y-1)
+    runaction tac (TAC.InsertLine, (x, y)) = do
+      TACU.moveLinesDownXShift tac (x, y) True
+      return (0, y+1)
 
     -- allows to undo actions in the editor
     undo :: TAC.TextAreaContent -> TAC.Position -> IO (TAC.Position)

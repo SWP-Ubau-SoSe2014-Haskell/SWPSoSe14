@@ -204,7 +204,7 @@ handleBackSpace tac (x,y) =
     (0,0) -> return (0,0)
     (0,_) -> do
       finXPrev <- TACU.findLastChar tac (y-1)
-      History.action tac (finXPrev+1,y-1) (TAC.Remove "\n")
+      History.action tac (finXPrev+1,y-1) TAC.RemoveLine
       TACU.moveLinesUp tac y
       return(finXPrev+1,y-1)
     (_,_) -> do
@@ -220,12 +220,12 @@ handleBackSpace tac (x,y) =
         return (x-1,y)
 
 handleReturnRail tac pos@(x,y) = do
-  History.action tac pos (TAC.Insert ('\n':(take x (repeat ' '))))
+  History.action tac pos TAC.InsertLine
   moveLinesDownXShift tac pos False
   return (x,y+1)
 
 handleReturn tac pos@(x,y) = do
-  History.action tac pos (TAC.Insert "\n")
+  History.action tac pos TAC.InsertLine
   moveLinesDownXShift tac pos True
   return (0,y+1)
 
@@ -256,7 +256,7 @@ handleDelete tac pos@(x,y) = do
   finX <- TACU.findLastChar tac y
   if x==finX+1
   then do
-    History.action tac pos (TAC.Remove "\n")
+    History.action tac pos TAC.RemoveLine
     moveLinesUp tac (y+1)
     return (x,y)
   else do

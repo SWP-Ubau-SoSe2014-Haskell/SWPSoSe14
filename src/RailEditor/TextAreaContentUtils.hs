@@ -21,8 +21,7 @@ module TextAreaContentUtils (
   findLastChar,
   findLastCharBefore,
   moveLinesUp,
-  moveLinesDownXShift,
-  moveLinesVertDown
+  moveLinesDownXShift
   ) where
 
 import Graphics.UI.Gtk
