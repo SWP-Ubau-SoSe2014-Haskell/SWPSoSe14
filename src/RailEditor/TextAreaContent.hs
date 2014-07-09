@@ -22,7 +22,7 @@ module TextAreaContent (
   Coord,
   ContentList,
   RGBColor(RGBColor),
-  TextAreaContent.Action(Remove, Insert, Replace, MoveTo, Concat),
+  TextAreaContent.Action(Remove, Insert, Replace, Concat),
   ActionQueue,
 
 -- * Constructors
@@ -47,6 +47,7 @@ module TextAreaContent (
   getPositionedGrid,
   getOccupiedPositions,
   getCell,
+  isEmptyLine,
   deleteCell,
   eqPos,
   deleteColors,
@@ -76,7 +77,7 @@ data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord)
 data ContentPositions = ConPos (IORef ([Position]))
 
 -- types for undoredo
-data Action = Remove String | Insert String | Replace String String | MoveTo Position | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
+data Action = Remove String | Insert String | Replace String String | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
 data TextAreaContent = 
@@ -345,6 +346,18 @@ getCell areaContent (x,y) = do
       case (isNothing mayValue) of
        True -> return Nothing
        _ -> return $ Just (fromJust mayValue, color)
+       
+-- / checks if line is empty
+isEmptyLine :: TextAreaContent
+  -> Coord
+  -> IO(Bool)
+isEmptyLine areaContent line = do
+  let (ChMap hMap _) = charMap areaContent
+  hmap <- readIORef hMap
+  let val =  Map.lookup line hmap
+  if val==Nothing
+  then return True
+  else return False
 
 generateContentList :: TextAreaContent
   -> (Position -> Bool)

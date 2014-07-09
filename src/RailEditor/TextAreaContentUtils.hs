@@ -21,7 +21,8 @@ module TextAreaContentUtils (
   findLastChar,
   findLastCharBefore,
   moveLinesUp,
-  moveLinesDownXShift
+  moveLinesDownXShift,
+  moveLinesVertDown
   ) where
 
 import Graphics.UI.Gtk
@@ -55,27 +56,32 @@ moveChar area from dir = do
     TAC.deleteCell area from
     return ()
 
--- / moves amount of Characters of one line
+-- / moves amount of Characters of one line in range from Pos x to last char in line
 moveChars :: TAC.TextAreaContent
-  -> TAC.Coord
-  -> TAC.Coord
-  -> TAC.Coord
+  -> TAC.Position
   -> Direction
   -> IO()
-moveChars area stX endX line dir =
+moveChars area (stX, line) dir = do
+  endX <- findLastChar area line
   unless (stX > endX) $
     if snd dir == 0 && fst dir > 0
-    then do
-      moveChar area (endX,line) dir
-      moveChars area stX (endX-1) line dir
-      return ()
+    then
+      moveCharsRight area stX endX line dir
     else do
       moveChar area (stX,line) dir
-      moveChars area (stX+1) endX line dir
+      moveChars area (stX+1,line) dir
       return ()
+  where
+    moveCharsRight area stX endX line dir = 
+      unless (stX > endX) $ do
+        moveChar area (endX,line) dir
+        moveCharsRight area stX (endX-1) line dir
+        return ()
 
--- / searchs for last character in Line and returns x-Position, if Line is empty
---   return -1
+{- /
+ searchs for last character in Line and returns x-Position, if Line is empty
+ return -1
+-}
 findLastChar :: TAC.TextAreaContent
   -> TAC.Coord
   -> IO TAC.Coord
@@ -107,12 +113,12 @@ findLastWrittenLine area = do
       if line<0
       then return(-1)
       else do
-        finalSelf <- findLastChar area line
-        if finalSelf == (-1)
+        empty <- TAC.isEmptyLine area line
+        if empty
         then findLastWrittenLineHelper area (line-1)
         else return line
 
--- / moves Lines up
+-- / moves Lines up where param line is the upper line
 moveLinesUp :: TAC.TextAreaContent
   -> TAC.Coord
   -> IO()
@@ -122,40 +128,46 @@ moveLinesUp area line = do
   where
       moveLinesUpHelper area line stY finY = 
         unless (line<=0 || line>finY) $ do
-          lastSelf <- findLastChar area line
-          if lastSelf==(-1)
+          empty <- TAC.isEmptyLine area line
+          if empty
           then moveLinesUpHelper area (line+1) stY finY
           else
             if line == stY
             then do
               lastPrev <- findLastChar area (line-1)
-              moveChars area 0 lastSelf line (lastPrev+1, -1)
+              moveChars area (0,line) (lastPrev+1, -1)
               moveLinesUpHelper area (line+1) stY finY
             else do
-              moveChars area 0 lastSelf line (0,-1)
+              moveChars area (0,line) (0,-1)
               moveLinesUpHelper area (line+1) stY finY
 
+{- /
+ moves Lines down where param line upper Line
+ param xShift is a Boolean, which defines wether
+ the upper line starting at posx is shifted vertically down (False)
+ or is shifted down to pos 0 (True)
+-}
 moveLinesDownXShift :: TAC.TextAreaContent
   -> TAC.Position
   -> Bool
   -> IO()
 moveLinesDownXShift area (posX,line) xShift = do
   lastLine <- findLastWrittenLine area
-  lastSelf <- findLastChar area line
   unless (line>lastLine || line<0) $
     if line==lastLine
     then 
-      moveChars area posX lastSelf line $
+      moveChars area (posX,line) $
         if xShift then (-posX,1) else (0,1)
     else
       if xShift
       then do
         moveLinesVertDown area (line+1)
-        moveChars area posX lastSelf line (-posX,1)
+        moveChars area (posX,line) (-posX,1)
       else do
         moveLinesVertDown area (line+1)
-        moveChars area posX lastSelf line (0,1)
+        moveChars area (posX,line) (0,1)
 
+-- / moves all chars of lines lower "line" to one line lower
 moveLinesVertDown :: TAC.TextAreaContent
   -> TAC.Coord
   -> IO()
@@ -165,9 +177,9 @@ moveLinesVertDown area line = do
   where
     moveDownHelper area line stY =
       unless (line<stY) $ do
-        lastSelf <- findLastChar area line
-        if lastSelf==(-1)
+        empty <- TAC.isEmptyLine area line
+        if empty
         then moveDownHelper area (line-1) stY
         else do
-          moveChars area 0 lastSelf line (0,1)
+          moveChars area (0,line) (0,1)
           moveDownHelper area (line-1) stY
