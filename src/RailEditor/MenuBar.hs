@@ -51,7 +51,6 @@ fileChooserEventHandler window area fileChooser response mode
         content <- readFile path
         newAreaContent <- deserialize content
         setTextAreaContent area newAreaContent
-        HIGH.highlight newAreaContent
         widgetDestroy fileChooser
         return()
       "SaveFile" -> do

@@ -44,6 +44,7 @@ module TextAreaContent (
   putValue,
   putColor,
   putCell,
+  getPositionedGrid,
   getOccupiedPositions,
   getCell,
   deleteCell,
@@ -56,6 +57,7 @@ module TextAreaContent (
   ) where
 
 import Graphics.UI.Gtk
+import qualified InterfaceDT as IDT
 import Data.Map as Map
 import Data.IORef
 import Data.Maybe
@@ -66,7 +68,7 @@ data RGBColor = RGBColor Double Double Double deriving Show
 data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
 -- chMap is a Map(y (x coord char)) where y and x are coords
 data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord))
-{- TODO CHANGE ALL FUNCTIONS WERE POSITIONS OCCUR
+{-
   This is the dataType to remember current occupied cells
   Its is important to increase the speed of redrawContent from theta(n²)
   to O(n²). In avarage cases it should be much faster.
@@ -169,7 +171,7 @@ serialize areaContent = do
   --Fill the map with whitespaces
   let 
     wMap = fillCharMapWith hmap ' ' (xMax,yMax)
-    listOfLines = assocs hmap
+    listOfLines = assocs wMap
   foldM (\code (y,lineMap) -> do
       let lineList = assocs lineMap
       l <- foldM (\line (x,char) -> return $ line++[char]) "" lineList
@@ -182,7 +184,20 @@ deserialize :: String
   -> IO TextAreaContent
 deserialize stringContent = do
   areaContent <- TextAreaContent.init newX newY
-  readStringListInEntryMap areaContent lined (0,0)
+  --readStringListInEntryMap areaContent lined (0,0) 
+  foldM 
+    (\y line -> do
+      foldM 
+        (\x char -> do 
+          putValue areaContent (x,y) char
+          return $ x+1
+        ) 
+        0 
+        line 
+      return $ y+1
+    ) 
+    0 
+    lined 
   return areaContent
   where
     newX = maximum $ Prelude.map length lined
@@ -210,15 +225,13 @@ readStringInEntryMap tac (s:ss) (x,y) = do
   readStringInEntryMap tac ss (succ x,y)
 
 --set the size(x,y) to (x+1,y+1)
-resize :: TextAreaContent -> IO ()
-resize areaContent  = do
+resize :: TextAreaContent -> Position-> IO ()
+resize areaContent (xm,ym) = do
   let 
     (ChMap charMapIORef charSize) = charMap areaContent
     (CoMap colorMapIORef colorSize) = colorMap areaContent
-  (xm,ym) <- readIORef charSize
-  modifyIORef charMapIORef (\cmap -> Map.insert (ym+1) Map.empty cmap)
-  writeIORef charSize (xm+1,ym+1)
-  modifyIORef colorSize (\_ -> (xm+1,ym+1))
+  writeIORef charSize (xm,ym)
+  modifyIORef colorSize (\_ -> (xm,ym))
 
 -- | sets the character for a cell identified by a coordinate
 -- If the coords are out of bounds the function resizes the TAC.
@@ -230,7 +243,7 @@ putValue areaContent (x,y) character = do
   (xMax,yMax) <- TextAreaContent.size areaContent
   if (y > yMax || x > xMax)
   then do 
-    resize areaContent
+    resize areaContent (xMax + (abs $ xMax-x),yMax + (abs $ yMax-y))
     putValue areaContent (x,y) character
   else do
     putPos areaContent (x,y)
@@ -253,8 +266,7 @@ putColor areaContent (x,y) color = do
   (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
   then do
-    print "resize"
-    resize areaContent
+    resize areaContent (xMax + (abs $ xMax-x),yMax + (abs $ yMax-y))
     putColor areaContent (x,y) color
   else do
     let (CoMap cMap _) = colorMap areaContent
@@ -353,6 +365,34 @@ generateContentList areaContent function = do
     list = Map.toList $ Map.filterWithKey (\coord _ -> function coord) mapPosChar
   return list
 
+
+{-This function is important for highlighting it returns the datatype
+  which Lexer needs to lex. -}
+getPositionedGrid :: TextAreaContent -> IO(IDT.PreProc2Lexer)
+getPositionedGrid areaContent = do
+  let (ChMap hMap hSize) = charMap areaContent
+  s@(xMax,yMax) <- readIORef hSize
+  hmap <- readIORef hMap
+  pGrid <- buildPosGrid ([],0) (assocs hmap)
+  return $ IDT.IPL (fst pGrid)
+  where
+    buildPosGrid :: ([IDT.PositionedGrid],Int) -> [(Int,(Map.Map Int Char))] -> IO(([IDT.PositionedGrid],Int))
+    buildPosGrid a b = foldM  
+      (\(grids,offset) (y,line) -> do
+        let mayDollar = Map.lookup 0 line 
+        if (isNothing mayDollar)
+        then return $ ((insertWhenFct grids line y offset),offset)
+        else 
+          if ((fromJust mayDollar) == '$')
+          then return $ (grids++[((Map.insert 0 line Map.empty),y)],y)
+          else return $ ((insertWhenFct grids line y offset),offset)
+      ) a b
+    
+    insertWhenFct :: [IDT.PositionedGrid] -> (Map.Map Int Char) -> Int -> Int -> [IDT.PositionedGrid]
+    insertWhenFct x line y  offset 
+      | x == [] || line == Map.empty = x
+      | otherwise = x++[(Map.insert (y-offset) line (fst (last x)), (snd (last x)))]
+  
 -- | returns the size of a TextAreaContent.
 size :: TextAreaContent
   -> IO (Position) -- ^ size of the TextAreaContent

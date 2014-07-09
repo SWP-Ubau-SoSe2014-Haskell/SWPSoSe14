@@ -31,6 +31,7 @@ import qualified Highlighter as HIGH
 import qualified Graphics.Rendering.Cairo as CAIRO
 import qualified Graphics.UI.Gtk as GTK
 import qualified Graphics.UI.Gtk.Gdk.Events as Events
+import Control.Concurrent (threadDelay)
 import Data.IORef as IORef
 import Data.Maybe
 import qualified Data.Map as Map
@@ -73,8 +74,23 @@ getTextAreaContainer textArea = return $ scrolledWindow textArea
 -}
 setTextAreaContent :: TextArea -> TAC.TextAreaContent -> IO ()
 setTextAreaContent textArea areaContent= do
-  let areaRef = textAreaContent textArea
+  let 
+    areaRef = textAreaContent textArea
+    drawArea = drawingArea textArea
   writeIORef areaRef areaContent
+  --expand the drawWindow when needed
+  tac <- readIORef areaRef
+  s@(xMax,yMax) <- TAC.size tac
+  (w,h) <- GTK.widgetGetSizeRequest drawArea
+  if((yMax*hef) > h ) && ((xMax*bef) > w)
+  then GTK.widgetSetSizeRequest drawArea (w + (xMax*bef-w)) (h+((yMax*hef)-w))
+  else do
+    when ((yMax*hef) > h ) $
+      GTK.widgetSetSizeRequest drawArea w (h+((yMax*hef)-w))
+    when ((xMax*bef) > w) $
+      GTK.widgetSetSizeRequest drawArea (w + (xMax*bef-w))  h
+  HIGH.highlight areaContent
+  redrawContent textArea
 
 {- 
   This Function calls initTextAreaWithContent with an empty TAC
@@ -96,9 +112,7 @@ initTextAreaWithContent areaContent = do
   hoAdjustment <- GTK.adjustmentNew 0 0 0 (fromIntegral bef) 0 0
   scrwin <- GTK.scrolledWindowNew (Just hoAdjustment) (Just veAdjustment)
   areaRef <- newIORef areaContent
-  tac <- readIORef areaRef --TextAreaContent
-  s <- TAC.size tac
-  drawArea <- setUpDrawingArea s
+  drawArea <- setUpDrawingArea
   GTK.scrolledWindowAddWithViewport scrwin drawArea
   posRef <- newIORef (0,0)
   let textArea = TA drawArea areaRef scrwin posRef veAdjustment hoAdjustment
@@ -107,6 +121,8 @@ initTextAreaWithContent areaContent = do
     It calls the handleButtonPress function.  
   -}
   GTK.onButtonPress drawArea $ \event -> do
+    let posRef = currentPosition textArea
+    GTK.widgetGrabFocus drawArea
     readIORef posRef >>= clearCursor textArea
     handleButtonPress textArea (round(Events.eventX event),round(Events.eventY event)) >>= writeIORef posRef
     return $ Events.eventSent event
@@ -117,13 +133,13 @@ initTextAreaWithContent areaContent = do
   -}
   GTK.onKeyPress drawArea $ \event -> do
     let 
-      drawArea = drawingArea textArea
       posRef   = currentPosition textArea
       areaRef  = textAreaContent textArea
       modif = Events.eventModifier event
       key = Events.eventKeyName event
       val = Events.eventKeyVal event
       modus = "Insert"
+    tac <- readIORef areaRef --TextAreaContent
     readIORef posRef >>= clearCursor textArea
     pos@(x,y) <- readIORef posRef
     pos@(kx,ky) <- KeyHandler.handleKey tac pos modus modif key val
@@ -134,7 +150,7 @@ initTextAreaWithContent areaContent = do
       
     writeIORef posRef pos
     
-   -- HIGH.highlight tac
+    HIGH.highlight tac
     
     redrawContent textArea
     showCursor textArea pos
@@ -145,6 +161,9 @@ initTextAreaWithContent areaContent = do
     It setting the cursor and draw the textAreaContent
   -}
   GTK.onExpose drawArea $ \(Events.Expose sent _ _ _) -> do
+    let 
+      posRef   = currentPosition textArea
+      areaRef  = textAreaContent textArea
     content <- readIORef areaRef
     list <- TAC.generateContentList content (\_ -> True)
     pos <- readIORef posRef
@@ -157,8 +176,8 @@ initTextAreaWithContent areaContent = do
 {-
   This function setup the DrawArea using GTK.DrawingArea.
 -}
-setUpDrawingArea :: TAC.Position -> IO (GTK.DrawingArea)
-setUpDrawingArea (xMax,yMax)= do
+setUpDrawingArea :: IO (GTK.DrawingArea)
+setUpDrawingArea = do
   drawingArea <- GTK.drawingAreaNew
   GTK.widgetModifyBg drawingArea GTK.StateNormal defaultBgColor
   GTK.set drawingArea [GTK.widgetCanFocus GTK.:= True]
@@ -197,7 +216,7 @@ yCoord y = (y*hef)+hef
 xCoord :: TAC.Coord -> TAC.Coord
 xCoord x = (x*bef)
   
--- removes the content from Text Area
+-- removes the content from Text Area which is displayed in scrollable Frame
 removeContent :: TextArea -> IO ()
 removeContent textArea = do
   let 
@@ -224,7 +243,6 @@ removeCharacter textArea (x,y) = do
 -- This Function draws every character in scrollable Frame.
 redrawContent :: TextArea -> IO ()  
 redrawContent textArea = do
-  print "draw"
   removeContent textArea
   let 
     tacIORef = textAreaContent textArea
@@ -240,8 +258,6 @@ redrawContent textArea = do
     yFrom = div (round vAdjValue) hef
     xTo =  div ((round hAdjValue)+(round drawFrameWidth)) bef
     yTo = div ((round vAdjValue)+(round drawFrameHeight)) hef
-  print $ show (xFrom,xTo)
-  print $ show (yFrom,yTo)
   tac <- readIORef tacIORef
   --Function from Control.Monad Monad m => [a] -> (a -> m b) -> m ()
   conPos <- TAC.getOccupiedPositions tac
@@ -290,7 +306,7 @@ curX x = abs(x-(mod x bef)-1)
 curY y = y-(mod y hef)
 
 {-
-  This function extends the TextArea horizontal.
+  This function extends the TextArea horizontal and set the scroll Frame.
   It should be called after KeyHandler 
 -}
 extendDrawingAreaHorizontally :: TextArea -> TAC.Coord -> IO ()
@@ -305,9 +321,11 @@ extendDrawingAreaHorizontally textArea x = do
     GTK.widgetSetSizeRequest drawArea (w + bef) h
   when ((x*bef)+bef >= (round width)+(round value)) $
     GTK.adjustmentSetValue adjustment $ value + (fromIntegral bef)
+  when ((x*bef)-bef < (round value)) $
+    GTK.adjustmentSetValue adjustment $ value - (fromIntegral bef)
     
 {-
-  This function extends the TextArea vertically.
+  This function extends the TextArea vertically and set the scroll Frame.
   It should be called after KeyHandler 
 -}
 extendDrawingAreaVertically :: TextArea -> TAC.Coord -> IO ()
@@ -322,3 +340,5 @@ extendDrawingAreaVertically textArea y = do
     GTK.widgetSetSizeRequest drawArea w (h + hef)
   when ((y*hef)+hef >= (round height)+(round value)) $
     GTK.adjustmentSetValue adjustment $ value + (fromIntegral hef)
+  when ((y*hef)-hef < (round value)) $
+    GTK.adjustmentSetValue adjustment $ value - (fromIntegral hef)

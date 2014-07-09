@@ -33,7 +33,8 @@ highlight :: TAC.TextAreaContent -> IO()
 highlight textAC = do
   code <- TAC.serialize textAC
   EXC.catch (do
-    let positionedGrid =  getGrid2dFromPreProc2Lexer $ PRE.process  (IIP code)
+    pGrid <- TAC.getPositionedGrid textAC
+    let (IDT.IPL positionedGrid) = pGrid
     (xm,ym) <- TAC.size textAC
     paintItRed textAC
     highlightFcts positionedGrid textAC
@@ -43,11 +44,6 @@ highlight textAC = do
 --Handels errors and prints them out used in context of Lexer and Preprocessor
 handleErrors :: EXC.ErrorCall  -> IO ()
 handleErrors e = print(show e)
-{-
-  | excep == Nothing = return ()
-  | otherwise = putStrLn $ fromJust excep
-  where
-    excep = EXC.fromException e-}
 
 -- highlight all rail-functions
 highlightFcts ::  [PositionedGrid]-- List of funtions in line-representation with y coord of function(position of $) 
