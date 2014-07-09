@@ -10,9 +10,8 @@
 
 ; Types
 
-; A "real" stack element that is stored on the stack.
-; This also double as a list element since lists need to be
-; able to store all the types that can be pushed onto the stack.
+; A "real" stack element that is stored on the stack -- but only
+; indirectly, see %stack_wrapper.
 ;
 ; The fields are:
 ;  * i8 dataType: Type of the data stored in dataPtr.
@@ -24,13 +23,32 @@
 ;  * void *dataPtr: Points to type-specific data. May be null.
 ;  * i32 refCount: The element's reference count. When this reaches 0, the element
 ;    is free'd.
-;  * stack_element *nextElementPtr: Points to the next stack_element. May be null if there
-;    is no next element.
-%stack_element = type { i8, i8*, i32, %stack_element* }
+%stack_element = type { i8, i8*, i32 }
+
+; A "volatile", non-reused stack element wrapper which is used for the
+; actual stack elements, i. e. the stack is a linked list of this type.
+;
+; This also double as a list element since lists need to be
+; able to store all the types that can be pushed onto the stack.
+;
+; This struct contains two pointers which point (in this order):
+;   a) to the real %stack_element in question (first member) and
+;   b) to the next %stack_wrapper element in the linked list that makes up
+;      the stack (second member).
+;
+; This is all needed because e. g. Rail variables can be used to
+; push the same %stack_element onto the stack multiple times -- while
+; the data and the reference count need to be shared by all these
+; %stack_element structs, they need to have different nextElement pointers
+; (so that the linked list can be a proper linked list). This wrapper type
+; solves that issue by introducing yet another layer of abstraction, allowing
+; us to reference the same %stack_element multiple times, while keeping a proper
+; linked list.
+%stack_wrapper = type { %stack_element*, %stack_wrapper* }
 
 
 ; Global variables
-@stack = global %stack_element* null  ; Linked list of stack_element structs.
+@stack = global %stack_wrapper* null  ; Linked list of stack_element structs.
 @stack_size = global i64 0            ; Current number of elements on the stack.
 
 
@@ -65,7 +83,7 @@ define i64 @stack_get_size() {
 }
 
 ; Creates a new stack_element with a reference count of 1.
-define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_element* %nextElementPtr) {
+define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr) {
   ; How many bytes do we need to allocate for a single stack element struct?
   ; getelementptr abuse taken from:
   ; http://nondot.org/sabre/LLVMNotes/SizeOf-OffsetOf-VariableSizedStructs.txt
@@ -79,7 +97,6 @@ define %stack_element* @stack_element_new(i8 %dataType, i8* %dataPtr, %stack_ele
   ; %element1 now can be treated like an element struct. Yay!
   call void @stack_element_set_type(%stack_element* %element1, i8 %dataType)
   call void @stack_element_set_data(%stack_element* %element1, i8* %dataPtr)
-  call void @stack_element_set_next(%stack_element* %element1, %stack_element* %nextElementPtr)
 
   ; Finally, increment the reference count so that it is exactly 1.
   call void @stack_element_ref(%stack_element* %element1)
@@ -218,20 +235,68 @@ define i32 @stack_element_get_refcount(%stack_element* %element) {
   ret i32 %refCount1
 }
 
-; Get the "next element" pointer of a stack_element struct.
-define %stack_element* @stack_element_get_next(%stack_element* %element) {
-  ; nextElementPtr is member #3
-  %nextElement0 = getelementptr %stack_element* %element, i32 0, i32 3
-  %nextElement1 = load %stack_element** %nextElement0
+; Create a new %stack_wrapper struct.
+define %stack_wrapper* @stack_wrapper_new(%stack_element* %stackElementPtr, %stack_wrapper* %nextWrapperPtr) {
+  ; How many bytes do we need to allocate for a single stack wrapper struct?
+  ; getelementptr abuse taken from:
+  ; http://nondot.org/sabre/LLVMNotes/SizeOf-OffsetOf-VariableSizedStructs.txt
+  %wrap_size0 = getelementptr %stack_wrapper* null, i32 1
+  %wrap_size1 = ptrtoint %stack_wrapper* %wrap_size0 to i16
 
-  ret %stack_element* %nextElement1
+  ; Now we can allocate the memory.
+  %wrapper0 = call i8* @xcalloc(i16 1, i16 %wrap_size1)
+  %wrapper1 = bitcast i8* %wrapper0 to %stack_wrapper*
+
+  ; %wrapper1 now can be treated like a wrapper struct.
+  call void @stack_wrapper_set_element(%stack_wrapper* %wrapper1, %stack_element* %stackElementPtr)
+  call void @stack_wrapper_set_next(%stack_wrapper* %wrapper1, %stack_wrapper* %nextWrapperPtr)
+
+  ; That's it!
+  ret %stack_wrapper* %wrapper1
 }
 
-; Set the "next element" pointer of a stack_element struct.
-define void @stack_element_set_next(%stack_element* %element, %stack_element* %next) {
-  ; nextElementPtr is member #3
-  %nextPtr = getelementptr %stack_element* %element, i32 0, i32 3
-  store %stack_element* %next, %stack_element** %nextPtr
+; Free a %stack_wrapper struct.
+;
+; Does not free the %stack_element struct hidden by the wrapper.
+define void @stack_wrapper_free(%stack_wrapper* %wrapper) {
+    %mem = bitcast %stack_wrapper* %wrapper to i8*
+    call void @free(i8* %mem)
+
+    ret void
+}
+
+; Get the "real" %stack_element behind a stack_wrapper struct.
+define %stack_element* @stack_wrapper_get_element(%stack_wrapper* %wrapper) {
+    ; stackElementPtr is member #0
+    %stackElement0 = getelementptr %stack_wrapper* %wrapper, i32 0, i32 0
+    %stackElement1 = load %stack_element** %stackElement0
+
+    ret %stack_element* %stackElement1
+}
+
+; Set the "real" %stack_element behind a stack_wrapper struct.
+define void @stack_wrapper_set_element(%stack_wrapper* %wrapper, %stack_element* %element) {
+    ; stackElementPtr is member #0
+    %stackElementPtr = getelementptr %stack_wrapper* %wrapper, i32 0, i32 0
+    store %stack_element* %element, %stack_element** %stackElementPtr
+
+    ret void
+}
+
+; Get the "next wrapper" pointer of a stack_wrapper struct.
+define %stack_wrapper* @stack_wrapper_get_next(%stack_wrapper* %wrapper) {
+  ; nextWrapperPtr is member #1
+  %nextWrapper0 = getelementptr %stack_wrapper* %wrapper, i32 0, i32 1
+  %nextWrapper1 = load %stack_wrapper** %nextWrapper0
+
+  ret %stack_wrapper* %nextWrapper1
+}
+
+; Set the "next wrapper" pointer of a stack_wrapper struct.
+define void @stack_wrapper_set_next(%stack_wrapper* %wrapper, %stack_wrapper* %next) {
+  ; nextWrapperPtr is member #1
+  %nextPtr = getelementptr %stack_wrapper* %wrapper, i32 0, i32 1
+  store %stack_wrapper* %next, %stack_wrapper** %nextPtr
 
   ret void
 }
@@ -258,25 +323,29 @@ invalid_type:
   ret void
 }
 
-; Get (but do not remove) the topmost stack_element struct.
+; Get (but do not remove) the topmost %stack_wrapper struct.
 ;
 ; Crashes the program if the stack is empty.
-define %stack_element* @peek() {
+define %stack_wrapper* @peek_wrapper() {
   ; 1. Make sure we can peek something.
   call void @underflow_assert()
 
   ; 2. Do the actual peek.
-  %stack = load %stack_element** @stack
+  %stack = load %stack_wrapper** @stack
 
-  ret %stack_element* %stack
+  ret %stack_wrapper* %stack
 }
 
 ; Pop a stack_element struct from the stack.
 define %stack_element* @pop_struct() {
-  ; 1. Pop the stack.
-  %stack = call %stack_element* @peek()
-  %next = call %stack_element* @stack_element_get_next(%stack_element* %stack)
-  store %stack_element* %next, %stack_element** @stack
+  ; 1. Pop the stack and get the topmost wrapper.
+  %stack = call %stack_wrapper* @peek_wrapper()
+  %next = call %stack_wrapper* @stack_wrapper_get_next(%stack_wrapper* %stack)
+  store %stack_wrapper* %next, %stack_wrapper** @stack
+
+  ; Get the wrapped stack_element and free the wrapper.
+  %element = call %stack_element* @stack_wrapper_get_element(%stack_wrapper* %stack)
+  call void @stack_wrapper_free(%stack_wrapper* %stack)
 
   ; 2. Decrement the stack size.
   %stack_size0 = load i64* @stack_size
@@ -284,15 +353,20 @@ define %stack_element* @pop_struct() {
   store i64 %stack_size1, i64* @stack_size
 
   ; 3. That's it!
-  ret %stack_element* %stack
+  ret %stack_element* %element
 }
 
 ; Push a stack_element struct onto the stack
 define void @push_struct(%stack_element* %element) {
-  ; 1. Push new element by updating it's pointer to the first element of the current stack
-  %curr_head = load %stack_element** @stack
-  call void @stack_element_set_next(%stack_element* %element, %stack_element* %curr_head)
-  store %stack_element* %element, %stack_element** @stack
+  ; 1. Push new element by creating and pushing a new wrapper,
+  ;    updating its "next" pointer to the first element of the current stack.
+  ;
+  ;    NB: Do NOT use peek_wrapper() here since that will crash the program
+  ;        if the stack is empty -- making it impossible to push a struct
+  ;        onto the empty stack.
+  %curr_head = load %stack_wrapper** @stack
+  %new_head = call %stack_wrapper* @stack_wrapper_new(%stack_element* %element, %stack_wrapper* %curr_head)
+  store %stack_wrapper* %new_head, %stack_wrapper** @stack
 
   ; 2. Increment stack size.
   %stack_size0 = call i64 @stack_get_size()
@@ -330,16 +404,12 @@ define i8* @pop_string() {
 ; The string must already be allocated _ON THE HEAP_.
 define %stack_element* @push_string_ptr(i8* %str) {
   ; 1. Create and push a new stack_element.
-  %curr_head = load %stack_element** @stack
-  %new_head = call %stack_element* @stack_element_new(i8 0, i8* %str, %stack_element* %curr_head)
-  store %stack_element* %new_head, %stack_element** @stack
+  ;    NB: Stack size is incremented by push_struct().
+  %elem = call %stack_element* @stack_element_new(i8 0, i8* %str)
+  call void @push_struct(%stack_element* %elem)
 
-  ; 2. Increment stack size.
-  %stack_size0 = call i64 @stack_get_size()
-  %stack_size1 = add i64 %stack_size0, 1
-  store i64 %stack_size1, i64* @stack_size
-
-  ret %stack_element* %new_head
+  ; 2. That's it!
+  ret %stack_element* %elem
 }
 
 ; strdup() a string and push it onto the stack, creating a new stack_element struct
