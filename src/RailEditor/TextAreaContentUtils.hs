@@ -55,7 +55,7 @@ moveChar area from dir = do
     TAC.deleteCell area from
     return ()
 
--- / moves amount of Characters of one line
+-- / moves amount of Characters of one line in range from Pos x to last char in line
 moveChars :: TAC.TextAreaContent
   -> TAC.Coord
   -> TAC.Coord
@@ -74,8 +74,10 @@ moveChars area stX endX line dir =
       moveChars area (stX+1) endX line dir
       return ()
 
--- / searchs for last character in Line and returns x-Position, if Line is empty
---   return -1
+{- /
+ searchs for last character in Line and returns x-Position, if Line is empty
+ return -1
+-}
 findLastChar :: TAC.TextAreaContent
   -> TAC.Coord
   -> IO TAC.Coord
@@ -112,7 +114,7 @@ findLastWrittenLine area = do
         then findLastWrittenLineHelper area (line-1)
         else return line
 
--- / moves Lines up
+-- / moves Lines up where param line is the upper line
 moveLinesUp :: TAC.TextAreaContent
   -> TAC.Coord
   -> IO()
@@ -135,6 +137,12 @@ moveLinesUp area line = do
               moveChars area 0 lastSelf line (0,-1)
               moveLinesUpHelper area (line+1) stY finY
 
+{- /
+ moves Lines down where param line upper Line
+ param xShift is a Boolean, which defines wether
+ the upper line starting at posx is shifted vertically down (False)
+ or is shifted down to pos 0 (True)
+-}
 moveLinesDownXShift :: TAC.TextAreaContent
   -> TAC.Position
   -> Bool
@@ -156,6 +164,7 @@ moveLinesDownXShift area (posX,line) xShift = do
         moveLinesVertDown area (line+1)
         moveChars area posX lastSelf line (0,1)
 
+-- / moves all chars of lines lower "line" to one line lower
 moveLinesVertDown :: TAC.TextAreaContent
   -> TAC.Coord
   -> IO()
