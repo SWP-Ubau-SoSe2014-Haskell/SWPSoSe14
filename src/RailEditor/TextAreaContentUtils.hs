@@ -113,8 +113,8 @@ findLastWrittenLine area = do
       if line<0
       then return(-1)
       else do
-        finalSelf <- findLastChar area line
-        if finalSelf == (-1)
+        empty <- TAC.isEmptyLine area line
+        if empty
         then findLastWrittenLineHelper area (line-1)
         else return line
 
@@ -128,8 +128,8 @@ moveLinesUp area line = do
   where
       moveLinesUpHelper area line stY finY = 
         unless (line<=0 || line>finY) $ do
-          lastSelf <- findLastChar area line
-          if lastSelf==(-1)
+          empty <- TAC.isEmptyLine area line
+          if empty
           then moveLinesUpHelper area (line+1) stY finY
           else
             if line == stY
@@ -177,8 +177,8 @@ moveLinesVertDown area line = do
   where
     moveDownHelper area line stY =
       unless (line<stY) $ do
-        lastSelf <- findLastChar area line
-        if lastSelf==(-1)
+        empty <- TAC.isEmptyLine area line
+        if empty
         then moveDownHelper area (line-1) stY
         else do
           moveChars area (0,line) (0,1)

@@ -48,7 +48,6 @@ handleKeyNorm :: TAC.TextAreaContent
   -> KeyVal
   -> IO(TAC.Position)
 handleKeyNorm tac pos@(x,y) modif key val = do
-  --putStrLn key
   if ((isJust $ keyToChar val) || key=="dead_circumflex")
   then handlePrintKeyNorm tac pos key val
   else do
@@ -209,8 +208,8 @@ handleBackSpace tac (x,y) =
       TACU.moveLinesUp tac y
       return(finXPrev+1,y-1)
     (_,_) -> do
-      finX <- TACU.findLastChar tac y
-      if finX==(-1)
+      empty <- TAC.isEmptyLine tac y
+      if empty
       then return(0,y)
       else do
         cell <- TAC.getCell tac (x-1,y)

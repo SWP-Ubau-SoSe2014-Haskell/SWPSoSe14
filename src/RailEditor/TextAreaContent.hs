@@ -46,6 +46,7 @@ module TextAreaContent (
   putCell,
   getOccupiedPositions,
   getCell,
+  isEmptyLine,
   deleteCell,
   eqPos,
   deleteColors,
@@ -381,6 +382,18 @@ getCell areaContent (x,y) = do
       case (isNothing mayValue) of
        True -> return Nothing
        _ -> return $ Just (fromJust mayValue, color)
+       
+-- / checks if line is empty
+isEmptyLine :: TextAreaContent
+  -> Coord
+  -> IO(Bool)
+isEmptyLine areaContent line = do
+  let (ChMap hMap _) = charMap areaContent
+  hmap <- readIORef hMap
+  let val =  Map.lookup line hmap
+  if val==Nothing
+  then return True
+  else return False
 
 generateContentList :: TextAreaContent
   -> (Position -> Bool)
