@@ -27,7 +27,6 @@ module RedoUndo (
     invert (TAC.Remove string, pos) = (TAC.Insert string, pos)
     invert (TAC.Insert string, pos) = (TAC.Remove string, pos)
     invert (TAC.Replace a b, pos) = (TAC.Replace b a, pos)
-    invert (TAC.MoveTo a, b) = (TAC.MoveTo b, a)
 
     -- add a given function to our queues
     action :: TAC.TextAreaContent -> TAC.Position -> TAC.Action -> IO ()
@@ -43,10 +42,13 @@ module RedoUndo (
 
     -- run whatever action given
     runaction :: TAC.TextAreaContent -> TAC.Position -> (TAC.Action, TAC.Position) -> IO (TAC.Position)
-    runaction tac pos (TAC.Concat act1 act2, actpos) = return pos
+    runaction tac pos (TAC.Concat act1 act2, actpos) = do
+      runaction tac pos act1 >> runaction tac actpos act2
+    --TODO: verschieben
     runaction tac pos (TAC.Remove string, actpos) = do
       TAC.deleteCell tac actpos
       return actpos
+    --TODO: verschieben
     runaction tac pos (TAC.Insert [], actpos) = return actpos
     runaction tac pos (TAC.Insert (x:xs), actpos) = do
       TAC.putCell tac actpos (x, TAC.defaultColor)
@@ -55,7 +57,6 @@ module RedoUndo (
     runaction tac pos (TAC.Replace a (x:xs), actpos) = do
       TAC.putCell tac actpos (x, TAC.defaultColor)
       runaction tac pos (TAC.Replace a xs, actpos)
-    runaction tac pos (TAC.MoveTo a, b) = return pos
 
     -- allows to undo actions in the editor
     undo :: TAC.TextAreaContent -> TAC.Position -> IO (TAC.Position)

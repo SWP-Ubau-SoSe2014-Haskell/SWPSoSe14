@@ -48,7 +48,7 @@ handleKeyNorm :: TAC.TextAreaContent
   -> KeyVal
   -> IO(TAC.Position)
 handleKeyNorm tac pos@(x,y) modif key val = do
-  putStrLn key
+  --putStrLn key
   if ((isJust $ keyToChar val) || key=="dead_circumflex")
   then handlePrintKeyNorm tac pos key val
   else do
@@ -119,7 +119,7 @@ handlePrintKeyIns :: TAC.TextAreaContent -> TAC.Position -> String -> KeyVal -> 
 handlePrintKeyIns tac pos@(x,y) key val = do
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   cell <- TAC.getCell tac pos
-  let (curchar, _) = if isNothing cell then (' ', TAC.defaultColor) else fromJust cell
+  let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
   History.action tac pos (TAC.Replace [curchar] [char])
   TAC.putCell tac pos (char,TAC.defaultColor)
   return (x+1,y)
@@ -207,6 +207,7 @@ handleBackSpace tac (x,y) =
     (0,0) -> return (0,0)
     (0,_) -> do
       finXPrev <- TACU.findLastChar tac (y-1)
+      History.action tac (finXPrev+1,y-1) (TAC.Remove "\n")
       TACU.moveLinesUp tac y
       return(finXPrev+1,y-1)
     (_,_) -> do
@@ -214,45 +215,57 @@ handleBackSpace tac (x,y) =
       if finX==(-1)
       then return(0,y)
       else do
+        cell <- TAC.getCell tac (x-1,y)
+        let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
+        History.action tac (x-1,y) (TAC.Remove [curchar])
         TAC.deleteCell tac (x-1,y)
         TACU.moveChars tac x finX y (-1,0)
         return (x-1,y)
 
 handleReturnRail tac pos@(x,y) = do
+  History.action tac pos (TAC.Insert ('\n':(take x (repeat ' '))))
   moveLinesDownXShift tac pos False
   return (x,y+1)
 
 handleReturn tac pos@(x,y) = do
+  History.action tac pos (TAC.Insert "\n")
   moveLinesDownXShift tac pos True
   return (0,y+1)
 
 handleTab tac pos@(x,y) modif = do
   prevCharX <- TACU.findLastCharBefore tac (x-1) y
   finX <- TACU.findLastChar tac y
-  putStrLn $ show modif
+  --putStrLn $ show modif
   case modif of
     [Shift] -> do
       if prevCharX == (-1)
       then
         if x>3
         then do
+          History.action tac (x-4,y) (TAC.Remove "    ")
           TACU.moveChars tac x finX y (-4,0)
           return (x-4,y)
         else do
+          History.action tac (0,y) (TAC.Remove (take x (repeat ' ')))
           TACU.moveChars tac x finX y (-x,0)
           return (0,y)
       else return pos
     _ -> do
+      History.action tac pos (TAC.Insert "    ")
       TACU.moveChars tac x finX y (4,0)
       return(x+4,y)
 
-handleDelete tac (x,y) = do
+handleDelete tac pos@(x,y) = do
   finX <- TACU.findLastChar tac y
   if x==finX+1
   then do
+    History.action tac pos (TAC.Remove "\n")
     moveLinesUp tac (y+1)
     return (x,y)
   else do
+    cell <- TAC.getCell tac pos
+    let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
+    History.action tac pos (TAC.Remove [curchar])
     TAC.deleteCell tac (x,y)
     TACU.moveChars tac (x+1) (finX+1) y (-1,0)
     return(x,y)
