@@ -41,22 +41,31 @@ module RedoUndo (
     shiftaction (from, to) = (tail from, invert (head from):to, head from)
 
     -- run whatever action given
-    runaction :: TAC.TextAreaContent -> TAC.Position -> (TAC.Action, TAC.Position) -> IO (TAC.Position)
-    runaction tac pos (TAC.Concat act1 act2, actpos) = do
-      runaction tac pos act1 >> runaction tac actpos act2
-    --TODO: verschieben
-    runaction tac pos (TAC.Remove string, actpos) = do
-      TAC.deleteCell tac actpos
-      return actpos
-    --TODO: verschieben
-    runaction tac pos (TAC.Insert [], actpos) = return actpos
-    runaction tac pos (TAC.Insert (x:xs), actpos) = do
+    runaction :: TAC.TextAreaContent -> (TAC.Action, TAC.Position) -> IO (TAC.Position)
+    runaction tac (TAC.Concat act1 act2, actpos) = do
+      runaction tac act1 >> runaction tac act2
+    runaction tac (TAC.Remove [], actpos) = return actpos
+    runaction tac (TAC.Remove (x:xs), actpos) = do
+      if x == '\n'
+      then TACU.moveLinesVertDown tac (snd actpos)
+      else
+        TAC.deleteCell tac actpos >> return ()
+        --wtf finX?
+        --TACU.moveChars tac x finX y (1,0)
+      runaction tac (TAC.Remove xs, actpos)
+    runaction tac (TAC.Insert [], actpos) = return actpos
+    runaction tac (TAC.Insert (x:xs), actpos) = do
+      if x == '\n'
+      then TACU.moveLinesUp tac (snd actpos)
+      else
+        --wtf finX?
+        --TACU.moveChars tac x finX y (1,0)
+        TAC.putCell tac actpos (x, TAC.defaultColor)
+      runaction tac (TAC.Insert xs, actpos)
+    runaction tac (TAC.Replace a [], actpos) = return actpos
+    runaction tac (TAC.Replace a (x:xs), actpos) = do
       TAC.putCell tac actpos (x, TAC.defaultColor)
-      runaction tac pos (TAC.Insert xs, actpos)
-    runaction tac pos (TAC.Replace a [], actpos) = return pos
-    runaction tac pos (TAC.Replace a (x:xs), actpos) = do
-      TAC.putCell tac actpos (x, TAC.defaultColor)
-      runaction tac pos (TAC.Replace a xs, actpos)
+      runaction tac (TAC.Replace a xs, actpos)
 
     -- allows to undo actions in the editor
     undo :: TAC.TextAreaContent -> TAC.Position -> IO (TAC.Position)
@@ -69,7 +78,7 @@ module RedoUndo (
         let (newundo, newredo, action) = shiftaction (undoqueue, redoqueue)
         writeIORef (TAC.redoQueue tac) newredo
         writeIORef (TAC.undoQueue tac) newundo
-        runaction tac pos action
+        runaction tac action
       else
         return pos
 
@@ -84,6 +93,6 @@ module RedoUndo (
         let (newredo, newundo, action) = shiftaction (redoqueue, undoqueue)
         writeIORef (TAC.redoQueue tac) newredo
         writeIORef (TAC.undoQueue tac) newundo
-        runaction tac pos action
+        runaction tac action
       else
         return pos

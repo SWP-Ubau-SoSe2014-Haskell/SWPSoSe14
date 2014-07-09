@@ -30,7 +30,7 @@ handleKey :: TAC.TextAreaContent
   -> IO(TAC.Position)
 handleKey tac pos modus modif key val = 
   if (elem Control modif && 
-    keyToChar val == Just 'z')
+    (keyToChar val == Just 'z' || keyToChar val == Just 'Z'))
   then
     if elem Shift modif
     then History.redo tac pos
