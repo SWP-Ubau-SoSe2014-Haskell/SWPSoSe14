@@ -26,12 +26,13 @@ declare %stack_element* @pop_struct()
 declare signext i32 @printf(i8*, ...)
 declare void @push_float(double)
 declare void @underflow_assert()
+declare i32 @strcmp(i8*, i8*)
 declare void @push_int(i64)
 declare i8* @pop_string()
 declare void @crash(i1)
 
-@main.number_a = private unnamed_addr constant [4 x i8] c"150\00"
-@main.number_b  = private unnamed_addr constant [4 x i8] c"151\00"
+@main.number_a = private unnamed_addr constant [4 x i8] c"abc\00"
+@main.number_b  = private unnamed_addr constant [4 x i8] c"adc\00"
 
 define i32 @main_cmp() {
   ; push two numbers on the stack
@@ -97,7 +98,8 @@ get_types:
 
   switch i32 %type_a, label %exit_with_invalid_type [
                                         i32 1, label %assume_b_int
-                                        i32 2, label %assume_b_float]
+                                        i32 2, label %assume_b_float
+                                        i32 3, label %assume_b_string]
 
 ;##############################################################################
 ;                        integer comparison
@@ -141,6 +143,23 @@ cmp_float:
 
   %equal_float = fcmp oeq float %fval_a, %fval_b
   br i1 %equal_float, label %exit_with_true, label %exit_with_false
+
+;##############################################################################
+;                        string comparison
+;##############################################################################
+
+assume_b_string:
+  ; check whether it is 3 (aka STRING).
+  %is_string_b = icmp eq i32 %type_b, 3
+  br i1 %is_string_b, label %cmp_str, label %exit_with_invalid_type
+
+cmp_str:  
+  %equal_string = call i32 @strcmp(i8* %number_a, i8* %number_b)
+  %is_equal = icmp eq i32 %equal_string, 0
+  br i1 %is_equal, label %exit_with_true, label %exit_with_false
+
+
+
 
 
 exit_with_numeric_failure:
