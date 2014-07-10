@@ -230,3 +230,11 @@ initialiseSymbolTable = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
     Name "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
 }
+
+-- |Function declaration for malloc
+malloc :: Definition
+malloc = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "malloc",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([ Parameter (IntegerType 64) (UnName 0) [] ], False)
+}

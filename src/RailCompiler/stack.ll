@@ -83,7 +83,7 @@ declare %stack_element* @stack_element_new(i8, i8*, %stack_element*)
 declare i64 @stack_get_size()
 declare void @stack_element_ref(%stack_element* %element)
 declare void @stack_element_unref(%stack_element* %element)
-
+declare i8* @malloc(i64)
 
 ; Debugging stuff
 @pushing = unnamed_addr constant [14 x i8] c"Pushing [%s]\0A\00"
@@ -238,30 +238,30 @@ define i32 @finish(){
 ; Popping a pointer from the stack into a variable
 define void @pop_into(%struct.table* %t, i8* %name){
   call void @underflow_assert()
-  %n_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 0
-  %name_t = load i8** %n_ptr
-
+  
+  %n_ptr = getelementptr inbounds %struct.table* %t, i32 0, i32 0
+  %name_t = load i8** %n_ptr, align 8
   %is_null = icmp eq i8* %name_t, null
   br i1 %is_null, label %insert, label %search
 insert:
   ; store name
-  store i8* %name, i8** %n_ptr
+  store i8* %name, i8** %n_ptr, align 8
   
   ; pop value from stack and store value
-
   %value = call %stack_element*()* @pop_struct()
   call void @stack_element_ref(%stack_element* %value)
-  %v_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  store %stack_element* %value, %stack_element** %v_ptr
-
+  %v_ptr = getelementptr inbounds %struct.table* %t, i32 0, i32 1
+  store %stack_element* %value, %stack_element** %v_ptr, align 8
+  
   ; create new element and append to table
-  %new_elem = alloca %struct.table
+  %new_elem_alloc = call i8* @malloc(i64 24)
+  %new_elem = bitcast i8* %new_elem_alloc to %struct.table*
   ; initialise new element with null
   call void @initialise(%struct.table* %new_elem)
 
-  %next_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 2
-  store %struct.table* %new_elem, %struct.table** %next_ptr
-
+  %next_ptr = getelementptr inbounds %struct.table* %t, i32 0, i32 2
+  store %struct.table* %new_elem, %struct.table** %next_ptr, align 8
+  
   br label %end
 
 search:
@@ -271,16 +271,16 @@ search:
 insert2:
   %value2 = call %stack_element*()* @pop_struct()
   call void @stack_element_ref(%stack_element* %value2)
-  %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  %old_value = load %stack_element** %v_ptr_found
+  %v_ptr_found = getelementptr inbounds %struct.table* %t, i32 0, i32 1
+  %old_value = load %stack_element** %v_ptr_found, align 8
   call void @stack_element_unref(%stack_element* %old_value)
-  store %stack_element* %value2, %stack_element** %v_ptr_found
-
+  store %stack_element* %value2, %stack_element** %v_ptr_found, align 8
+  
   br label %end
 
 search_further:
-  %next_ptr_recursive = getelementptr inbounds %struct.table* %t, i64 0, i32 2
-  %next_ptr_recursive2 = bitcast %struct.table** %next_ptr_recursive to %struct.table*
+  %next_ptr_recursive = getelementptr inbounds %struct.table* %t, i32 0, i32 2
+  %next_ptr_recursive2 = load %struct.table** %next_ptr_recursive, align 8
   call void @pop_into(%struct.table* %next_ptr_recursive2, i8* %name) 
   br label %end
 
@@ -314,7 +314,7 @@ push_onto_stack:
 
 search_further:
   %next_ptr_recursive = getelementptr inbounds %struct.table* %t, i64 0, i32 2
-  %next_ptr_recursive2 = bitcast %struct.table** %next_ptr_recursive to %struct.table*
+  %next_ptr_recursive2 = load %struct.table** %next_ptr_recursive
   call void @push_from(%struct.table* %next_ptr_recursive2, i8* %name) 
   br label %end
 
@@ -322,10 +322,51 @@ end:
   ret void
 }
 
+; Copy Function
+; Takes two symbol tables and copies the whole content from the first to the second
+; This is especially usefull for the lambda funtion
+define void @copy_symbol_table(%struct.table* %old, %struct.table* %new){
+  ; get pointers to the name field and store in the new table
+  %n_ptr_old = getelementptr inbounds %struct.table* %old, i64 0, i32 0
+  %n_ptr_new = getelementptr inbounds %struct.table* %new, i64 0, i32 0
+  %name = load i8** %n_ptr_old
+  store i8* %name, i8** %n_ptr_new
+
+  ;call i32(i8*, ...)* @printf(i8* %name)
+  
+  %is_null = icmp eq i8* %name, null
+  br i1 %is_null, label %end, label %next
+
+next:
+  ; get pointers to the value field and copy it 
+  %v_ptr_old = getelementptr inbounds %struct.table* %old, i64 0, i32 1
+  %v_ptr_new = getelementptr inbounds %struct.table* %new, i64 0, i32 1
+  %value = load %stack_element** %v_ptr_old
+  store %stack_element* %value, %stack_element** %v_ptr_new
+  
+  ; initialise a new element and append it to the new table
+  %new_elem_alloc = call i8* @malloc(i64 24)
+  %new_elem = bitcast i8* %new_elem_alloc to %struct.table*
+  call void @initialise(%struct.table* %new_elem)
+  
+  %next_ptr_old = getelementptr inbounds %struct.table* %old, i64 0, i32 2  
+  %next_ptr_new = getelementptr inbounds %struct.table* %new, i64 0, i32 2  
+  store %struct.table* %new_elem, %struct.table** %next_ptr_new
+  
+  ;recursive call of copy function
+  %next_ptr_old2 = load %struct.table** %next_ptr_old, align 8
+  %next_ptr_new2 = load %struct.table** %next_ptr_new, align 8
+  call void @copy_symbol_table(%struct.table* %next_ptr_old2, %struct.table* %next_ptr_new2)
+  br label %end
+end:
+  ret void
+}
+
 ; initialise the symbol table with the first element = null
 define void @initialise(%struct.table* %t){
-  %1 = getelementptr inbounds %struct.table* %t, i64 0, i32 0
-  store i8* null, i8** %1
+  %1 = getelementptr inbounds %struct.table* %t, i32 0, i32 0
+  store i8* null, i8** %1, align 8
+
   ret void
 }
 

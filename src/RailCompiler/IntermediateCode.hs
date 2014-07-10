@@ -150,14 +150,6 @@ generateVariables = map createGlobalVariable . getAllVars
 
 --------------------------------------------------------------------------------
 
--- |Struct declaration for the symbol table
-structTable :: Definition
-structTable = TypeDefinition (Name "struct.table")
-      (Just $ StructureType False
-                [ PointerType (IntegerType 8) (AddrSpace 0), 
-                  PointerType (IntegerType 8) (AddrSpace 0), 
-                  PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0)])
-
 -- |Generate an instruction for the 'u'nderflow check command.
 generateInstruction :: Lexeme -> Codegen [Named Instruction]
 generateInstruction Underflow =
@@ -460,10 +452,18 @@ generateInstruction Start = do
     functionAttributes = [],
     metadata = []
   },
-    Name "table" := Instruction.Alloca {
-    allocatedType = NamedTypeReference $ Name "struct.table",
-    numElements = Nothing,
-    alignment = 4,
+    Name "table_alloc" := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "malloc",
+    arguments = [(ConstantOperand $ Int 64 24, [])],
+    functionAttributes = [],
+    metadata = []
+  },
+    Name "table" := LLVM.General.AST.BitCast {
+    Instruction.operand0 = LocalReference $ Name "table_alloc",
+    Instruction.type' = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
     metadata = []
   },
     UnName index2 := LLVM.General.AST.Call {
@@ -581,7 +581,7 @@ process :: IDT.SemAna2InterCode -> IDT.InterCode2Backend
 process (IDT.ISI input) = IDT.IIB $ generateModule $ constants ++ variables ++ 
     [ stackElementTypeDef, structTable, underflowCheck, FunctionDeclarations.print, crash, start, finish, inputFunc,
       eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
-      popInt, equal, greater, popInto, pushFrom, popBool, initialiseSymbolTable ] ++ codegen input
+      popInt, equal, greater, popInto, pushFrom, popBool, initialiseSymbolTable, malloc ] ++ codegen input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input

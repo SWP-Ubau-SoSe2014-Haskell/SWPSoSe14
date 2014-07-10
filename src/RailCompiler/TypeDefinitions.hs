@@ -42,3 +42,11 @@ stackElementPointerType = PointerType {
     pointerReferent = NamedTypeReference $ Name "stack_element",
     pointerAddrSpace = AddrSpace 0
 }
+
+-- |Struct declaration for the symbol table
+structTable :: Definition
+structTable = TypeDefinition (Name "struct.table")
+      (Just $ StructureType False
+                [ PointerType (IntegerType 8) (AddrSpace 0), 
+                  PointerType (NamedTypeReference $ Name "stack_element") (AddrSpace 0), 
+                  PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0)])
