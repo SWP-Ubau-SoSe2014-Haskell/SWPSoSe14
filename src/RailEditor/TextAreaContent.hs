@@ -20,7 +20,6 @@ module TextAreaContent (
   TextAreaContent,
   Position,
   Coord,
-  ContentList,
   RGBColor(RGBColor),
   TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
   ActionQueue,
@@ -45,14 +44,12 @@ module TextAreaContent (
   putColor,
   putCell,
   getPositionedGrid,
-  getOccupiedPositions,
   getCell,
   isEmptyLine,
   deleteCell,
   eqPos,
   deleteColors,
   TextAreaContent.size,
-  generateContentList,
   redoQueue,
   undoQueue
   ) where
@@ -69,12 +66,7 @@ data RGBColor = RGBColor Double Double Double deriving Show
 data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
 -- chMap is a Map(y (x coord char)) where y and x are coords
 data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord))
-{-
-  This is the dataType to remember current occupied cells
-  Its is important to increase the speed of redrawContent from theta(n²)
-  to O(n²). In avarage cases it should be much faster.
--}
-data ContentPositions = ConPos (IORef ([Position]))
+
 -- types for undoredo
 data Action = Remove String | Insert String | Replace String String | RemoveLine | InsertLine | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
@@ -83,14 +75,12 @@ data TextAreaContent =
   TAC {
     charMap :: CharMap,
     colorMap :: ColorMap,
-    conPos :: ContentPositions,
     undoQueue :: IORef ActionQueue,
     redoQueue :: IORef ActionQueue 
   }
   
 type Coord = Int
 type Position = (Coord,Coord)
-type ContentList = [(Position,Char)]
 
 -- Constants
 red   = RGBColor 1.0                  0                   0
@@ -115,14 +105,12 @@ init x y = do
   size <- newIORef (x,y)
   hmapR <- newIORef Map.empty
   cmapR <- newIORef Map.empty
-  contPL <- newIORef []
   undoQ <- newIORef []
   redoQ <- newIORef []
   let 
     cMap = CoMap cmapR size
     hMap = ChMap hmapR size
-    contP = ConPos contPL
-  return $ TAC hMap cMap contP undoQ redoQ
+  return $ TAC hMap cMap undoQ redoQ
 
 --------------------
 -- Methods
@@ -220,7 +208,6 @@ putValue areaContent (x,y) character = do
     resize areaContent (xMax + (abs $ xMax-x),yMax + (abs $ yMax-y))
     putValue areaContent (x,y) character
   else do
-    putPos areaContent (x,y)
     let 
       (ChMap hMap size) = charMap areaContent
       (CoMap cMap _) = colorMap areaContent
@@ -240,6 +227,7 @@ putColor areaContent (x,y) color = do
   (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
   then do
+    print "resize"
     resize areaContent (xMax + (abs $ xMax-x),yMax + (abs $ yMax-y))
     putColor areaContent (x,y) color
   else do
@@ -250,28 +238,7 @@ deleteColors :: TextAreaContent -> IO ()
 deleteColors tac = do
   let(CoMap cMap _) = colorMap tac
   modifyIORef cMap (\_ -> Map.empty)
-
--- | Returns the occupied positions in TAC
-getOccupiedPositions :: TextAreaContent
-  -> IO([Position])
-getOccupiedPositions tac = readIORef conPosIORef
-  where (ConPos conPosIORef) = conPos tac
   
--- | puts a position to the list of occupied
-putPos :: TextAreaContent
-  -> Position
-  -> IO()
-putPos tac pos = do
- let (ConPos conPosIORef) = conPos tac
- modifyIORef conPosIORef (\conPL -> conPL++[pos])
- 
--- | delets a position from list of occupied positions 
-deletePos :: TextAreaContent
-  -> Position
-  -> IO ()
-deletePos tac pos = do
-  let (ConPos conPosIORef) = conPos tac
-  modifyIORef conPosIORef (\conPL -> List.delete pos conPL)
  
 -- / sets a cell
 putCell :: TextAreaContent
@@ -290,17 +257,24 @@ deleteCell areaContent (x,y) = do
   let 
     (ChMap hMap _) = charMap  areaContent
     (CoMap cMap _) = colorMap areaContent
-    (ConPos conPosIORef) = conPos areaContent
   (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
   then return False
   else do
-    let delete = (\m -> Map.delete x (fromJust $ Map.lookup y m))
-    deletePos areaContent (x,y)
-    modifyIORef hMap (\m -> Map.insert y (delete m) m)
+    modifyIORef hMap (\m -> del m (x,y))
     modifyIORef cMap (Map.delete (x,y))
     return True
-
+  where
+    delMap :: Map.Map Coord (Map.Map Coord Char) -> Position -> Map.Map Coord Char
+    delMap m (x,y) = 
+      if isNothing (Map.lookup y m)
+      then Map.empty
+      else Map.delete x (fromJust $ Map.lookup y m)
+    del :: Map.Map Coord (Map.Map Coord Char) -> Position -> Map.Map Coord (Map.Map Coord Char)
+    del m (x,y)
+      | (delMap m (x,y)) == Map.empty = (Map.delete y m)
+      | otherwise = (Map.insert y (delMap m (x,y)) m)
+     
 -- | returns the character and the color of a cell
 getCell :: TextAreaContent 
   -> Position -- ^ coordinates of the required cell
@@ -331,25 +305,6 @@ isEmptyLine areaContent line = do
   if val==Nothing
   then return True
   else return False
-
-generateContentList :: TextAreaContent
-  -> (Position -> Bool)
-  -> IO (ContentList)
-generateContentList areaContent function = do
-  let (ChMap hMap _) = charMap areaContent
-  hmap <- readIORef hMap
-  -- make the old map format from ChMap
-  let 
-    foldIns :: Coord -> Map.Map Coord Char -> Map.Map Position Char -> Map.Map Position Char
-    foldIns = 
-      (\y lineMap posCharMap ->
-        Map.foldWithKey (\x val posCharMap ->
-          Map.insert (x,y) val posCharMap
-        ) posCharMap lineMap
-      ) 
-    mapPosChar = Map.foldWithKey foldIns Map.empty hmap
-    list = Map.toList $ Map.filterWithKey (\coord _ -> function coord) mapPosChar
-  return list
 
 {-This function is important for highlighting it returns the datatype
   which Lexer needs to lex. -}

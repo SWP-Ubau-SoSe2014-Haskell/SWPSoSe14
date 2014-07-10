@@ -48,8 +48,6 @@ handleKeyNorm :: TAC.TextAreaContent
   -> KeyVal
   -> IO(TAC.Position)
 handleKeyNorm tac pos@(x,y) modif key val = do
-  putStrLn $ show modif
-  putStrLn key
   if ((isJust $ keyToChar val) || key=="dead_circumflex")
   then handlePrintKeyNorm tac pos key val
   else do

@@ -90,7 +90,7 @@ setTextAreaContent textArea areaContent= do
       GTK.widgetSetSizeRequest drawArea w (h+((yMax*hef)-w))
     when ((xMax*bef) > w) $
       GTK.widgetSetSizeRequest drawArea (w + (xMax*bef-w))  h
-  HIGH.highlight areaContent
+  --HIGH.highlight areaContent
   redrawContent textArea
 
 {- 
@@ -143,8 +143,9 @@ initTextAreaWithContent areaContent = do
       modus = "Insert"
     tac <- readIORef areaRef --TextAreaContent
     readIORef posRef >>= clearCursor textArea
-    pos@(x,y) <- readIORef posRef
-    pos@(kx,ky) <- KeyHandler.handleKey tac pos modus modif key val
+    posBef@(x,y) <- readIORef posRef
+    pos@(kx,ky) <- KeyHandler.handleKey tac posBef modus modif key val
+    print $ show pos
     --expand the drawWindow when needed
     extendDrawingAreaHorizontally textArea (kx)
     extendDrawingAreaVertically textArea (ky)
@@ -163,7 +164,6 @@ initTextAreaWithContent areaContent = do
       posRef   = currentPosition textArea
       areaRef  = textAreaContent textArea
     content <- readIORef areaRef
-    list <- TAC.generateContentList content (\_ -> True)
     pos <- readIORef posRef
     showCursor textArea pos
     redrawContent textArea
@@ -258,7 +258,6 @@ redrawContent textArea = do
     yTo = div ((round vAdjValue)+(round drawFrameHeight)) hef
   tac <- readIORef tacIORef
   --Function from Control.Monad Monad m => [a] -> (a -> m b) -> m ()
-  conPos <- TAC.getOccupiedPositions tac
   forM_ [xFrom..xTo] (\x -> forM_ [yFrom..yTo] (\y -> draw textArea (x,y)))
   where
     -- Call renderScene to 
@@ -316,7 +315,7 @@ extendDrawingAreaHorizontally textArea x = do
   (w,h) <- GTK.widgetGetSizeRequest drawArea
   value <- GTK.adjustmentGetValue adjustment
   when ((x*bef)+bef >= w) $
-    GTK.widgetSetSizeRequest drawArea (w + bef) h
+    GTK.widgetSetSizeRequest drawArea ((x*bef)+bef) h
   when ((x*bef) +bef >= (round width)+(round value) ||
     (x*bef)-bef < (round value)) $
     GTK.adjustmentSetValue adjustment $ (fromIntegral (x*bef))
@@ -334,7 +333,7 @@ extendDrawingAreaVertically textArea y = do
   (w,h) <- GTK.widgetGetSizeRequest drawArea
   value <- GTK.adjustmentGetValue adjustment
   when ((y*hef) + hef >= h) $
-    GTK.widgetSetSizeRequest drawArea w (h + hef)
+    GTK.widgetSetSizeRequest drawArea w ((y*hef) + hef)
   when ((y*hef)+hef >= (round height)+(round value)) $
     GTK.adjustmentSetValue adjustment $ value + (fromIntegral hef)
   when ((y*hef)-hef < (round value)) $
