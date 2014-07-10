@@ -23,7 +23,6 @@ library
   exposed-modules: 
     AST
     Backend
-    CodeOptimization
     ErrorHandling
     InstructionPointer
     InterfaceDT
@@ -64,7 +63,6 @@ Test-suite testcases
   main-is: Main.hs
   other-modules:
     TBackend
-    TCodeOpt
     TInterCode
     TLexer
     TPreProc
