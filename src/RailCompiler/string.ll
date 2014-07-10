@@ -114,43 +114,6 @@ entry:
   ret void
 }
 
-; LEGACY FUNCTION
-;define void @streq() {
-;entry:
-;  call void @underflow_assert() 
-;  %str1 = call i8*()* @pop_string()
-;  call void @underflow_assert() 
-;  %str2 = call i8*()* @pop_string()
-;  br label %loop
-;loop:
-;  ; the phi instruction says that coming from the 'entry' label i is 1
-;  ; otherwise (coming from 'cont') i will be 'next_i'
-;  %i = phi i64 [ 1, %entry ], [ %next_i, %cont ]
-;
-;  ; the the actual character
-;  %addr1 = getelementptr i8* %str1, i64 %i
-;  %addr2 = getelementptr i8* %str2, i64 %i
-;  %c1 = load i8* %addr1
-;  %c2 = load i8* %addr2
-;
-;  ; if equal, jump to next character otherwise jump to 'fail' 
-;  %cond = icmp eq i8 %c1, %c2
-;  br i1 %cond, label %cont, label %fail
-;
-;cont:
-;  %next_i = add i64 %i, 1
-;  %cond2 = icmp eq i8 %c1, 0
-;  br i1 %cond2, label %success, label %loop
-;success:
-;  %t = getelementptr i8* @true, i64 0
-;  call %stack_element* @push_string_cpy(i8* %t)
-;  ret void
-;fail:
-;  %f = getelementptr i8* @false, i64 0
-;  call %stack_element* @push_string_cpy(i8* %f)
-;  ret void
-;}
-
 define void @strcut() {
 entry:
   call void @underflow_assert()
