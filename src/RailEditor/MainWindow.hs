@@ -21,6 +21,7 @@ import qualified FooterBar        as FB
 import qualified TextArea         as TA
 import TextAreaContent as TAC
 import qualified InteractionField as IAF
+import Data.IORef
 
     -- functions --
 create :: IO ()
@@ -33,8 +34,19 @@ create = do
 
   interDT <- IAF.create
   let boxView = IAF.getContainer interDT
-  hboxInfoLine <- FB.create
-  
+  footer <- FB.create
+  let hboxInfoLine = FB.getContainer footer
+
+  Gtk.afterKeyPress (TA.drawingArea ta) $ \event -> do
+    let posRef = TA.currentPosition ta
+    readIORef posRef >>= FB.setPosition footer
+    return True
+
+  Gtk.afterButtonPress (TA.drawingArea ta) $ \event -> do
+    let posRef = TA.currentPosition ta
+    readIORef posRef >>= FB.setPosition footer
+    return True
+
   boxLay <- Gtk.hBoxNew False 0
   Gtk.boxPackStart boxLay lwin Gtk.PackGrow 1
   vSep <- Gtk.vSeparatorNew
@@ -64,3 +76,4 @@ create = do
   Gtk.onDestroy window Gtk.mainQuit
   Gtk.widgetShowAll window
   Gtk.mainGUI
+

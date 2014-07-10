@@ -19,6 +19,7 @@ module TextAreaContent (
 -- * Types
   TextAreaContent,
   Position,
+  Direction,
   Coord,
   RGBColor(RGBColor),
   TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
@@ -43,8 +44,10 @@ module TextAreaContent (
   putValue,
   putColor,
   putCell,
+  putDirection,
   getPositionedGrid,
   getCell,
+  getDirection,
   isEmptyLine,
   findLastChar, --needed for KeyHandler
   deleteCell,
@@ -77,11 +80,13 @@ data TextAreaContent =
     charMap :: CharMap,
     colorMap :: ColorMap,
     undoQueue :: IORef ActionQueue,
-    redoQueue :: IORef ActionQueue 
+    redoQueue :: IORef ActionQueue,
+    railDirection :: IORef Direction
   }
   
 type Coord = Int
 type Position = (Coord,Coord)
+type Direction = (Coord,Coord)
 
 -- Constants
 red   = RGBColor 1.0                  0                   0
@@ -108,10 +113,11 @@ init x y = do
   cmapR <- newIORef Map.empty
   undoQ <- newIORef []
   redoQ <- newIORef []
+  dir <- newIORef (1,0)
   let 
     cMap = CoMap cmapR size
     hMap = ChMap hmapR size
-  return $ TAC hMap cMap undoQ redoQ
+  return $ TAC hMap cMap undoQ redoQ dir
 
 --------------------
 -- Methods
@@ -238,8 +244,7 @@ deleteColors :: TextAreaContent -> IO ()
 deleteColors tac = do
   let(CoMap cMap _) = colorMap tac
   modifyIORef cMap (\_ -> Map.empty)
-  
- 
+
 -- / sets a cell
 putCell :: TextAreaContent
   -> Position -- ^ coordinates of the required cell
@@ -248,6 +253,21 @@ putCell :: TextAreaContent
 putCell areaContent coord (char,color) = do
   putColor areaContent coord color
   putValue areaContent coord char
+
+-- | setting input direction
+putDirection :: TextAreaContent
+  -> Direction
+  -> IO()
+putDirection tac dir = do
+  let dirTac = railDirection tac
+  modifyIORef dirTac (\ _ -> dir)
+
+-- | getting input direction
+getDirection :: TextAreaContent
+  ->IO(Direction)
+getDirection tac = do
+  let dirTac = railDirection tac
+  readIORef dirTac
 
 -- | delets a cell
 deleteCell :: TextAreaContent 

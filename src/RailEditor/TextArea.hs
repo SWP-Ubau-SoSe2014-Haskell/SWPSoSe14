@@ -19,6 +19,7 @@ module TextArea(
 -- * Constants
 -- * Methods
   textAreaContent,
+  currentPosition,
   setTextAreaContent,
   drawingArea,
   getTextAreaContainer, -- This function should be used to get a widget to place in MainWindow
