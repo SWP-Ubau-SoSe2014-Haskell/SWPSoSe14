@@ -46,6 +46,7 @@ module TextAreaContent (
   getPositionedGrid,
   getCell,
   isEmptyLine,
+  findLastChar, --needed for KeyHandler
   deleteCell,
   eqPos,
   deleteColors,
@@ -332,6 +333,16 @@ getPositionedGrid areaContent = do
     insertWhenFct x line y  offset 
       | x == [] || line == Map.empty = x
       | otherwise = x++[(Map.insert (y-offset) line (fst (last x)), (snd (last x)))]
+ 
+findLastChar :: TextAreaContent -> Coord -> IO(Coord)
+findLastChar tac y = do
+  let (ChMap hMap _) = charMap tac
+  hmap <- readIORef hMap
+  let mayLine = Map.lookup y hmap
+  if isNothing mayLine
+  then return $ -1
+  else return $ fst(List.last(assocs(fromJust mayLine)))
+     
   
 -- | returns the size of a TextAreaContent.
 size :: TextAreaContent

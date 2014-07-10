@@ -150,7 +150,7 @@ initTextAreaWithContent areaContent = do
     extendDrawingAreaHorizontally textArea (kx)
     extendDrawingAreaVertically textArea (ky)
     writeIORef posRef pos
-    HIGH.highlight tac
+    --HIGH.highlight tac
     redrawContent textArea
     showCursor textArea pos
     return $ Events.eventSent event

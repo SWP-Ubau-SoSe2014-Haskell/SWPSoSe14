@@ -16,7 +16,6 @@ module TextAreaContentUtils (
 
 -- * Methods
   moveChars,
-  findLastChar,
   findLastCharBefore,
   moveLinesUp,
   moveLinesDownXShift
@@ -59,7 +58,7 @@ moveChars :: TAC.TextAreaContent
   -> Direction
   -> IO()
 moveChars area (stX, line) dir = do
-  endX <- findLastChar area line
+  endX <- TAC.findLastChar area line
   unless (stX > endX) $
     if snd dir == 0 && fst dir > 0
     then
@@ -79,12 +78,6 @@ moveChars area (stX, line) dir = do
  searchs for last character in Line and returns x-Position, if Line is empty
  return -1
 -}
-findLastChar :: TAC.TextAreaContent
-  -> TAC.Coord
-  -> IO TAC.Coord
-findLastChar area line = do
-  size <- TAC.size area
-  findLastCharBefore area (fst size) line
 
 findLastCharBefore :: TAC.TextAreaContent
   -> TAC.Coord
@@ -131,7 +124,7 @@ moveLinesUp area line = do
           else
             if line == stY
             then do
-              lastPrev <- findLastChar area (line-1)
+              lastPrev <- TAC.findLastChar area (line-1)
               moveChars area (0,line) (lastPrev+1, -1)
               moveLinesUpHelper area (line+1) stY finY
             else do

@@ -63,7 +63,7 @@ handleKeyNorm tac pos@(x,y) modif key val = do
         "Delete" -> handleDelete tac pos
         "Home" -> return (0,y)
         "End" -> do
-          finX <- TACU.findLastChar tac y
+          finX <- TAC.findLastChar tac y
           return ((if finX==(-1) then 0 else finX+1),y)
         _ -> return pos
 
@@ -89,7 +89,7 @@ handleKeyIns tac pos@(x,y) modif key val =
         "Delete" -> handleDelete tac pos
         "Home" -> return (0,y)
         "End" -> do
-          finX <- TACU.findLastChar tac y
+          finX <- TAC.findLastChar tac y
           return ((if finX==(-1) then 0 else finX+1),y)
         _ -> return pos
 
@@ -116,7 +116,7 @@ handleKeySpec tac pos@(x,y) modif key val =
         "Delete" -> handleDelete tac pos
         "Home" -> return (0,y)
         "End" -> do
-          finX <- TACU.findLastChar tac y
+          finX <- TAC.findLastChar tac y
           return (finX+1,y)
         _ -> return pos
 
@@ -166,7 +166,7 @@ handleArrowsNorm key pos@(x,y) tac = do
       else
         if x==0
         then do
-          finPrev <- TACU.findLastChar tac (y-1)
+          finPrev <- TAC.findLastChar tac (y-1)
           return (finPrev+1,y-1)
         else return (x-1,y)
     "Right" ->
@@ -180,7 +180,7 @@ handleArrowsNorm key pos@(x,y) tac = do
       if y==0
       then return (x,y)
       else do
-        finPrev <- TACU.findLastChar tac (y-1)
+        finPrev <- TAC.findLastChar tac (y-1)
         if finPrev<x
         then return (finPrev+1,y-1)
         else return (x,y-1)
@@ -188,7 +188,7 @@ handleArrowsNorm key pos@(x,y) tac = do
       if y==maxY
       then return (x,y)
       else do
-        finNext <- TACU.findLastChar tac (y+1)
+        finNext <- TAC.findLastChar tac (y+1)
         if finNext<x
         then return (finNext+1,y+1)
         else return (x,y+1)
@@ -226,7 +226,7 @@ handleBackSpace tac (x,y) =
   case (x,y) of
     (0,0) -> return (0,0)
     (0,_) -> do
-      finXPrev <- TACU.findLastChar tac (y-1)
+      finXPrev <- TAC.findLastChar tac (y-1)
       History.action tac (finXPrev+1,y-1) TAC.RemoveLine
       TACU.moveLinesUp tac y
       return(finXPrev+1,y-1)
@@ -267,7 +267,7 @@ handleTab :: TAC.TextAreaContent
   -> IO(TAC.Position)
 handleTab tac pos@(x,y) modif = do
   prevCharX <- TACU.findLastCharBefore tac (x-1) y
-  finX <- TACU.findLastChar tac y
+  finX <- TAC.findLastChar tac y
   case modif of
     [Shift] -> do
       if prevCharX == (-1)
@@ -292,7 +292,7 @@ handleDelete :: TAC.TextAreaContent
   -> TAC.Position
   -> IO(TAC.Position)
 handleDelete tac pos@(x,y) = do
-  finX <- TACU.findLastChar tac y
+  finX <- TAC.findLastChar tac y
   if x==finX+1
   then do
     History.action tac pos TAC.RemoveLine
