@@ -21,7 +21,8 @@ module TextArea(
   textAreaContent,
   setTextAreaContent,
   drawingArea,
-  getTextAreaContainer -- This function should be used to get a widget to place in MainWindow
+  getTextAreaContainer, -- This function should be used to get a widget to place in MainWindow
+  setInputMode
   )where
     
     -- imports --
@@ -47,7 +48,8 @@ data TextArea = TA { drawingArea :: GTK.DrawingArea,
     scrolledWindow :: GTK.ScrolledWindow, --The part to bind it in a container
     currentPosition :: IORef (TAC.Position), --The current position of cursor without hef and bef
     vAdjustment :: GTK.Adjustment, --needed to create a scrolledWindow
-    hAdjustment :: GTK.Adjustment } --needed to create a scrolledWindow
+    hAdjustment :: GTK.Adjustment, --needed to create a scrolledWindow
+    inputMode :: IORef (KeyHandler.InputMode) }
 
 --The cursor color
 defaultCursorColor :: GC.Color
@@ -69,6 +71,11 @@ height = 600
 -}
 getTextAreaContainer :: TextArea -> IO (GTK.ScrolledWindow)
 getTextAreaContainer textArea = return $ scrolledWindow textArea
+
+setInputMode :: TextArea -> KeyHandler.InputMode -> IO ()
+setInputMode area mode = do
+  let modeRef = inputMode area
+  writeIORef modeRef mode
 
 {-
   This function sets the TextArea TAC to the TAC given in argument 2.
@@ -116,8 +123,8 @@ initTextAreaWithContent areaContent = do
   drawArea <- setUpDrawingArea
   GTK.scrolledWindowAddWithViewport scrwin drawArea
   posRef <- newIORef (0,0)
-  let textArea = TA drawArea areaRef scrwin posRef veAdjustment hoAdjustment
-
+  modRef <- newIORef KeyHandler.Insert
+  let textArea = TA drawArea areaRef scrwin posRef veAdjustment hoAdjustment modRef
 
   {-This function is called when the user press a mouse button.
     It calls the handleButtonPress function.  
@@ -140,7 +147,8 @@ initTextAreaWithContent areaContent = do
       modif = Events.eventModifier event
       key = Events.eventKeyName event
       val = Events.eventKeyVal event
-      modus = "Insert"
+      modRef = inputMode textArea
+    modus <- readIORef modRef
     tac <- readIORef areaRef --TextAreaContent
     readIORef posRef >>= clearCursor textArea
     posBef@(x,y) <- readIORef posRef

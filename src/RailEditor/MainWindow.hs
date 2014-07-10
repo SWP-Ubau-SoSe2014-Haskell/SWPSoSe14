@@ -47,7 +47,7 @@ create = do
   let bufferIn  = IAF.getInputBuffer interDT
 
   menuBar <- MB.create window ta bufferOut
-  extraBar <- TB.create
+  extraBar <- TB.create ta
 
   vSepa <- Gtk.hSeparatorNew
 
