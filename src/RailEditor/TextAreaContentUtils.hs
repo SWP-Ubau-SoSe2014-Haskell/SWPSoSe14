@@ -1,18 +1,16 @@
 {- |
-Module      :  TextArea.hs
+Module      :  TextAreaContentUtils.hs
 Description :  .
-Maintainer  :  Kelvin Glaß, Chritoph Graebnitz, Kristin Knorr, Nicolas Lehmann (c)
+Maintainer  :  Kristin Knorr (c)
 License     :  MIT
 
-Stability   :  experimental
+Stability   :  stable
+
+'TextAreaContentUtils' serves methods to move Characters in TextAreaContent.
 
 -}
 
 module TextAreaContentUtils (
--- * Detail
---
--- | 'TextAreaContentUtils' serves methods to move Characters in TextAreaContent.
-
 -- * Types
   Direction,
 
@@ -34,13 +32,13 @@ import qualified TextAreaContent as TAC
 
 type Direction = (TAC.Coord,TAC.Coord)
 
--- / calculates Destination depending on Direction
+-- | calculates Destination depending on Direction
 calculateDest :: TAC.Position
   -> Direction
   -> TAC.Position
 calculateDest (stX,stY) (dirX,dirY) = (stX+dirX,stY+dirY)
 
--- / moves Contents into a Direction
+-- | moves Contents into a Direction
 moveChar :: TAC.TextAreaContent
   -> TAC.Position
   -> Direction
@@ -55,7 +53,7 @@ moveChar area from dir = do
     TAC.deleteCell area from
     return ()
 
--- / moves amount of Characters of one line in range from Pos x to last char in line
+-- | moves amount of Characters of one line in range from Pos x to last char in line
 moveChars :: TAC.TextAreaContent
   -> TAC.Position
   -> Direction
@@ -77,7 +75,7 @@ moveChars area (stX, line) dir = do
         moveCharsRight area stX (endX-1) line dir
         return ()
 
-{- /
+{- |
  searchs for last character in Line and returns x-Position, if Line is empty
  return -1
 -}
@@ -101,7 +99,7 @@ findLastCharBefore area x line =
     then return x
     else findLastCharBefore area (x-1) line
 
--- / searchs for last written Line
+-- | searchs for last written Line
 findLastWrittenLine :: TAC.TextAreaContent
   -> IO TAC.Coord
 findLastWrittenLine area = do
@@ -117,7 +115,7 @@ findLastWrittenLine area = do
         then findLastWrittenLineHelper area (line-1)
         else return line
 
--- / moves Lines up where param line is the upper line
+-- | moves Lines up where param line is the upper line
 moveLinesUp :: TAC.TextAreaContent
   -> TAC.Coord
   -> IO()
@@ -140,7 +138,7 @@ moveLinesUp area line = do
               moveChars area (0,line) (0,-1)
               moveLinesUpHelper area (line+1) stY finY
 
-{- /
+{- |
  moves Lines down where param line upper Line
  param xShift is a Boolean, which defines wether
  the upper line starting at posx is shifted vertically down (False)
@@ -166,7 +164,7 @@ moveLinesDownXShift area (posX,line) xShift = do
         moveLinesVertDown area (line+1)
         moveChars area (posX,line) (0,1)
 
--- / moves all chars of lines lower "line" to one line lower
+-- | moves all chars of lines lower "line" to one line lower
 moveLinesVertDown :: TAC.TextAreaContent
   -> TAC.Coord
   -> IO()
