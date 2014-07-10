@@ -39,7 +39,7 @@ create = do
   viewOut <- Gtk.textViewNewWithBuffer bufferOut
   labelStackFunc <- Gtk.labelNewWithMnemonic "Functionstack"
   viewStackFunc <- Gtk.textViewNewWithBuffer bufferStackFunc
-  labelStackVar <- Gtk.labelNewWithMnemonic "Variablestack"
+  labelStackVar <- Gtk.labelNewWithMnemonic "Datastack"
   viewStackVar <- Gtk.textViewNewWithBuffer bufferStackVar
 
   buttonPopUpIn <- Gtk.buttonNewWithLabel ""

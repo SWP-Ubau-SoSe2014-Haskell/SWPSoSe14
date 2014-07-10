@@ -10,6 +10,7 @@ The KeyHandler-module allows to react on keypress-events in the editor.
 -}
 module KeyHandler (
                    handleKey,   -- handles keypress-events
+                   InputMode(Insert, Replace,Smart)
                   )
   where
 
@@ -20,10 +21,12 @@ import qualified TextAreaContent as TAC
 import qualified TextAreaContentUtils as TACU
 import qualified RedoUndo as History
 
+data InputMode = Replace | Insert | Smart
+
 -- | handleKey passes key depending on Entrymode and handles RedoUndo Shortcuts.
 handleKey :: TAC.TextAreaContent
   -> TAC.Position
-  -> String
+  -> InputMode
   -> [Modifier]
   -> String
   -> KeyVal
@@ -37,9 +40,9 @@ handleKey tac pos modus modif key val =
     else History.undo tac pos
   else
     case modus of
-      "Insert" -> handleKeyNorm tac pos modif key val
-      "Replace" -> handleKeyIns tac pos modif key val
-      "Smart" -> handleKeySpec tac pos modif key val
+      Insert -> handleKeyNorm tac pos modif key val
+      Replace -> handleKeyIns tac pos modif key val
+      Smart -> handleKeySpec tac pos modif key val
 
 -- | handles keys in Insert-mode
 handleKeyNorm :: TAC.TextAreaContent
@@ -110,7 +113,7 @@ handleKeySpec tac pos@(x,y) modif key val =
     else
       case key of
         "BackSpace" -> handleBackSpace tac pos
-        "ReturnSpec" -> handleReturnRail tac pos
+        "Return" -> handleReturnRail tac pos
         "Tab" -> handleTab tac pos modif
         "ISO_Left_Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
