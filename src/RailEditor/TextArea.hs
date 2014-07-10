@@ -98,7 +98,7 @@ setTextAreaContent textArea areaContent= do
       GTK.widgetSetSizeRequest drawArea w (h+((yMax*hef)-w))
     when ((xMax*bef) > w) $
       GTK.widgetSetSizeRequest drawArea (w + (xMax*bef-w))  h
-  --HIGH.highlight areaContent
+  HIGH.highlight areaContent
   redrawContent textArea
 
 {- 
