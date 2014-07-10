@@ -42,7 +42,7 @@ create = do
   Gtk.boxPackEnd boxLay boxView Gtk.PackNatural 1
 
   table <- Gtk.tableNew 5 1 False
-
+  Gtk.containerSetFocusChain table [Gtk.toWidget $ TA.drawingArea ta]
   let bufferOut = IAF.getOutputBuffer interDT
   let bufferIn  = IAF.getInputBuffer interDT
 

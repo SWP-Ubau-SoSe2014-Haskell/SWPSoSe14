@@ -48,6 +48,8 @@ handleKeyNorm :: TAC.TextAreaContent
   -> KeyVal
   -> IO(TAC.Position)
 handleKeyNorm tac pos@(x,y) modif key val = do
+  putStrLn $ show modif
+  putStrLn key
   if ((isJust $ keyToChar val) || key=="dead_circumflex")
   then handlePrintKeyNorm tac pos key val
   else do
@@ -58,6 +60,7 @@ handleKeyNorm tac pos@(x,y) modif key val = do
         "BackSpace" -> handleBackSpace tac pos
         "Return" -> handleReturn tac pos
         "Tab" -> handleTab tac pos modif
+        "ISO_Left_Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
         "Home" -> return (0,y)
         "End" -> do
@@ -82,6 +85,7 @@ handleKeyIns tac pos@(x,y) modif key val =
         "BackSpace" -> handleBackSpace tac pos
         "Return" -> handleReturn tac pos
         "Tab" -> handleTab tac pos modif
+        "ISO_Left_Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
         "Home" -> return (0,y)
         "End" -> do
@@ -107,6 +111,7 @@ handleKeySpec tac pos@(x,y) modif key val =
         "BackSpace" -> handleBackSpace tac pos
         "ReturnSpec" -> handleReturnRail tac pos
         "Tab" -> handleTab tac pos modif
+        "ISO_Left_Tab" -> handleTab tac pos modif
         "Delete" -> handleDelete tac pos
         "Home" -> return (0,y)
         "End" -> do
@@ -204,7 +209,7 @@ handleBackSpace tac (x,y) =
     (0,0) -> return (0,0)
     (0,_) -> do
       finXPrev <- TACU.findLastChar tac (y-1)
-      History.action tac (finXPrev+1,y-1) (TAC.Remove "\n")
+      History.action tac (finXPrev+1,y-1) TAC.RemoveLine
       TACU.moveLinesUp tac y
       return(finXPrev+1,y-1)
     (_,_) -> do
@@ -220,19 +225,18 @@ handleBackSpace tac (x,y) =
         return (x-1,y)
 
 handleReturnRail tac pos@(x,y) = do
-  History.action tac pos (TAC.Insert ('\n':(take x (repeat ' '))))
+  History.action tac pos TAC.InsertLine
   moveLinesDownXShift tac pos False
   return (x,y+1)
 
 handleReturn tac pos@(x,y) = do
-  History.action tac pos (TAC.Insert "\n")
+  History.action tac pos TAC.InsertLine
   moveLinesDownXShift tac pos True
   return (0,y+1)
 
 handleTab tac pos@(x,y) modif = do
   prevCharX <- TACU.findLastCharBefore tac (x-1) y
   finX <- TACU.findLastChar tac y
-  --putStrLn $ show modif
   case modif of
     [Shift] -> do
       if prevCharX == (-1)
@@ -256,7 +260,7 @@ handleDelete tac pos@(x,y) = do
   finX <- TACU.findLastChar tac y
   if x==finX+1
   then do
-    History.action tac pos (TAC.Remove "\n")
+    History.action tac pos TAC.RemoveLine
     moveLinesUp tac (y+1)
     return (x,y)
   else do

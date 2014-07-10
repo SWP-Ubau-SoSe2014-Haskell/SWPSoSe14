@@ -22,7 +22,7 @@ module TextAreaContent (
   Coord,
   ContentList,
   RGBColor(RGBColor),
-  TextAreaContent.Action(Remove, Insert, Replace, Concat),
+  TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
   ActionQueue,
 
 -- * Constructors
@@ -76,7 +76,7 @@ data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord)
 -}
 data ContentPositions = ConPos (IORef ([Position]))
 -- types for undoredo
-data Action = Remove String | Insert String | Replace String String | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
+data Action = Remove String | Insert String | Replace String String | RemoveLine | InsertLine | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
 data TextAreaContent = 
