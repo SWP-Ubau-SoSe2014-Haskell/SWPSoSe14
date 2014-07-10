@@ -33,25 +33,25 @@
 %union.anon = type { i8* }
 
 ; struct for the symbol table
-%struct.table = type {i8*, i8*, %struct.table*}
-
+%struct.table = type {i8*, %stack_element*, %struct.table*}
 
 ; Global variables
 @lookahead = global i32 -1            ; Current lookahead for input from stdin,
                                       ; -1 means no lookahead done yet.
 
 ; Constants
-@to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
-@true = unnamed_addr constant [2 x i8] c"1\00"
-@false = unnamed_addr constant [2 x i8] c"0\00"
-@write_mode = global [2 x i8] c"w\00"
-@printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
+@err_numeric = unnamed_addr constant [56 x i8] c"Failed to check whether stack elem is of type numeric!\0A\00"
 @crash_cust_str_fmt = private unnamed_addr constant [24 x i8] c"Crash: Custom error: %s\00"
 @err_stack_underflow = private unnamed_addr constant [18 x i8] c"Stack underflow!\0A\00"
-@err_eof = unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
+@err_zero = unnamed_addr constant [18 x i8] c"Division by zero!\00"
+@printf_str_fmt = private unnamed_addr constant [3 x i8] c"%s\00"
 @err_oom = unnamed_addr constant [15 x i8] c"Out of memory!\00"
 @err_type = unnamed_addr constant [14 x i8] c"Invalid type!\00"
-@err_zero = unnamed_addr constant [18 x i8] c"Division by zero!\00"
+@to_str  = private unnamed_addr constant [3 x i8] c"%i\00"
+@err_eof = unnamed_addr constant [9 x i8] c"At EOF!\0A\00"
+@false = unnamed_addr constant [2 x i8] c"0\00"
+@true = unnamed_addr constant [2 x i8] c"1\00"
+@write_mode = global [2 x i8] c"w\00"
 
 
 ; External declarations
@@ -69,6 +69,9 @@ declare i8* @calloc(i16 zeroext, i16 zeroext)
 declare i8* @strdup(i8*)
 declare void @exit(i32 signext)
 
+declare %stack_element* @pop_struct()
+declare void @push_struct(%stack_element*)
+declare i8* @stack_element_get_data(%stack_element* %element)
 declare i64 @pop_int()
 declare i8* @pop_string()
 declare void @push_int(i64)
@@ -78,12 +81,14 @@ declare i32 @stack_element_get_refcount(%stack_element*)
 declare i8 @stack_element_get_type(%stack_element*)
 declare %stack_element* @stack_element_new(i8, i8*, %stack_element*)
 declare i64 @stack_get_size()
+declare void @stack_element_ref(%stack_element* %element)
+declare void @stack_element_unref(%stack_element* %element)
 
 
 ; Debugging stuff
 @pushing = unnamed_addr constant [14 x i8] c"Pushing [%s]\0A\00"
 @popped  = unnamed_addr constant [13 x i8] c"Popped [%s]\0a\00"
-@msg = private unnamed_addr constant [5 x i8] c"msg\0a\00"
+@msg = unnamed_addr constant [5 x i8] c"msg\0a\00"
 @no_element = private unnamed_addr constant [18 x i8] c"No such Element!\0A\00"
 
 @int_to_str = unnamed_addr constant [3 x i8] c"%i\00"
@@ -127,16 +132,18 @@ define void @print() {
   call void @underflow_assert()
 
   %fmt = getelementptr [3 x i8]* @printf_str_fmt, i8 0, i8 0
-  %val = call i8* @pop_string()
+  %elem = call %stack_element*()* @pop_struct()
+  %val = call i8*(%stack_element*)* @stack_element_get_data(%stack_element* %elem)
   call i32(i8*, ...)* @printf(i8* %fmt, i8* %val)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %elem)
 
   ret void
 }
 
 ; Pop stack, print result string to stderr and exit the program.
 define void @crash(i1 %is_custom_error) {
+  call void @start()
   call void @underflow_assert()
-
   br i1 %is_custom_error, label %custom_error, label %raw_error
 
 custom_error:
@@ -152,7 +159,6 @@ end:
   %val = call i8* @pop_string()
   %stderr = load %FILE** @stderr
   call i32(%FILE*, i8*, ...)* @fprintf(%FILE* %stderr, i8* %fmt, i8* %val)
-
   ; Now, crash!
   call void @exit(i32 1)
 
@@ -224,21 +230,6 @@ not_at_eof:
   ret void
 }
 
-define void @sub_int() {
-  ; get top of stack
-  %top_1   = call i64()* @pop_int()
-
-  ; get second top of stack
-  %top_2   = call i64()* @pop_int()
-
-  ; sub the two values
-  %res = sub i64 %top_1, %top_2
-
-  ; store result on stack
-  call void(i64)* @push_int(i64 %res)
-
-  ret void
-}
 
 define i32 @finish(){
   ret i32 0
@@ -257,9 +248,11 @@ insert:
   store i8* %name, i8** %n_ptr
   
   ; pop value from stack and store value
-  %value = call i8*()* @pop_string()
+
+  %value = call %stack_element*()* @pop_struct()
+  call void @stack_element_ref(%stack_element* %value)
   %v_ptr = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  store i8* %value, i8** %v_ptr
+  store %stack_element* %value, %stack_element** %v_ptr
 
   ; create new element and append to table
   %new_elem = alloca %struct.table
@@ -276,9 +269,12 @@ search:
   br i1 %is_equal, label %insert2, label %search_further
 
 insert2:
-  %value2 = call i8*()* @pop_string()
+  %value2 = call %stack_element*()* @pop_struct()
+  call void @stack_element_ref(%stack_element* %value2)
   %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  store i8* %value2, i8** %v_ptr_found
+  %old_value = load %stack_element** %v_ptr_found
+  call void @stack_element_unref(%stack_element* %old_value)
+  store %stack_element* %value2, %stack_element** %v_ptr_found
 
   br label %end
 
@@ -310,8 +306,9 @@ search:
 
 push_onto_stack:
   %v_ptr_found = getelementptr inbounds %struct.table* %t, i64 0, i32 1
-  %value_to_push = load i8** %v_ptr_found
-  call %stack_element* @push_string_ptr(i8* %value_to_push)
+  %value_to_push = load %stack_element** %v_ptr_found
+  call void @stack_element_ref(%stack_element* %value_to_push)
+  call void @push_struct(%stack_element* %value_to_push)
 
   br label %end
 
@@ -441,60 +438,6 @@ bail_out:
 
 okay:
   ret i8* %mem
-}
-
-@number2 = private unnamed_addr constant [2 x i8] c"5\00"
-@number3 = private unnamed_addr constant [2 x i8] c"2\00"
-
-define i32 @main_() {
- %pushingptr = getelementptr [14 x i8]* @pushing, i64 0, i64 0
- %poppedptr = getelementptr [13 x i8]* @popped, i64 0, i64 0
- %int_to_str = getelementptr [3 x i8]* @int_to_str, i8 0, i8 0
-
-
- %elm = call %stack_element* @stack_element_new(i8 42, i8* null, %stack_element* null)
- %type = call i8 @stack_element_get_type(%stack_element* %elm)
- call i32(i8*, ...)* @printf(i8* %int_to_str, i8 %type)
-
- %refCount = call i32 @stack_element_get_refcount(%stack_element* %elm)
- call i32(i8*, ...)* @printf(i8* %int_to_str, i32 %refCount)
-
-
- call void @eof_check()
- %i1 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i1)
-
- call void @input()
- %i0 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i0)
-
- call void @input()
- %i2 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %i2)
-
- ; push two numbers on the stack
- %number2 = getelementptr [2 x i8]* @number2, i64 0, i64 0
- %number3 = getelementptr [2 x i8]* @number3, i64 0, i64 0
-
- call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number2)
- call %stack_element* @push_string_cpy(i8* %number2)
-
- call i32(i8*, ...)* @printf(i8* %pushingptr, i8* %number3)
- call %stack_element* @push_string_cpy(i8* %number3)
-
- call void @underflow_check()
- %size0 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size0)
-
- call void @sub_int()
- %sum  = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %sum)
-
- call void @underflow_check()
- %size1 = call i8*()* @pop_string()
- call i32(i8*, ...)* @printf(i8* %poppedptr, i8* %size1)
-
- ret i32 0
 }
 
 ;##############################################################################

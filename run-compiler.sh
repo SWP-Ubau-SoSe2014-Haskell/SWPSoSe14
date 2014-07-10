@@ -33,4 +33,4 @@ echo "==> Creating binary (${output})..."
 temp=$(mktemp -t railcc.XXXXX)
 llvm-link "$llvmoutput" "${mydir}"/src/RailCompiler/*.ll \
     | llc -filetype=obj -o "$temp"
-cc -lm -o "$output" "$temp"
+cc -o "$output" "$temp" -lm
