@@ -143,15 +143,11 @@ initTextAreaWithContent areaContent = do
     readIORef posRef >>= clearCursor textArea
     pos@(x,y) <- readIORef posRef
     pos@(kx,ky) <- KeyHandler.handleKey tac pos modus modif key val
- 
     --expand the drawWindow when needed
     extendDrawingAreaHorizontally textArea (kx)
     extendDrawingAreaVertically textArea (ky)
-      
     writeIORef posRef pos
-    
     HIGH.highlight tac
-    
     redrawContent textArea
     showCursor textArea pos
     return $ Events.eventSent event
@@ -317,12 +313,11 @@ extendDrawingAreaHorizontally textArea x = do
   width <- GTK.adjustmentGetPageSize adjustment
   (w,h) <- GTK.widgetGetSizeRequest drawArea
   value <- GTK.adjustmentGetValue adjustment
-  when ((x*bef) + bef >= w) $
+  when ((x*bef)+bef >= w) $
     GTK.widgetSetSizeRequest drawArea (w + bef) h
-  when ((x*bef)+bef >= (round width)+(round value)) $
-    GTK.adjustmentSetValue adjustment $ value + (fromIntegral bef)
-  when ((x*bef)-bef < (round value)) $
-    GTK.adjustmentSetValue adjustment $ value - (fromIntegral bef)
+  when ((x*bef) +bef >= (round width)+(round value) ||
+    (x*bef)-bef < (round value)) $
+    GTK.adjustmentSetValue adjustment $ (fromIntegral (x*bef))
     
 {-
   This function extends the TextArea vertically and set the scroll Frame.

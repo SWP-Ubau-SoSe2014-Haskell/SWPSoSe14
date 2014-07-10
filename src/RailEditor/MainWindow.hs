@@ -34,7 +34,7 @@ create = do
   interDT <- IAF.create
   let boxView = IAF.getContainer interDT
   hboxInfoLine <- FB.create
-
+  
   boxLay <- Gtk.hBoxNew False 0
   Gtk.boxPackStart boxLay lwin Gtk.PackGrow 1
   vSep <- Gtk.vSeparatorNew
@@ -56,7 +56,6 @@ create = do
   Gtk.tableAttach table boxLay 0 1 2 3 [Gtk.Expand,Gtk.Fill] [Gtk.Expand,Gtk.Fill] 0 0
   Gtk.tableAttach table vSepa 0 1 3 4 [Gtk.Fill] [Gtk.Fill] 0 0
   Gtk.tableAttach table hboxInfoLine 0 1 4 5 [Gtk.Fill] [Gtk.Fill] 2 2
-
   Gtk.set window [Gtk.containerChild Gtk.:= table,
               Gtk.windowDefaultHeight Gtk.:= 550,
               Gtk.windowDefaultWidth Gtk.:= 850,

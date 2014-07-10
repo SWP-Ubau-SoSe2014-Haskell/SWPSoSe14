@@ -75,7 +75,6 @@ data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord)
   to O(n²). In avarage cases it should be much faster.
 -}
 data ContentPositions = ConPos (IORef ([Position]))
-
 -- types for undoredo
 data Action = Remove String | Insert String | Replace String String | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
@@ -186,44 +185,18 @@ deserialize :: String
 deserialize stringContent = do
   areaContent <- TextAreaContent.init newX newY
   --readStringListInEntryMap areaContent lined (0,0) 
-  foldM 
-    (\y line -> do
-      foldM 
-        (\x char -> do 
-          putValue areaContent (x,y) char
-          return $ x+1
-        ) 
-        0 
-        line 
-      return $ y+1
-    ) 
-    0 
-    lined 
+  foldM (\y line -> do
+    foldM (\x char -> do 
+        putValue areaContent (x,y) char
+        return $ x+1
+      ) 0 line 
+    return $ y+1
+    ) 0 lined 
   return areaContent
   where
     newX = maximum $ Prelude.map length lined
     newY = length lined
     lined = lines stringContent
-
---subfunction for deserialization calls readStringInEntryMap for every line
-readStringListInEntryMap :: TextAreaContent
-  ->[String]--Lines
-  -> Position
-  -> IO()
-readStringListInEntryMap _ [] _ = return ()
-readStringListInEntryMap tac (e:es) (x,y) = do
-  readStringInEntryMap tac e (0,y)
-  readStringListInEntryMap tac es (0,y+1);
-
---subfunction for deserialization
-readStringInEntryMap :: TextAreaContent
-  -> String --Line
-  -> Position
-  -> IO()
-readStringInEntryMap _ [] _ = return ()
-readStringInEntryMap tac (s:ss) (x,y) = do
-  putValue tac (x,y) s
-  readStringInEntryMap tac ss (succ x,y)
 
 --set the size(x,y) to (x+1,y+1)
 resize :: TextAreaContent -> Position-> IO ()
@@ -232,7 +205,7 @@ resize areaContent (xm,ym) = do
     (ChMap charMapIORef charSize) = charMap areaContent
     (CoMap colorMapIORef colorSize) = colorMap areaContent
   writeIORef charSize (xm,ym)
-  modifyIORef colorSize (\_ -> (xm,ym))
+  modifyIORef' colorSize (\_ -> (xm,ym))
 
 -- | sets the character for a cell identified by a coordinate
 -- If the coords are out of bounds the function resizes the TAC.
@@ -377,7 +350,6 @@ generateContentList areaContent function = do
     mapPosChar = Map.foldWithKey foldIns Map.empty hmap
     list = Map.toList $ Map.filterWithKey (\coord _ -> function coord) mapPosChar
   return list
-
 
 {-This function is important for highlighting it returns the datatype
   which Lexer needs to lex. -}

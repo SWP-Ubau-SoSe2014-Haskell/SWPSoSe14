@@ -72,7 +72,7 @@ highlightFct :: Grid2D
   -> IO IP
 highlightFct grid2D ip yOffset textAC
   | ip == crash = return crash
-  |otherwise =
+  |otherwise = do
   case lex of
     Nothing -> do
       TAC.putColor textAC (xC,yC) TAC.black
