@@ -145,12 +145,11 @@ initTextAreaWithContent areaContent = do
     readIORef posRef >>= clearCursor textArea
     posBef@(x,y) <- readIORef posRef
     pos@(kx,ky) <- KeyHandler.handleKey tac posBef modus modif key val
-    print $ show pos
     --expand the drawWindow when needed
     extendDrawingAreaHorizontally textArea (kx)
     extendDrawingAreaVertically textArea (ky)
     writeIORef posRef pos
-    --HIGH.highlight tac
+    HIGH.highlight tac
     redrawContent textArea
     showCursor textArea pos
     return $ Events.eventSent event

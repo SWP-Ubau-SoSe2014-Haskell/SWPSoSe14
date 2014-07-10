@@ -228,7 +228,6 @@ putColor areaContent (x,y) color = do
   (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
   then do
-    print "resize"
     resize areaContent (xMax + (abs $ xMax-x),yMax + (abs $ yMax-y))
     putColor areaContent (x,y) color
   else do
@@ -332,7 +331,7 @@ getPositionedGrid areaContent = do
     insertWhenFct :: [IDT.PositionedGrid] -> (Map.Map Int Char) -> Int -> Int -> [IDT.PositionedGrid]
     insertWhenFct x line y  offset 
       | x == [] || line == Map.empty = x
-      | otherwise = x++[(Map.insert (y-offset) line (fst (last x)), (snd (last x)))]
+      | otherwise = (List.init x)++[(Map.insert (y-offset) line (fst (last x)), (snd (last x)))]
  
 findLastChar :: TextAreaContent -> Coord -> IO(Coord)
 findLastChar tac y = do
