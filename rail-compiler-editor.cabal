@@ -54,6 +54,7 @@ executable RailCompiler
 
 executable RailEditor
   main-is: Editor.hs
+  ghc-prof-options: -fprof-auto
   other-modules:
     FooterBar
     Highlighter
