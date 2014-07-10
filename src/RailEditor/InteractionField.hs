@@ -32,6 +32,7 @@ data InteractionDT = InterDT { getContainer :: Gtk.VBox,
                                getFunctionStackBuffer :: Gtk.TextBuffer,
                                getDataStackBuffer :: Gtk.TextBuffer}
 
+-- | creates an interactionField
 create = do
   -- create Buffer
   bufferIn <- Gtk.textBufferNew Nothing
