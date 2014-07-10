@@ -1,8 +1,8 @@
 $ 'main'
- \            /--[Doesn't work!\n\]-o-#
-  \-f-{Main}-<
-              \-[Yeah, it really works!\n\]-o-#
-$ 'Main'       
+ \             /--[Doesn't work!\n\]-o-#
+  \-f-{xMain}-<
+               \-[Yeah, it really works!\n\]-o-#
+$ 'xMain'       
  \
   \                               
    \-[Works!\n\]o-t-#
