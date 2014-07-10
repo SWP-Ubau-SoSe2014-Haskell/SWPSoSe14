@@ -20,6 +20,7 @@ source-repository head
 
 library
   build-depends: base (>=4.5.0.0 && <5), llvm-general-pure, llvm-general <3.3.12 || (>=3.4 && < 3.4.3), mtl, containers
+  ghc-prof-options: -fprof-auto
   exposed-modules: 
     AST
     Backend
@@ -32,12 +33,16 @@ library
     Preprocessor
     SemanticalAnalysis
     SyntacticalAnalysis
+    FunctionDeclarations
+    TypeDefinitions
   hs-source-dirs: src/RailCompiler
   default-language: Haskell2010
 
 executable RailCompiler
   main-is: Main.hs
   build-depends: base (>=4.5.0.0 && <5), rail-compiler-editor
+  ghc-options: -rtsopts
+  ghc-prof-options: -fprof-auto
   --other-extensions:    DeriveDataTypeable, GADTs, StandaloneDeriving
   --build-depends: base (>=4.5.0.0 && <5), llvm-general-pure, llvm-general <3.3.12 || (>=3.4 && < 3.4.3), mtl, containers
 

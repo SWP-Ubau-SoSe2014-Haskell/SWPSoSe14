@@ -18,30 +18,36 @@ module SyntacticalAnalysis (
  -- imports --
  import InterfaceDT as IDT
  import ErrorHandling as EH
+ import Data.Maybe
  import qualified Data.Map as Map
 
  -- functions --
  process :: IDT.Lexer2SynAna -> IDT.SynAna2SemAna
  process (IDT.ILS input) = IDT.ISS output
   where
-   output = map (\(x, y)->(x, pathes y (startNodes y))) input
+   output = map (\(x, y)->(x, pathes (mapify y Map.empty) (startNodes y))) input
  
+ mapify :: [(Int, Lexeme, Int)] -> Map.Map Int (Lexeme, Int) -> Map.Map Int (Lexeme, Int)
+ mapify [] map = map
+ mapify ((id, lexeme, follower):xs) map = mapify xs (Map.insert id (lexeme, follower) map)
+
  -- |generates all pathes of a graph
- pathes :: [IDT.LexNode] -> [Int] -> [(Int, [Lexeme], Int)]
- pathes [] _ = []
+ pathes :: Map.Map Int (Lexeme, Int) -> [Int] -> [(Int, [Lexeme], Int)]
  pathes _ [] = []
- pathes xs ys = map (\x-> findPath x xs ys) ys
+ pathes xs ys
+  | Map.size xs == 0 = []
+  | otherwise = map (\x-> findPath x xs ys) ys
  
  -- |generates one path depending on initial node
- findPath :: Int -> [IDT.LexNode] -> [Int] -> (Int, [Lexeme], Int)
+ findPath :: Int -> Map.Map Int (Lexeme, Int) -> [Int] -> (Int, [Lexeme], Int)
  findPath x xs ys = genPath x (generate x xs)
     where
         genPath :: Int -> [(Lexeme, Int)] -> (Int, [Lexeme], Int)
         genPath pathID leFoList = (pathID, map fst leFoList, (snd.last) leFoList)
-        generate :: Int -> [IDT.LexNode] -> [(Lexeme, Int)]
-        generate v = genElem . head . filter (\y -> fst' y == v)
-        genElem :: IDT.LexNode -> [(Lexeme, Int)]
-        genElem (nodeID, lex, fol)
+        generate :: Int -> Map.Map Int (Lexeme, Int) -> [(Lexeme, Int)]
+        generate v map = genElem $ fromJust $ Map.lookup v map
+        genElem :: (Lexeme, Int) -> [(Lexeme, Int)]
+        genElem (lex, fol)
             |elem fol ys || fol==0 = [(lex, fol)]
             |otherwise             = (lex, fol) : generate fol xs
  

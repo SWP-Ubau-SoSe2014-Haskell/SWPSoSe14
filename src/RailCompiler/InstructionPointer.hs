@@ -50,7 +50,7 @@ module InstructionPointer (
 
  -- |Initial value for the instruction pointer at the start of a function.
  start :: IP
- start = IP 0 0 0 SE Forward (Map.singleton (1, 1, SE) 1)
+ start = IP 0 0 0 SE Forward (Map.singleton (0, 0, SE) 1)
 
  -- |An instruction pointer representing a "crash" (fatal error).
  crash :: IP
