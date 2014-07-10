@@ -233,7 +233,6 @@ putColor areaContent (x,y) color = do
   (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
   then do
-    print "resize"
     resize areaContent (xMax + (abs $ xMax-x),yMax + (abs $ yMax-y))
     putColor areaContent (x,y) color
   else do

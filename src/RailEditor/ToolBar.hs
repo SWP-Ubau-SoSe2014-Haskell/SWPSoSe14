@@ -35,9 +35,9 @@ create area = do
 
     imageD <- Gtk.imageNewFromStock Gtk.stockGoForward Gtk.IconSizeMenu
 
-    debugg <- Gtk.imageMenuItemNewWithLabel ""
-    Gtk.imageMenuItemSetImage debugg imageD
-    Gtk.menuShellAppend toolBar debugg
+    run <- Gtk.imageMenuItemNewWithLabel ""
+    Gtk.imageMenuItemSetImage run imageD
+    Gtk.menuShellAppend toolBar run
 
     mode <- Gtk.menuNew
     insertMode <- Gtk.radioMenuItemNewWithLabel "insert"
