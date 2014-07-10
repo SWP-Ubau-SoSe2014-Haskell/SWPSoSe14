@@ -98,9 +98,9 @@ module InstructionPointer (
     -> (Int, Int) -- ^Position as (x, y) coordinate.
     -> Char -- ^'Char' at given position.
  charat code _ | Map.size code == 0 = ' '
- charat code (y, _) | y < 0 || y >= Map.size code = ' '
+ charat code (y, _) | isNothing (Map.lookup y code) = ' '
  charat code (y, x)
-   | x < 0 || x >= Map.size line = ' '
+   | isNothing (Map.lookup x line) = ' '
    | otherwise = fromJust (Map.lookup x line)
   where
    line = fromJust (Map.lookup y code)
