@@ -11,9 +11,6 @@ Stability   :  stable
 -}
 
 module TextAreaContentUtils (
--- * Types
-  Direction,
-
 -- * Methods
   moveChars,
   findLastChar,
@@ -30,18 +27,17 @@ import Control.Monad
 
 import qualified TextAreaContent as TAC
 
-type Direction = (TAC.Coord,TAC.Coord)
 
 -- | calculates Destination depending on Direction
 calculateDest :: TAC.Position
-  -> Direction
+  -> TAC.Direction
   -> TAC.Position
 calculateDest (stX,stY) (dirX,dirY) = (stX+dirX,stY+dirY)
 
 -- | moves Contents into a Direction
 moveChar :: TAC.TextAreaContent
   -> TAC.Position
-  -> Direction
+  -> TAC.Direction
   -> IO()
 moveChar area from dir = do
   x <- TAC.getCell area from
@@ -56,7 +52,7 @@ moveChar area from dir = do
 -- | moves amount of Characters of one line in range from Pos x to last char in line
 moveChars :: TAC.TextAreaContent
   -> TAC.Position
-  -> Direction
+  -> TAC.Direction
   -> IO()
 moveChars area (stX, line) dir = do
   endX <- findLastChar area line
