@@ -332,8 +332,6 @@ define void @copy_symbol_table(%struct.table* %old, %struct.table* %new){
   %name = load i8** %n_ptr_old
   store i8* %name, i8** %n_ptr_new
 
-  ;call i32(i8*, ...)* @printf(i8* %name)
-  
   %is_null = icmp eq i8* %name, null
   br i1 %is_null, label %end, label %next
 
