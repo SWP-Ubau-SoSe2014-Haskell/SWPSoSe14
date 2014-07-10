@@ -8,7 +8,18 @@
 
 @true = external global i8
 @false = external global i8
+@.str_err0 = unnamed_addr constant [41 x i8] c"Crash: strcut called with negative index\00"
+@.str_err1 = unnamed_addr constant [58 x i8] c"Crash: strcut called with index larger than string length\00"
+@strcut_neg_arg_err = global i8* getelementptr inbounds ([41 x i8]* @.str_err0, i64 0, i64 0), align 8
+@strcut_too_large_arg_err = global i8* getelementptr inbounds ([58 x i8]* @.str_err1, i64 0, i64 0), align 8
 
+; error handling
+%FILE = type opaque
+@stderr = external global %FILE*
+declare signext i32 @fprintf(%FILE*, i8*, ...)
+declare void @exit(i32 signext)
+
+; stack functions
 %stack_element = type opaque
 
 declare void @underflow_assert()
@@ -145,11 +156,9 @@ entry:
   call void @underflow_assert()
   %elem2 = call %stack_element*()* @pop_struct()
   %indx = call i64(%stack_element*)* @stack_element_get_int_data(%stack_element* %elem2)
-  ;%indx = call i64()* @pop_int()
   call void @underflow_assert() 
   %elem1 = call %stack_element*()* @pop_struct()
   %str = call i8*(%stack_element*)* @stack_element_get_data(%stack_element* %elem1)
-  ;%str = call i8*()* @pop_string()
 
   ; allocate space for result strings
   %len1_1 = add i64 %indx, 1
@@ -161,10 +170,28 @@ entry:
   %result1 = call i8* @malloc(i16 %len1)
   %result2 = call i8* @malloc(i16 %len2)
 
+  ; check whether index argument is within bounds
+  %stderr = load %FILE** @stderr
+
+  %err0 = icmp slt i64 %indx, 0
+  br i1 %err0, label %neg_arg, label %continue_check
+neg_arg:
+  %err_msg0 = load i8** @strcut_neg_arg_err
+  call i32(%FILE*, i8*, ...)* @fprintf(%FILE* %stderr, i8* %err_msg0)
+  call void @exit(i32 1)
+  ret void
+continue_check:
+  %err1 = icmp sgt i64 %indx, %len_str
+  br i1 %err1, label %too_large_arg, label %loop1
+too_large_arg:
+  %err_msg1 = load i8** @strcut_too_large_arg_err
+  call i32(%FILE*, i8*, ...)* @fprintf(%FILE* %stderr, i8* %err_msg1)
+  call void @exit(i32 1)
+  ret void
+
   ; fill result1 string
-  br label %loop1
 loop1:
-  %i = phi i64 [0, %entry], [ %next_i, %loop1 ]
+  %i = phi i64 [0, %continue_check], [ %next_i, %loop1 ]
   %next_i = add i64 %i, 1
   %addr = getelementptr i8* %str, i64 %i
   %c = load i8* %addr

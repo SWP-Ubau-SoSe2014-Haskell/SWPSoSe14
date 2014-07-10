@@ -1,3 +1,3 @@
 #
 %
-TODO: Error message!
+Crash: strcut called with negative index
