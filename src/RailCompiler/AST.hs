@@ -312,10 +312,10 @@ module AST (fromAST, toAST, parse, adjacent, valids)
    tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
    finvalid ip direction = dirinvalid ip direction ++ crossinvalid ip -- illegal to move forward
    dirinvalid ip direction -- illegal without crosses
-    | dir ip `elem` [E, W] = '|':(addinv ip direction)
-    | dir ip `elem` [NE, SW] = '\\':(addinv ip direction)
-    | dir ip `elem` [N, S] = '-':(addinv ip direction)
-    | dir ip `elem` [NW, SE] = '/':(addinv ip direction)
+    | dir ip `elem` [E, W] = '|':addinv ip direction
+    | dir ip `elem` [NE, SW] = '\\':addinv ip direction
+    | dir ip `elem` [N, S] = '-':addinv ip direction
+    | dir ip `elem` [NW, SE] = '/':addinv ip direction
     | otherwise = ""
    crossinvalid ip -- illegal crosses
     | dir ip `elem` [N, E, S, W] = "x"
