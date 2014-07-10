@@ -239,7 +239,7 @@ malloc = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([ Parameter (IntegerType 64) (UnName 0) [] ], False)
 }
 
--- |Function declaration for initialising of the symbol table
+-- |Function declaration for copying of the symbol table
 copySymbolTable :: Definition
 copySymbolTable = GlobalDefinition $ Global.functionDefaults {
   Global.name = Name "copy_symbol_table",
