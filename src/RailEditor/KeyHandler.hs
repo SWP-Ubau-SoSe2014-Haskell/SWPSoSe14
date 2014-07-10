@@ -1,10 +1,10 @@
 {- |
 Module      :  KeyHandler.hs
 Description :  .
-Maintainer  :  Kelvin Glaß, Chritoph Graebnitz, Kristin Knorr, Nicolas Lehmann (c)
+Maintainer  :  Kristin Knorr, Nicolas Lehmann (c)
 License     :  MIT
 
-Stability   :  experimental
+Stability   :  stable
 
 The KeyHandler-module allows to react on keypress-events in the editor.
 -}
@@ -16,13 +16,13 @@ module KeyHandler (
 import Graphics.UI.Gtk
 import Control.Monad
 import Data.Maybe
-import TextAreaContent as TAC
-import TextAreaContentUtils as TACU
+import qualified TextAreaContent as TAC
+import qualified TextAreaContentUtils as TACU
 import qualified RedoUndo as History
 
---handleKey tac pos modus modif key val
+-- | handleKey passes key depending on Entrymode and handles RedoUndo Shortcuts.
 handleKey :: TAC.TextAreaContent
-  -> Position
+  -> TAC.Position
   -> String
   -> [Modifier]
   -> String
@@ -41,15 +41,14 @@ handleKey tac pos modus modif key val =
       "Replace" -> handleKeyIns tac pos modif key val
       "Smart" -> handleKeySpec tac pos modif key val
 
+-- | handles keys in Insert-mode
 handleKeyNorm :: TAC.TextAreaContent
-  -> Position
+  -> TAC.Position
   -> [Modifier]
   -> String
   -> KeyVal
   -> IO(TAC.Position)
 handleKeyNorm tac pos@(x,y) modif key val = do
-  putStrLn $ show modif
-  putStrLn key
   if ((isJust $ keyToChar val) || key=="dead_circumflex")
   then handlePrintKeyNorm tac pos key val
   else do
@@ -68,8 +67,9 @@ handleKeyNorm tac pos@(x,y) modif key val = do
           return ((if finX==(-1) then 0 else finX+1),y)
         _ -> return pos
 
+-- | handles keys in Replace-mode
 handleKeyIns :: TAC.TextAreaContent
-  -> Position
+  -> TAC.Position
   -> [Modifier]
   -> String
   -> KeyVal
@@ -93,8 +93,9 @@ handleKeyIns tac pos@(x,y) modif key val =
           return ((if finX==(-1) then 0 else finX+1),y)
         _ -> return pos
 
+-- | handles keys in Smart-mode
 handleKeySpec :: TAC.TextAreaContent
-  -> Position
+  -> TAC.Position
   -> [Modifier]
   -> String
   -> KeyVal
@@ -119,7 +120,12 @@ handleKeySpec tac pos@(x,y) modif key val =
           return (finX+1,y)
         _ -> return pos
 
-handlePrintKeyIns :: TAC.TextAreaContent -> TAC.Position -> String -> KeyVal -> IO(TAC.Position)
+-- | handling of printable keys in Replace-mode and Smart-mode (overwriting)
+handlePrintKeyIns :: TAC.TextAreaContent
+  -> TAC.Position
+  -> String
+  -> KeyVal
+  -> IO(TAC.Position)
 handlePrintKeyIns tac pos@(x,y) key val = do
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   cell <- TAC.getCell tac pos
@@ -128,7 +134,12 @@ handlePrintKeyIns tac pos@(x,y) key val = do
   TAC.putCell tac pos (char,TAC.defaultColor)
   return (x+1,y)
 
-handlePrintKeyNorm :: TAC.TextAreaContent -> TAC.Position -> String -> KeyVal -> IO(TAC.Position)
+-- | handling of printable keys in Insert-mode
+handlePrintKeyNorm :: TAC.TextAreaContent
+  -> TAC.Position
+  -> String
+  -> KeyVal
+  -> IO(TAC.Position)
 handlePrintKeyNorm tac pos@(x,y) key val = do
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   History.action tac pos (TAC.Insert [char])
@@ -136,10 +147,12 @@ handlePrintKeyNorm tac pos@(x,y) key val = do
   TAC.putCell tac pos (char,TAC.defaultColor)
   return (x+1,y)
 
+-- | checking if key is an arrow 
 isArrow :: String
   -> Bool
 isArrow key = elem key ["Left", "Right", "Up", "Down"]
 
+-- | handles arrows in Insert-mode and Replace-mode
 handleArrowsNorm :: String
   -> TAC.Position
   -> TAC.TextAreaContent
@@ -180,6 +193,7 @@ handleArrowsNorm key pos@(x,y) tac = do
         then return (finNext+1,y+1)
         else return (x,y+1)
 
+-- | handles arrows in Smart-mode
 handleArrowsSpec :: String
   -> TAC.Position
   -> TAC.TextAreaContent
@@ -204,6 +218,10 @@ handleArrowsSpec key pos@(x,y) tac = do
     "Up" -> return $ if y==0 then (x,y) else (x,y-1)
     "Down" -> return $ if y==maxY then (x,y) else (x,y+1)
 
+-- | handles Backspace-key
+handleBackSpace :: TAC.TextAreaContent
+  -> TAC.Position
+  -> IO(TAC.Position)
 handleBackSpace tac (x,y) = 
   case (x,y) of
     (0,0) -> return (0,0)
@@ -224,16 +242,29 @@ handleBackSpace tac (x,y) =
         TACU.moveChars tac (x,y) (-1,0)
         return (x-1,y)
 
+-- | handles Return-key in Smart-mode
+handleReturnRail :: TAC.TextAreaContent
+  -> TAC.Position
+  -> IO(TAC.Position)
 handleReturnRail tac pos@(x,y) = do
   History.action tac pos TAC.InsertLine
-  moveLinesDownXShift tac pos False
+  TACU.moveLinesDownXShift tac pos False
   return (x,y+1)
 
+-- | handles Return-key in Insert-mode and Replace-mode
+handleReturn :: TAC.TextAreaContent
+  -> TAC.Position
+  -> IO(TAC.Position)
 handleReturn tac pos@(x,y) = do
   History.action tac pos TAC.InsertLine
-  moveLinesDownXShift tac pos True
+  TACU.moveLinesDownXShift tac pos True
   return (0,y+1)
 
+-- | handles Tab-key and Shift-Tab
+handleTab :: TAC.TextAreaContent
+  -> TAC.Position
+  -> [Modifier]
+  -> IO(TAC.Position)
 handleTab tac pos@(x,y) modif = do
   prevCharX <- TACU.findLastCharBefore tac (x-1) y
   finX <- TACU.findLastChar tac y
@@ -256,12 +287,16 @@ handleTab tac pos@(x,y) modif = do
       TACU.moveChars tac pos (4,0)
       return(x+4,y)
 
+-- | handles Delete-key
+handleDelete :: TAC.TextAreaContent
+  -> TAC.Position
+  -> IO(TAC.Position)
 handleDelete tac pos@(x,y) = do
   finX <- TACU.findLastChar tac y
   if x==finX+1
   then do
     History.action tac pos TAC.RemoveLine
-    moveLinesUp tac (y+1)
+    TACU.moveLinesUp tac (y+1)
     return (x,y)
   else do
     cell <- TAC.getCell tac pos

@@ -1,18 +1,16 @@
 {- |
-Module      :  TextArea.hs
+Module      :  TextAreaContentUtils.hs
 Description :  .
-Maintainer  :  Kelvin Glaß, Chritoph Graebnitz, Kristin Knorr, Nicolas Lehmann (c)
+Maintainer  :  Kristin Knorr (c)
 License     :  MIT
 
-Stability   :  experimental
+Stability   :  stable
+
+'TextAreaContentUtils' serves methods to move Characters in TextAreaContent.
 
 -}
 
 module TextAreaContentUtils (
--- * Detail
---
--- | 'TextAreaContentUtils' serves methods to move Characters in TextAreaContent.
-
 -- * Types
   Direction,
 
