@@ -31,7 +31,6 @@ getGrid2dFromPreProc2Lexer(IDT.IPL grid2D) = grid2D
 -- highlights all entries saved in the data structur of the TextAreaCotent-module
 highlight :: TAC.TextAreaContent -> IO()
 highlight textAC = do
-  code <- TAC.serialize textAC
   EXC.catch (do
     pGrid <- TAC.getPositionedGrid textAC
     let (IDT.IPL positionedGrid) = pGrid
