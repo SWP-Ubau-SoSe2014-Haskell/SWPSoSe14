@@ -22,6 +22,8 @@ import qualified TextArea         as TA
 import TextAreaContent as TAC
 import qualified InteractionField as IAF
 import Data.IORef
+import qualified Interpreter
+import qualified Paths_rail_compiler_editor as Path
 
     -- functions --
 
@@ -31,6 +33,9 @@ create = do
   Gtk.initGUI
   -- create and configure main window
   window <- Gtk.windowNew
+  iconpath <- Path.getDataFileName "data/icon.png"
+  pb <- Gtk.pixbufNewFromFile iconpath
+  Gtk.windowSetIcon window (Just pb)
   Gtk.onDestroy window Gtk.mainQuit
 
   -- create TextArea with TextAreaContent
