@@ -17,7 +17,7 @@ linkLlvm :: String --Compiled code
   -> String -- executable path
   -> IO (ExitCode,String,String)
 linkLlvm compiledCode exe = do
-  readProcessWithExitCode "llvm-link" [compiledCode,"-o",exe] "src/RailCompiler/*.ll"
+  readProcessWithExitCode "llvm-link" ["-o",exe] (compiledCode++" src/RailCompiler/*.ll")
 
 --executes the executable
 executeRail :: String
