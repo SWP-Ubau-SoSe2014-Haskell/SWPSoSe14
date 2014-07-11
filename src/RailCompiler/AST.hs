@@ -100,8 +100,9 @@ module AST (fromAST, toAST, parse, adjacent, valids)
  -- Raises 'error's on invalid input (see 'ErrorHandling').
  toGraph :: [String] -- ^List of lines making up the text representation of the function.
     -> IDT.Graph -- ^Graph describing the function.
- toGraph lns = (init $ tail $ head lns, (1, Start, 2):map (offset 1) (nodes $ tail lns))
+ toGraph lns = (init $ tail $ head lns, (1, Start, if null nodelist then 0 else 2):map (offset 1) nodelist)
   where
+   nodelist = nodes $ tail lns
    nodes [] = []
    nodes (ln:lns) = (read id, fixedlex, read follower):nodes lns
     where
