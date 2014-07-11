@@ -1,4 +1,5 @@
 module Interpreter (
+                    addBreak, removeBreak,
                     interpret, step, reset
                    )
   where
@@ -7,9 +8,22 @@ module Interpreter (
   import qualified Lexer
   import qualified Data.Map as Map
   import Data.IORef
-  
+  import Data.Maybe
+
+  addBreak :: TAC.TextAreaContent -> TAC.Position -> IO ()
+  addBreak tac position = do
+    cnt <- readIORef (TAC.context tac)
+    key <- getRelPosition tac position
+    writeIORef (TAC.context tac) cnt{TAC.breakMap = Map.insert key True (TAC.breakMap cnt)}
+
+  removeBreak :: TAC.TextAreaContent -> TAC.Position -> IO ()
+  removeBreak tac position = do
+    cnt <- readIORef (TAC.context tac)
+    key <- getRelPosition tac position
+    writeIORef (TAC.context tac) cnt{TAC.breakMap = Map.delete key (TAC.breakMap cnt)}
+
   reset :: TAC.TextAreaContent -> IO ()
-  reset tac = writeIORef (TAC.context tac) (TAC.IC [] Map.empty [] Map.empty)
+  reset tac = writeIORef (TAC.context tac) (TAC.IC [] [] Map.empty)
 
   interpret :: TAC.TextAreaContent -> IO ()
   interpret tac = do
@@ -25,6 +39,9 @@ module Interpreter (
   dostep :: TAC.TextAreaContent -> Map.Map String IDT.Grid2D -> IO ()
   dostep tac funcmap = return ()
 
+  getRelPosition :: TAC.TextAreaContent -> TAC.Position -> IO (String, TAC.Position)
+  getRelPosition tac position = return ("", position)
+
   getFunctions :: TAC.TextAreaContent -> IO (Map.Map String IDT.Grid2D)
   getFunctions tac = do
     pGrid <- TAC.getPositionedGrid tac
@@ -34,14 +51,31 @@ module Interpreter (
    where
     addnames resmap [] = return resmap
     addnames resmap (x:xs) = do
-      (Left fname) <- return $ Lexer.funcname (fst x)
+      fname <- funcname (fst x)
       newmap <- return $ Map.insert fname (fst x) resmap
       addnames newmap xs
+
+  getFunctionWith :: TAC.TextAreaContent -> TAC.Position -> IO (String, IDT.Grid2D)
+  getFunctionWith tac position = do
+    pGrid <- TAC.getPositionedGrid tac
+    let (IDT.IPL funcs) = pGrid
+        funclist = filter isJust $ map (\(f, y) -> if y <= (snd position) then Just f else Nothing) funcs
+    if null funclist
+    then return ("", Map.empty)
+    else do
+      let res = fromJust $ last funclist
+      fname <- funcname res
+      return $ (fname, res)
+
+  funcname :: IDT.Grid2D -> IO String
+  funcname code = do
+    (Left fname) <- return $ Lexer.funcname code
+    return fname
 
   needsHalt :: TAC.TextAreaContent -> IO (Bool)
   needsHalt tac = do
     cnt <- readIORef (TAC.context tac)
-    let (fname, ip) = head $ TAC.instPointer cnt
+    let (fname, ip, _) = head $ TAC.funcStack cnt
     pos <- return (Lexer.posx ip, Lexer.posy ip)
     return $ Map.findWithDefault False (fname, pos) (TAC.breakMap cnt)
 {-
