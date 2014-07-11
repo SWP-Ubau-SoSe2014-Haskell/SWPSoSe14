@@ -32,6 +32,8 @@ create = do
   Gtk.initGUI
   -- create and configure main window
   window <- Gtk.windowNew
+  pb <- Gtk.pixbufNewFromFile "icon.png"
+  Gtk.windowSetIcon window (Just pb)
   Gtk.onDestroy window Gtk.mainQuit
 
   -- create TextArea with TextAreaContent
