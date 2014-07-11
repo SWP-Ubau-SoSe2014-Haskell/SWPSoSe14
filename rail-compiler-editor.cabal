@@ -12,6 +12,7 @@ maintainer:  borgers@mi.fu-berlin.de
 category:            Language
 build-type:          Simple
 extra-source-files:  README.md, tests/integration_tests, src/RailCompiler/stack.ll, src/RailCompiler/comp.ll, src/RailCompiler/math.ll, src/RailCompiler/string.ll
+data-files: icon.png
 cabal-version:       >=1.10
 
 source-repository head
