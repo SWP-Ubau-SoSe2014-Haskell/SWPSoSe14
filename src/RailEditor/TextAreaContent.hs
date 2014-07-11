@@ -57,7 +57,8 @@ module TextAreaContent (
   deleteColors,
   TextAreaContent.size,
   redoQueue,
-  undoQueue
+  undoQueue,
+  context
   ) where
 
 import Graphics.UI.Gtk
@@ -85,7 +86,7 @@ data InterpreterContext =
     railStack :: [RailType],
     railVars :: Map.Map String RailType,
     instPointer :: [(String, Lexer.IP)],
-    breakMap :: Map Position Bool
+    breakMap :: Map (String, Position) Bool
   }
 
 data TextAreaContent = 
@@ -127,8 +128,8 @@ init x y = do
   cmapR <- newIORef Map.empty
   undoQ <- newIORef []
   redoQ <- newIORef []
-  cont <- newIORef $ IC [] Map.empty [] Map.empty
   dir <- newIORef (1,0)
+  cont <- newIORef $ IC [] Map.empty [] Map.empty
   let 
     cMap = CoMap cmapR size
     hMap = ChMap hmapR size

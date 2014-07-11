@@ -22,6 +22,7 @@ import qualified TextArea         as TA
 import TextAreaContent as TAC
 import qualified InteractionField as IAF
 import Data.IORef
+import qualified Interpreter
 
     -- functions --
 
