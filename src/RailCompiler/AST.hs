@@ -197,7 +197,7 @@ module AST (fromAST, toAST, parse, adjacent, valids)
   where
    junctioncheck (Nothing, ip)
      | current code ip `elem` "+x*" && next code ip `elem` "v^<>" = (Nothing, crashfrom ip)
-     | forward == ' ' && (left == current code ip || right == current code ip) = (Nothing, crashfrom ip)
+--     | forward == ' ' && (left == current code ip || right == current code ip) = (Nothing, crashfrom ip)
      | forward == ' ' && (left `elem` "v^<>+x*" || right `elem` "v^<>+x*") = (Nothing, crashfrom ip)
      | otherwise = (Nothing, ip)
     where
@@ -307,20 +307,20 @@ module AST (fromAST, toAST, parse, adjacent, valids)
                                 --     * Valid characters for movement to the (relative) left.
                                 --     * Valid characters for movement in the (relative) forward direction.
                                 --     * Valid characters for movement to the (relative) right.
- valids code ip = tripleinvert (commandchars ++ dirinvalid ip InstructionPointer.Left ++ finvalid ip{dir = absolute ip InstructionPointer.Left} InstructionPointer.Left, finvalid ip InstructionPointer.Forward, commandchars ++ dirinvalid ip InstructionPointer.Right ++ finvalid ip{dir = absolute ip InstructionPointer.Right} InstructionPointer.Right)
+ valids code ip = tripleinvert (secinv code ip InstructionPointer.Left, finvalid ip, secinv code ip InstructionPointer.Right)
   where
+   secinv code ip direction = [current code ip] ++ commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip direction}
    tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
-   finvalid ip direction = dirinvalid ip direction ++ crossinvalid ip -- illegal to move forward
-   dirinvalid ip direction -- illegal without crosses
-    | dir ip `elem` [E, W] = '|':addinv ip direction
-    | dir ip `elem` [NE, SW] = '\\':addinv ip direction
-    | dir ip `elem` [N, S] = '-':addinv ip direction
-    | dir ip `elem` [NW, SE] = '/':addinv ip direction
+   finvalid ip = dirinvalid ip ++ crossinvalid ip -- illegal to move forward
+   dirinvalid ip -- illegal without crosses
+    | dir ip `elem` [E, W] = "|"
+    | dir ip `elem` [NE, SW] = "\\"
+    | dir ip `elem` [N, S] = "-"
+    | dir ip `elem` [NW, SE] = "/"
     | otherwise = ""
    crossinvalid ip -- illegal crosses
     | dir ip `elem` [N, E, S, W] = "x"
     | otherwise = "+"
-   addinv ip direction = if direction == InstructionPointer.Forward then "" else [current code ip]
    cur = current code ip
    everything = "+\\/x|-" ++ always
    always = "^v<>*@{}[]()" ++ commandchars
