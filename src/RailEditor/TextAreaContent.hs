@@ -24,6 +24,8 @@ module TextAreaContent (
   RGBColor(RGBColor),
   TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
   ActionQueue,
+  RailType,
+  InterpreterContext(IC), railStack, railVars, instPointer, breakMap,
 
 -- * Constructors
   TextAreaContent.init,   -- initializes both data structures
@@ -65,6 +67,7 @@ import Data.IORef
 import Data.Maybe
 import qualified Data.List as List
 import Control.Monad
+import qualified Lexer
 
 data RGBColor = RGBColor Double Double Double deriving Show
 data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
@@ -75,13 +78,24 @@ data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord)
 data Action = Remove String | Insert String | Replace String String | RemoveLine | InsertLine | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
+-- types for interpreter
+data RailType = RailString String | RailList [RailType] | RailLambda String Lexer.IP deriving (Show, Eq)
+data InterpreterContext = 
+  IC {
+    railStack :: [RailType],
+    railVars :: Map.Map String RailType,
+    instPointer :: [(String, Lexer.IP)],
+    breakMap :: Map Position Bool
+  }
+
 data TextAreaContent = 
   TAC {
     charMap :: CharMap,
     colorMap :: ColorMap,
     undoQueue :: IORef ActionQueue,
     redoQueue :: IORef ActionQueue,
-    railDirection :: IORef Direction
+    railDirection :: IORef Direction,
+    context :: IORef InterpreterContext
   }
   
 type Coord = Int
@@ -113,11 +127,12 @@ init x y = do
   cmapR <- newIORef Map.empty
   undoQ <- newIORef []
   redoQ <- newIORef []
+  cont <- newIORef $ IC [] Map.empty [] Map.empty
   dir <- newIORef (1,0)
   let 
     cMap = CoMap cmapR size
     hMap = ChMap hmapR size
-  return $ TAC hMap cMap undoQ redoQ dir
+  return $ TAC hMap cMap undoQ redoQ dir cont
 
 --------------------
 -- Methods
