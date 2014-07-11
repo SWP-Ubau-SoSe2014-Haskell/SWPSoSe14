@@ -88,7 +88,9 @@ setTextAreaContent textArea areaContent= do
   let 
     areaRef = textAreaContent textArea
     drawArea = drawingArea textArea
+    highlightedIORef = getHighlighted textArea
   writeIORef areaRef areaContent
+  highlighted <- readIORef highlightedIORef
   --expand the drawWindow when needed
   tac <- readIORef areaRef
   s@(xMax,yMax) <- TAC.size tac
@@ -100,7 +102,7 @@ setTextAreaContent textArea areaContent= do
       GTK.widgetSetSizeRequest drawArea w (h+((yMax*hef)-w))
     when ((xMax*bef) > w) $
       GTK.widgetSetSizeRequest drawArea (w + (xMax*bef-w))  h
-  HIGH.highlight areaContent
+  when highlighted $ HIGH.highlight tac
   redrawContent textArea
 
 -- | sets (True) or unsets (False) the highlighting 

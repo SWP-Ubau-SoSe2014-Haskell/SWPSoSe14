@@ -1,10 +1,10 @@
 {- |
 Module      :  MenuBar.hs
 Description :  .
-Maintainer  :  Kelvin Glaß, Chritoph Graebnitz, Kristin Knorr, Nicolas Lehmann (c)
+Maintainer  :  Chritoph Graebnitz (c)
 License     :  MIT
 
-Stability   :  experimental
+Stability   :  stable
 
 The MenuBar-module depicts the menu bar at he top of the main window.
 -}
@@ -29,8 +29,7 @@ import Control.Monad.IO.Class
 import Data.List
 import Data.IORef
 
-{-TODO Refactor text to an 'link' to the entry text
-  for the ability to save files
+{-
 Handels the button press and open or saves a file
 -}
 fileChooserEventHandler :: Window 
@@ -188,9 +187,12 @@ create window area output input= do
         _ -> return False
       [Shift,Control] -> case key of
         "F5" -> compileOpenFile window output input >> return True
+        _ -> return False
       _ -> return False
   return menuBar
 
+-- | It compiles and interprets the rail source.
+-- Using inputbuffer for input and outputbuffer for programm output
 compileAndRun :: Window
   -> TextBuffer
   -> TextBuffer 
@@ -203,10 +205,12 @@ compileAndRun window output input = do
   then textBufferSetText output out
   else textBufferSetText output (msg++"\n"++out++"\n"++err)
 
+-- | This Function invokes the compilation and linking of the open rail source.
+-- It also puts stdout and sterr from linking and compiling to bufferOut.
 compileOpenFile ::Window
   -> TextBuffer
   -> TextBuffer 
-  -> IO (String,String)
+  -> IO (String,String) --name of linked file and msg from compiler and llvm-link
 compileOpenFile window output input = do
   path <- get window windowTitle
   let compiledPath = ((((takeWhile(/='.')).reverse.(takeWhile(/='/')).reverse)path)++".ll")
@@ -214,7 +218,7 @@ compileOpenFile window output input = do
   (exitCode,out,err) <- EXE.compile path compiledPath
   if exitCode == (ExitSuccess)
   then do
-    let exeName = (takeWhile (/='.') compiledPath)++".exe"
+    let exeName = takeWhile (/='.') compiledPath
     textBufferSetText output "Compiling succsessful"
     (exitCode,out,err) <- EXE.linkLlvm compiledPath exeName
     if exitCode == (ExitSuccess)

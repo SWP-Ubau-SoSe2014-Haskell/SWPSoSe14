@@ -17,13 +17,16 @@ linkLlvm :: String --Compiled code
   -> String -- executable path
   -> IO (ExitCode,String,String)
 linkLlvm compiledCode exe = do
-  readProcessWithExitCode "llvm-link" [compiledCode,"-o",exe] "src/RailCompiler/*.ll"
+--src/RailCompiler/*.ll dose not work.
+  readProcessWithExitCode "llvm-link" [compiledCode,"src/RailCompiler/cmp.ll",
+    "src/RailCompiler/linked_stack.ll","src/RailCompiler/math.ll",
+    "src/RailCompiler/stack.ll","src/RailCompiler/string.ll","-o",exe] ""
 
 --executes the executable
 executeRail :: String
   -> String
   -> IO (ExitCode,String,String)
 executeRail exeName input = do
-  readProcessWithExitCode "lli" [] exeName
+  readProcessWithExitCode "lli" [exeName] input
   
 
