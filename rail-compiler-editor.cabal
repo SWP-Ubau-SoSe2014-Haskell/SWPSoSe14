@@ -12,6 +12,7 @@ maintainer:  borgers@mi.fu-berlin.de
 category:            Language
 build-type:          Simple
 extra-source-files:  README.md, tests/integration_tests, src/RailCompiler/stack.ll, src/RailCompiler/comp.ll, src/RailCompiler/math.ll, src/RailCompiler/string.ll
+data-files: data/icon.png
 cabal-version:       >=1.10
 
 source-repository head
@@ -59,15 +60,16 @@ executable RailEditor
     FooterBar
     Highlighter
     InteractionField
-    --KeyHandler
+    KeyHandler
     MainWindow
     MenuBar
     Execute
-    --RedoUndo
+    RedoUndo
     TextAreaContent
     TextAreaContentUtils
     TextArea
     ToolBar
+    Paths_rail_compiler_editor
   build-depends: base (>=4.5.0.0 && <5), containers, transformers, gtk, cairo, process, mtl, rail-compiler-editor
   hs-source-dirs: src/RailEditor
   default-language: Haskell2010

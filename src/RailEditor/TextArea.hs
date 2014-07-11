@@ -19,10 +19,12 @@ module TextArea(
 -- * Constants
 -- * Methods
   textAreaContent,
+  currentPosition,
   setTextAreaContent,
   drawingArea,
   getTextAreaContainer, -- This function should be used to get a widget to place in MainWindow
-  setInputMode
+  setInputMode,
+  setHighlighting
   )where
     
     -- imports --
@@ -49,7 +51,8 @@ data TextArea = TA { drawingArea :: GTK.DrawingArea,
     currentPosition :: IORef (TAC.Position), --The current position of cursor without hef and bef
     vAdjustment :: GTK.Adjustment, --needed to create a scrolledWindow
     hAdjustment :: GTK.Adjustment, --needed to create a scrolledWindow
-    inputMode :: IORef (KeyHandler.InputMode) }
+    inputMode :: IORef (KeyHandler.InputMode), -- needed to set and get the current input mode
+    getHighlighted :: IORef (Bool)} -- needed to determine, whether the area is highlighted
 
 --The cursor color
 defaultCursorColor :: GC.Color
@@ -85,7 +88,9 @@ setTextAreaContent textArea areaContent= do
   let 
     areaRef = textAreaContent textArea
     drawArea = drawingArea textArea
+    highlightedIORef = getHighlighted textArea
   writeIORef areaRef areaContent
+  highlighted <- readIORef highlightedIORef
   --expand the drawWindow when needed
   tac <- readIORef areaRef
   s@(xMax,yMax) <- TAC.size tac
@@ -97,8 +102,18 @@ setTextAreaContent textArea areaContent= do
       GTK.widgetSetSizeRequest drawArea w (h+((yMax*hef)-w))
     when ((xMax*bef) > w) $
       GTK.widgetSetSizeRequest drawArea (w + (xMax*bef-w))  h
-  --HIGH.highlight areaContent
+  when highlighted $ HIGH.highlight tac
   redrawContent textArea
+
+-- | sets (True) or unsets (False) the highlighting 
+setHighlighting :: TextArea -> Bool -> IO ()
+setHighlighting area val = do
+  modifyIORef (getHighlighted area) $ \_ -> val
+  tac <- readIORef $ textAreaContent area
+  if val
+  then HIGH.highlight tac
+  else TAC.deleteColors tac
+  redrawContent area
 
 {- 
   This Function calls initTextAreaWithContent with an empty TAC
@@ -124,7 +139,8 @@ initTextAreaWithContent areaContent = do
   GTK.scrolledWindowAddWithViewport scrwin drawArea
   posRef <- newIORef (0,0)
   modRef <- newIORef KeyHandler.Insert
-  let textArea = TA drawArea areaRef scrwin posRef veAdjustment hoAdjustment modRef
+  highlighted <- newIORef True
+  let textArea = TA drawArea areaRef scrwin posRef veAdjustment hoAdjustment modRef highlighted
 
   {-This function is called when the user press a mouse button.
     It calls the handleButtonPress function.  
@@ -153,12 +169,12 @@ initTextAreaWithContent areaContent = do
     readIORef posRef >>= clearCursor textArea
     posBef@(x,y) <- readIORef posRef
     pos@(kx,ky) <- KeyHandler.handleKey tac posBef modus modif key val
-    print $ show pos
     --expand the drawWindow when needed
     extendDrawingAreaHorizontally textArea (kx)
     extendDrawingAreaVertically textArea (ky)
     writeIORef posRef pos
-    HIGH.highlight tac
+    highlighted <- readIORef (getHighlighted textArea)
+    when highlighted $ HIGH.highlight tac
     redrawContent textArea
     showCursor textArea pos
     return $ Events.eventSent event

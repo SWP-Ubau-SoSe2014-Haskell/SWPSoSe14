@@ -1,10 +1,10 @@
 {- |
 Module      :  MenuBar.hs
 Description :  .
-Maintainer  :  Kelvin Glaß, Chritoph Graebnitz, Kristin Knorr, Nicolas Lehmann (c)
+Maintainer  :  Chritoph Graebnitz (c)
 License     :  MIT
 
-Stability   :  experimental
+Stability   :  stable
 
 The MenuBar-module depicts the menu bar at he top of the main window.
 -}
@@ -20,7 +20,7 @@ module MenuBar (
 import TextArea
 import TextAreaContent
 import qualified Highlighter as HIGH
-import Execute
+import qualified Execute as EXE
 import Graphics.UI.Gtk
 import qualified Control.Exception as Exc
 import System.Exit
@@ -29,8 +29,7 @@ import Control.Monad.IO.Class
 import Data.List
 import Data.IORef
 
-{-TODO Refactor text to an 'link' to the entry text
-  for the ability to save files
+{-
 Handels the button press and open or saves a file
 -}
 fileChooserEventHandler :: Window 
@@ -130,8 +129,9 @@ Setups the menu
 create :: Window
   -> TextArea
   -> TextBuffer
+  -> TextBuffer
   -> IO MenuBar
-create window area output= do
+create window area output input= do
   menuBar <- menuBarNew-- container for menus
 
   menuFile <- menuNew
@@ -141,7 +141,8 @@ create window area output= do
   menuOpenItem <- menuItemNewWithLabel "open crtl+o"
   menuSaveItem <- menuItemNewWithLabel "save ctrl+s"
   menuCloseItem <- menuItemNewWithLabel "quit ctrl+s"
-  menuCompileItem <- menuItemNewWithLabel "compile ctrl+F5"
+  menuCompileItem <- menuItemNewWithLabel "compile ctrl+shift+F5"
+  menuCompileAndRunItem <- menuItemNewWithLabel "compile and run ctrl+F5"
   menuHelpItem <- menuItemNewWithLabel "Help"
   menuAboutItem <- menuItemNewWithLabel "About"
   --Bind the subemenu to menu
@@ -155,6 +156,7 @@ create window area output= do
   menuShellAppend menuFile menuSaveItem
   menuShellAppend menuFile menuCloseItem
   menuShellAppend menuFile menuCompileItem
+  menuShellAppend menuFile menuCompileAndRunItem
   menuShellAppend menuHelp menuAboutItem
   --setting actions for the menu
   on menuOpenItem menuItemActivate (fileDialog 
@@ -166,7 +168,9 @@ create window area output= do
     area >> return())
   on menuCloseItem menuItemActivate mainQuit
   on menuCompileItem menuItemActivate 
-    (compileOpenFile window area output >> return ())
+    (compileOpenFile window output input >> return ())
+  on menuCompileAndRunItem menuItemActivate $ compileAndRun window output input
+    
   --setting shortcuts in relation to menuBar
   on window keyPressEvent $ do
     modi <- eventModifier
@@ -179,21 +183,56 @@ create window area output= do
           window
           area
           "OpenFile" >> return True
-        "F5" -> compileOpenFile window area output
+        "F5" -> compileAndRun window output input >> return True
+        _ -> return False
+      [Shift,Control] -> case key of
+        "F5" -> compileOpenFile window output input >> return True
         _ -> return False
       _ -> return False
   return menuBar
 
-compileOpenFile ::Window
-  -> TextArea
+-- | It compiles and interprets the rail source.
+-- Using inputbuffer for input and outputbuffer for programm output
+compileAndRun :: Window
+  -> TextBuffer
   -> TextBuffer 
-  -> IO Bool
-compileOpenFile window area output = do
-  textBufferSetText output "Compiling Execute"
-  (exitCode,out,err) <-compile window
+  -> IO ()
+compileAndRun window output input = do
+  (exeName,msg) <- compileOpenFile window output input
+  inP <- get input textBufferText
+  (exitCode,out,err) <- EXE.executeRail exeName inP
   if exitCode == (ExitSuccess)
-  then textBufferSetText output "Compiling succsessful"
-  else textBufferSetText output ("Compiling failed: "++['\n']++err)
-  return True
+  then textBufferSetText output out
+  else textBufferSetText output (msg++"\n"++out++"\n"++err)
+
+-- | This Function invokes the compilation and linking of the open rail source.
+-- It also puts stdout and sterr from linking and compiling to bufferOut.
+compileOpenFile ::Window
+  -> TextBuffer
+  -> TextBuffer 
+  -> IO (String,String) --name of linked file and msg from compiler and llvm-link
+compileOpenFile window output input = do
+  path <- get window windowTitle
+  let compiledPath = ((((takeWhile(/='.')).reverse.(takeWhile(/='/')).reverse)path)++".ll")
+  textBufferSetText output "Compiling Execute"
+  (exitCode,out,err) <- EXE.compile path compiledPath
+  if exitCode == (ExitSuccess)
+  then do
+    let exeName = takeWhile (/='.') compiledPath
+    textBufferSetText output "Compiling succsessful"
+    (exitCode,out,err) <- EXE.linkLlvm compiledPath exeName
+    if exitCode == (ExitSuccess)
+    then do
+      let msg = "Compiling succsessful\n"++out++"\n"++err
+      textBufferSetText output (msg)
+      return (exeName,msg)
+    else do
+      let msg = ("llvm-link failed:\n"++out++"\n"++err)
+      textBufferSetText output msg
+      return (exeName,msg)
+  else do 
+    let msg = "Compiling failed: "++['\n']++out++err
+    textBufferSetText output msg
+    return ("",msg)
 
 

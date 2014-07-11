@@ -25,19 +25,7 @@ module SemanticalAnalysis (
   | duplicatefunctions input = error EH.strDuplicateFunctions
   | nomain input = error EH.strMainMissing
   | not (all validfollowers input) = error EH.strUnknownNode
-  | otherwise = IDT.ISI (map fixcalls (concatMap splitlambda $ map check input))
-
- -- since every function besides main has been renamed i norder to enable lambdas, calls have to be modified
- fixcalls :: IDT.AST -> IDT.AST
- fixcalls (funcname, paths) = (funcname, map fixpathcall paths)
-  where
-   fixpathcall (id, lexemes, follower) = (id, map fixlistcall lexemes, follower)
-   fixlistcall (Call func) = Call (if func == "" then "" else newfunc func)
-   fixlistcall lexeme = lexeme
- 
- -- we add a g_ to every function name to make sure lambda names do not collide
- newfunc :: String -> String
- newfunc name = if name == "main" then "main" else "g_" ++ name
+  | otherwise = IDT.ISI (concatMap splitlambda $ map check input)
 
  -- splits lambdas into own functions
  splitlambda :: IDT.AST -> [IDT.AST]
@@ -45,7 +33,7 @@ module SemanticalAnalysis (
   where
    lambdafuncs offset
     | offset > maximum (fst (getids func)) = []
-    | islambda offset = ("l_" ++ funcname ++ "_" ++ show offset, (1, [NOP], offset):tail paths):lambdafuncs (offset + 1)
+    | islambda offset = (funcname ++ "!" ++ show offset, (1, [NOP], offset):tail paths):lambdafuncs (offset + 1)
     | otherwise = lambdafuncs (offset + 1)
    islambda x = any (\(_, lex, _) -> Lambda x `elem` lex) paths
 

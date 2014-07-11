@@ -24,6 +24,8 @@ module TextAreaContent (
   RGBColor(RGBColor),
   TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
   ActionQueue,
+  RailType,
+  InterpreterContext(IC), railStack, railVars, instPointer, breakMap,
 
 -- * Constructors
   TextAreaContent.init,   -- initializes both data structures
@@ -49,12 +51,14 @@ module TextAreaContent (
   getCell,
   getDirection,
   isEmptyLine,
+  findLastChar, --needed for KeyHandler
   deleteCell,
   eqPos,
   deleteColors,
   TextAreaContent.size,
   redoQueue,
-  undoQueue
+  undoQueue,
+  context
   ) where
 
 import Graphics.UI.Gtk
@@ -64,6 +68,7 @@ import Data.IORef
 import Data.Maybe
 import qualified Data.List as List
 import Control.Monad
+import qualified Lexer
 
 data RGBColor = RGBColor Double Double Double deriving Show
 data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
@@ -74,13 +79,24 @@ data CharMap  = ChMap  (IORef (Map Coord (Map Coord Char))) (IORef (Coord,Coord)
 data Action = Remove String | Insert String | Replace String String | RemoveLine | InsertLine | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
+-- types for interpreter
+data RailType = RailString String | RailList [RailType] | RailLambda String Lexer.IP deriving (Show, Eq)
+data InterpreterContext = 
+  IC {
+    railStack :: [RailType],
+    railVars :: Map.Map String RailType,
+    instPointer :: [(String, Lexer.IP)],
+    breakMap :: Map (String, Position) Bool
+  }
+
 data TextAreaContent = 
   TAC {
     charMap :: CharMap,
     colorMap :: ColorMap,
     undoQueue :: IORef ActionQueue,
     redoQueue :: IORef ActionQueue,
-    railDirection :: IORef Direction
+    railDirection :: IORef Direction,
+    context :: IORef InterpreterContext
   }
   
 type Coord = Int
@@ -113,10 +129,11 @@ init x y = do
   undoQ <- newIORef []
   redoQ <- newIORef []
   dir <- newIORef (1,0)
+  cont <- newIORef $ IC [] Map.empty [] Map.empty
   let 
     cMap = CoMap cmapR size
     hMap = ChMap hmapR size
-  return $ TAC hMap cMap undoQ redoQ dir
+  return $ TAC hMap cMap undoQ redoQ dir cont
 
 --------------------
 -- Methods
@@ -233,7 +250,6 @@ putColor areaContent (x,y) color = do
   (xMax,yMax) <- TextAreaContent.size areaContent
   if (x > xMax || y > yMax)
   then do
-    print "resize"
     resize areaContent (xMax + (abs $ xMax-x),yMax + (abs $ yMax-y))
     putColor areaContent (x,y) color
   else do
@@ -250,10 +266,12 @@ putCell :: TextAreaContent
   -> Position -- ^ coordinates of the required cell
   -> (Char,RGBColor) -- ^ char and color to put
   -> IO ()
-putCell areaContent coord (char,color) = do
-  putColor areaContent coord color
-  putValue areaContent coord char
-
+putCell areaContent coord (char,color) 
+  | char == ' ' = return ()
+  | otherwise = do
+    putColor areaContent coord color
+    putValue areaContent coord char
+    
 -- | setting input direction
 putDirection :: TextAreaContent
   -> Direction
@@ -269,7 +287,7 @@ getDirection tac = do
   let dirTac = railDirection tac
   readIORef dirTac
 
--- | delets a cell
+-- | delets a cell and don't let empty map in CHarMaps
 deleteCell :: TextAreaContent 
   -> Position
   -> IO (Bool)
@@ -351,7 +369,18 @@ getPositionedGrid areaContent = do
     insertWhenFct :: [IDT.PositionedGrid] -> (Map.Map Int Char) -> Int -> Int -> [IDT.PositionedGrid]
     insertWhenFct x line y  offset 
       | x == [] || line == Map.empty = x
-      | otherwise = x++[(Map.insert (y-offset) line (fst (last x)), (snd (last x)))]
+      | otherwise = (List.init x)++[(Map.insert (y-offset) line (fst (last x)), (snd (last x)))]
+
+-- | Finds the last char in line.
+findLastChar :: TextAreaContent -> Coord -> IO(Coord)
+findLastChar tac y = do
+  let (ChMap hMap _) = charMap tac
+  hmap <- readIORef hMap
+  let mayLine = Map.lookup y hmap
+  if isNothing mayLine
+  then return $ -1
+  else return $ fst(List.last(assocs(fromJust mayLine)))
+     
   
 -- | returns the size of a TextAreaContent.
 size :: TextAreaContent

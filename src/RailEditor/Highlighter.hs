@@ -94,7 +94,9 @@ highlightFct grid2D ip yOffset textAC
     _ -> do
       cBlue
       cGold
-      highlightFct grid2D nextIP yOffset textAC
+      if lex == Just Finish
+      then return crash
+      else highlightFct grid2D nextIP yOffset textAC
     where
       (lex, parseIP) = parse grid2D ip
       nextIP = step grid2D parseIP
