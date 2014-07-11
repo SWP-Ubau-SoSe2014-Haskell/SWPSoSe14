@@ -40,23 +40,23 @@ handleKey tac pos modus modif key val =
     else History.undo tac pos
   else
     case modus of
-      Insert -> handleKeyNorm tac pos modif key val
-      Replace -> handleKeyIns tac pos modif key val
+      Insert -> handleKeyIns tac pos modif key val
+      Replace -> handleKeyRP tac pos modif key val
       Smart -> handleKeySpec tac pos modif key val
 
 -- | handles keys in Insert-mode
-handleKeyNorm :: TAC.TextAreaContent
+handleKeyIns :: TAC.TextAreaContent
   -> TAC.Position
   -> [Modifier]
   -> String
   -> KeyVal
   -> IO(TAC.Position)
-handleKeyNorm tac pos@(x,y) modif key val = do
+handleKeyIns tac pos@(x,y) modif key val = do
   if ((isJust $ keyToChar val) || key=="dead_circumflex")
-  then handlePrintKeyNorm tac pos key val
+  then handlePrintKeyIns tac pos key val
   else do
     if isArrow key
-    then handleArrowsNorm key pos tac
+    then handleArrowsIns key pos tac
     else
       case key of
         "BackSpace" -> handleBackSpace tac pos
@@ -71,18 +71,18 @@ handleKeyNorm tac pos@(x,y) modif key val = do
         _ -> return pos
 
 -- | handles keys in Replace-mode
-handleKeyIns :: TAC.TextAreaContent
+handleKeyRP :: TAC.TextAreaContent
   -> TAC.Position
   -> [Modifier]
   -> String
   -> KeyVal
   -> IO(TAC.Position)
-handleKeyIns tac pos@(x,y) modif key val =
+handleKeyRP tac pos@(x,y) modif key val =
   if ((isJust $ keyToChar val) || key=="dead_circumflex")
-  then handlePrintKeyIns tac pos key val
+  then handlePrintKeyRP tac pos key val
   else
     if isArrow key
-    then handleArrowsNorm key pos tac
+    then handleArrowsIns key pos tac
     else
       case key of
         "BackSpace" -> handleBackSpace tac pos
@@ -105,7 +105,7 @@ handleKeySpec :: TAC.TextAreaContent
   -> IO(TAC.Position)
 handleKeySpec tac pos@(x,y) modif key val =
   if ((isJust $ keyToChar val) || key=="dead_circumflex")
-  then handlePrintKeyIns tac pos key val
+  then handlePrintKeySpec tac pos key val
   else
     if isArrow key
     then
@@ -123,13 +123,27 @@ handleKeySpec tac pos@(x,y) modif key val =
           return (finX+1,y)
         _ -> return pos
 
--- | handling of printable keys in Replace-mode and Smart-mode (overwriting)
-handlePrintKeyIns :: TAC.TextAreaContent
+-- | handling of printable keys in Replace-mode (overwriting)
+handlePrintKeyRP :: TAC.TextAreaContent
   -> TAC.Position
   -> String
   -> KeyVal
   -> IO(TAC.Position)
-handlePrintKeyIns tac pos@(x,y) key val = do
+handlePrintKeyRP tac pos@(x,y) key val = do
+  let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
+  cell <- TAC.getCell tac pos
+  let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
+  History.action tac pos (TAC.Replace [curchar] [char])
+  TAC.putCell tac pos (char,TAC.defaultColor)
+  return (x+1,y)
+
+-- | handling of printable keys in Replace-mode and Smart-mode (overwriting)
+handlePrintKeySpec :: TAC.TextAreaContent
+  -> TAC.Position
+  -> String
+  -> KeyVal
+  -> IO(TAC.Position)
+handlePrintKeySpec tac pos@(x,y) key val = do
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   cell <- TAC.getCell tac pos
   let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
@@ -138,12 +152,12 @@ handlePrintKeyIns tac pos@(x,y) key val = do
   return (x+1,y)
 
 -- | handling of printable keys in Insert-mode
-handlePrintKeyNorm :: TAC.TextAreaContent
+handlePrintKeyIns :: TAC.TextAreaContent
   -> TAC.Position
   -> String
   -> KeyVal
   -> IO(TAC.Position)
-handlePrintKeyNorm tac pos@(x,y) key val = do
+handlePrintKeyIns tac pos@(x,y) key val = do
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   History.action tac pos (TAC.Insert [char])
   TACU.moveChars tac pos (1,0)
@@ -156,11 +170,11 @@ isArrow :: String
 isArrow key = elem key ["Left", "Right", "Up", "Down"]
 
 -- | handles arrows in Insert-mode and Replace-mode
-handleArrowsNorm :: String
+handleArrowsIns :: String
   -> TAC.Position
   -> TAC.TextAreaContent
   -> IO(TAC.Position)
-handleArrowsNorm key pos@(x,y) tac = do
+handleArrowsIns key pos@(x,y) tac = do
   (maxX,maxY) <- TAC.size tac
   case key of
     "Left" ->
