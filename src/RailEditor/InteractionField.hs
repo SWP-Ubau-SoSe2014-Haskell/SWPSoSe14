@@ -52,6 +52,9 @@ create = do
   labelStackVar <- Gtk.labelNewWithMnemonic "Datastack"
   viewStackVar <- Gtk.textViewNewWithBuffer bufferStackVar
 
+  Gtk.textViewSetEditable viewStackFunc False
+  Gtk.textViewSetEditable viewStackVar False
+
   -- create Buttons for zoomed view
   buttonPopUpIn <- Gtk.buttonNewWithLabel ""
   setButtonProps buttonPopUpIn
@@ -108,6 +111,7 @@ create = do
   boxStack <- Gtk.hBoxNew True 0
   Gtk.boxPackStart boxStack boxStackFunc Gtk.PackGrow 2
   Gtk.boxPackStart boxStack boxStackVar Gtk.PackGrow 2
+
 
   -- create main Container
   boxView <- Gtk.vBoxNew False 0

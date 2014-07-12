@@ -63,12 +63,11 @@ create area footer interDT= do
     let dataBuffer = IDF.getDataStackBuffer interDT
     let funcBuffer = IDF.getFunctionStackBuffer interDT
 
-    Gtk.onButtonPress run $ \event -> do
+    Gtk.on run Gtk.menuItemActivate  $ do
       tac <- readIORef $ TA.textAreaContent area
       IN.interpret tac
-      return True
 
-    Gtk.onButtonPress step $ \event -> do
+    Gtk.on step Gtk.menuItemActivate $ do
       tac <- readIORef $ TA.textAreaContent area
       intCtxt <- readIORef $ TAC.context tac
       IN.step tac
@@ -82,7 +81,6 @@ create area footer interDT= do
       else do
         let ip = (0,0)
         putStrLn $ show ip
-      return True
 
     -- set mode action
     Gtk.onButtonPress insertMode $ \event -> do
