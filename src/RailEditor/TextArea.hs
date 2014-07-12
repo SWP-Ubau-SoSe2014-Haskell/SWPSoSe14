@@ -15,7 +15,6 @@ module TextArea(
   TextArea,
 -- * Constructors
   initTextAreaWithContent,
-  initTextArea,
 -- * Constants
 -- * Methods
   textAreaContent,
@@ -115,14 +114,6 @@ setHighlighting area val = do
   else TAC.deleteColors tac
   redrawContent area
 
-{- 
-  This Function calls initTextAreaWithContent with an empty TAC
--}
-initTextArea :: IO(TextArea)
-initTextArea = do
-  areaContent <- TAC.init 0 0
-  textArea <- initTextAreaWithContent areaContent
-  return $ textArea
 
 {-
   This function setup the TextArea. It Set up the drawWindow 
