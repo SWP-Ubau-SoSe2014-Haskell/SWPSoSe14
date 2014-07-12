@@ -120,13 +120,71 @@ module Interpreter (
   perform tac _ IDT.Multiply = performMath tac (*)
   perform tac _ IDT.Remainder = performMath tac (rem)
   perform tac _ IDT.Subtract = performMath tac (-)
-  --funcStack :: [(String, Lexer.IP, Map.Map String RailType)],
-  perform tac _ IDT.Cut = return ()
-  perform tac _ IDT.Append = return ()
-  perform tac _ IDT.Size = return ()
-  perform tac _ IDT.Nil = return ()
-  perform tac _ IDT.Cons = return ()
-  perform tac _ IDT.Breakup = return ()
+  perform tac _ IDT.Cut = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt) || null (tail $ TAC.dataStack cnt)
+    then showError "Not enough elements on stack"
+    else do
+      let (e1:e2:xs) = TAC.dataStack cnt
+      if not (isNumeric e1) || not (isString e2)
+      then showError "Wrong types on stack, number and string expected"
+      else do
+        let (TAC.RailString s1, TAC.RailString s2) = (e1, e2)
+        if length s2 > (read s1 :: Int)
+        then showError "Cut number bigger than string length"
+        else do
+          let (lres, rres) = splitAt (read s1 :: Int) s2
+          writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString rres):(TAC.RailString lres):xs}
+  perform tac _ IDT.Append = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt) || null (tail $ TAC.dataStack cnt)
+    then showError "Not enough elements on stack"
+    else do
+      let (e1:e2:xs) = TAC.dataStack cnt
+      if not (isString e1) || not (isString e2)
+      then showError "Wrong types on stack, strings expected"
+      else do
+        let (TAC.RailString s1, TAC.RailString s2) = (e1, e2)
+            res = TAC.RailString (s2 ++ s1)
+        writeIORef (TAC.context tac) cnt{TAC.dataStack = res:xs}
+  perform tac _ IDT.Size = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt)
+    then showError "Empty stack"
+    else do
+      if not $ isString $ head $ TAC.dataStack cnt
+      then showError "Wrong type on stack, string expected"
+      else do
+        let ((TAC.RailString str):xs) = TAC.dataStack cnt
+            res = TAC.RailString $ show $ length str
+        writeIORef (TAC.context tac) cnt{TAC.dataStack = res:xs}
+  perform tac _ IDT.Nil = do
+    cnt <- readIORef (TAC.context tac)
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailList []):(TAC.dataStack cnt)}
+  perform tac _ IDT.Cons = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt) || null (tail $ TAC.dataStack cnt)
+    then showError "Not enough elements on stack"
+    else do
+      if not $ isList $ head $ tail $ TAC.dataStack cnt
+      then showError "Wrong type on second position of stack, list expected"
+      else do
+        let (x:(TAC.RailList lst):xs) = TAC.dataStack cnt
+        writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailList (x:lst)):xs}
+  perform tac _ IDT.Breakup = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt)
+    then showError "Empty stack"
+    else do
+      if not $ isList $ head $ TAC.dataStack cnt
+      then showError "Wrong type on stack, list expected"
+      else do
+        let ((TAC.RailList lst):xs) = TAC.dataStack cnt
+        if null lst
+        then showError "Empty list cannot be splitted"
+        else do
+          let (y:ys) = lst
+          writeIORef (TAC.context tac) cnt{TAC.dataStack = y:(TAC.RailList ys):xs}
   perform tac _ IDT.Greater = performMath tac (\x y -> if x > y then 1 else 0)
   perform tac _ IDT.Equal = do
     cnt <- readIORef (TAC.context tac)
@@ -145,7 +203,7 @@ module Interpreter (
     then showError "Empty stack"
     else
       if not $ isBool $ head $ TAC.dataStack cnt
-      then showError "Wrong type on stack"
+      then showError "Wrong type on stack, boolean expected"
       else do
         let ((fname, ip, vars):xs) = TAC.funcStack cnt
             (fip, tip) = Lexer.junctionturns (fst $ fromJust $ Map.lookup fname fmap) ip
