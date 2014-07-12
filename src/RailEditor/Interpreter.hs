@@ -3,6 +3,7 @@ module Interpreter (
                     interpret, step, reset
                    )
   where
+  import qualified Graphics.UI.Gtk as Gtk
   import qualified InterfaceDT as IDT
   import qualified TextAreaContent as TAC
   import qualified Lexer
@@ -34,6 +35,7 @@ module Interpreter (
   reset tac = do
     cnt <- readIORef (TAC.context tac)
     writeIORef (TAC.context tac) (TAC.IC [] [] (TAC.breakMap cnt))
+    Gtk.textBufferSetText (snd $ TAC.buffer tac) ""
 
   init :: TAC.TextAreaContent -> IO ()
   init tac = do
@@ -43,11 +45,19 @@ module Interpreter (
 
   showError :: TAC.TextAreaContent -> String -> IO ()
   showError tac string = do
+    showMessage ("Error: " ++ string) (snd $ TAC.buffer tac)
     reset tac
     return ()
 
-  showMessage :: String -> IO ()
-  showMessage _ = return ()
+  showMessage :: String -> Gtk.TextBuffer -> IO ()
+  showMessage message buffer = showRawMessage (message ++ "\n") buffer
+
+  showRawMessage :: String -> Gtk.TextBuffer -> IO ()
+  showRawMessage message buffer = do
+    start <- Gtk.textBufferGetStartIter buffer
+    end <- Gtk.textBufferGetEndIter buffer
+    currentText <- Gtk.textBufferGetText buffer start end True
+    Gtk.textBufferSetText buffer (currentText ++ message)
 
   abortExecution :: TAC.TextAreaContent -> IO ()
   abortExecution _ = return ()
@@ -89,12 +99,22 @@ module Interpreter (
       if not $ isString $ head $ TAC.dataStack cnt
       then showError tac "Element on top of stack is no String"
       else do
-        showMessage $ show $ head $ TAC.dataStack cnt
+        showMessage (show $ head $ TAC.dataStack cnt) (snd $ TAC.buffer tac)
         abortExecution tac
   -- TODO
   perform tac _ IDT.EOF = return ()
   perform tac _ IDT.Input = return ()
-  perform tac _ IDT.Output = return ()
+  perform tac _ IDT.Output = do
+    cnt <- readIORef (TAC.context tac)
+    let dataSt = TAC.dataStack cnt
+    if (dataSt == [])
+    then showError tac "Empty Stack"
+    else if (\((TAC.RailString _):_) -> True) dataSt
+         then do 
+            showRawMessage ((\((TAC.RailString t):_) -> t) dataSt) (snd $ TAC.buffer tac)
+            writeIORef (TAC.context tac) cnt{TAC.dataStack = tail (TAC.dataStack cnt)}
+         else showError tac "Element on top of the stack is no String"
+
   perform tac _ IDT.Underflow = do
     cnt <- readIORef (TAC.context tac)
     writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString $ show $ length $ TAC.dataStack cnt):(TAC.dataStack cnt)}
