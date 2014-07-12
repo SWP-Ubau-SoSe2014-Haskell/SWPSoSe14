@@ -58,7 +58,8 @@ module TextAreaContent (
   TextAreaContent.size,
   redoQueue,
   undoQueue,
-  context
+  context,
+  buffer
   ) where
 
 import Graphics.UI.Gtk
