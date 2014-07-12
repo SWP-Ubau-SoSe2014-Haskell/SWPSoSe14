@@ -112,22 +112,44 @@ module Interpreter (
       let ((fname, ip, vars):xs) = TAC.funcStack cnt
           nvars = Map.insert string (head $ TAC.dataStack cnt) vars
       writeIORef (TAC.context tac) cnt{TAC.dataStack = (tail $ TAC.dataStack cnt), TAC.funcStack = (fname, ip, nvars):xs}
-  -- TODO, do not forget to create new varmap
-  perform tac _ (IDT.Call string) = return ()
+  perform tac _ (IDT.Call string) = do
+    cnt <- readIORef (TAC.context tac)
+    writeIORef (TAC.context tac) cnt{TAC.funcStack = (string, Lexer.start, Map.empty):(TAC.funcStack cnt)}
   perform tac _ IDT.Add1 = return ()
   perform tac _ IDT.Divide = return ()
   perform tac _ IDT.Multiply = return ()
   perform tac _ IDT.Remainder = return ()
   perform tac _ IDT.Subtract = return ()
+  --funcStack :: [(String, Lexer.IP, Map.Map String RailType)],
   perform tac _ IDT.Cut = return ()
   perform tac _ IDT.Append = return ()
   perform tac _ IDT.Size = return ()
   perform tac _ IDT.Nil = return ()
   perform tac _ IDT.Cons = return ()
   perform tac _ IDT.Breakup = return ()
-  perform tac _ IDT.Greater = return ()
-  perform tac _ IDT.Equal = return ()
-  perform tac _ IDT.Finish = return ()
+  perform tac _ IDT.Greater = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt) || null (tail $ TAC.dataStack cnt)
+    then showError "Not enough elements on stack"
+    else do
+      let (e1:e2:xs) = TAC.dataStack cnt
+      if not (isNumeric e1) || not (isNumeric e2)
+      then showError "Wrong types on stack, numbers expected"
+      else do
+        let (TAC.RailString n1, TAC.RailString n2) = (e1, e2)
+            res = if n1 < n2 then TAC.RailString "1" else TAC.RailString "2"
+        writeIORef (TAC.context tac) cnt{TAC.dataStack = res:xs}
+  perform tac _ IDT.Equal = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt) || null (tail $ TAC.dataStack cnt)
+    then showError "Not enough elements on stack"
+    else do
+      let (e1:e2:xs) = TAC.dataStack cnt
+          res = if e1 == e2 then TAC.RailString "1" else TAC.RailString "2"
+      writeIORef (TAC.context tac) cnt{TAC.dataStack = res:xs}
+  perform tac _ IDT.Finish = do
+    cnt <- readIORef (TAC.context tac)
+    writeIORef (TAC.context tac) cnt{TAC.funcStack = tail $ TAC.funcStack cnt}
   perform tac fmap (IDT.Junction _) = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt)
@@ -145,7 +167,6 @@ module Interpreter (
     let ((fname, ip, vars):xs) = TAC.funcStack cnt
         (lip, nip) = Lexer.lambdadirs ip
     writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailLambda fname lip):(TAC.dataStack cnt), TAC.funcStack = (fname, nip, vars):xs}
-  --funcStack :: [(String, Lexer.IP, Map.Map String RailType)],
 
   searchVar :: String -> [(String, Lexer.IP, Map.Map String TAC.RailType)] -> Maybe TAC.RailType
   searchVar _ [] = Nothing
