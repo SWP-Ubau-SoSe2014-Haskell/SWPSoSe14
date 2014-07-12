@@ -209,8 +209,8 @@ handleButtonPress textArea (x,y) = do
   This function renders a character at the given position.
   It calculate the coords for drawingArea from TAC.Position.
 -} 
-renderScene :: TextArea -> TAC.Position -> Char -> TAC.RGBColor -> IO ()
-renderScene textArea (x,y) char (TAC.RGBColor r g b) = do
+renderScene :: TextArea -> TAC.Position -> Char -> TAC.RGBColor -> Bool -> Bool -> IO ()
+renderScene textArea (x,y) char (TAC.RGBColor r g b) breakpoint isIP = do
   let drawArea = drawingArea textArea
   removeCharacter textArea (x,y)
   drawWindow <- GTK.widgetGetDrawWindow drawArea
@@ -219,6 +219,10 @@ renderScene textArea (x,y) char (TAC.RGBColor r g b) = do
     CAIRO.moveTo (fromIntegral (xCoord x)) (fromIntegral (yCoord y))
     CAIRO.setFontSize 14
     CAIRO.showText [char]
+  gc <- GC.gcNew drawWindow
+  GC.gcSetValues gc $ GC.newGCValues { GC.foreground = defaultCursorColor }
+  when breakpoint $ GTK.drawRectangle drawWindow gc False ((curX (x*bef))-2) (curY (y*hef)) bef hef
+  when isIP $ GTK.drawArc drawWindow gc False ((curX (x*bef))-2) ((curY (y*hef))+2) bef hef 0 23040
 
 --This function returns the y coord in relation to drawingArea    
 yCoord :: TAC.Coord -> TAC.Coord
@@ -287,7 +291,8 @@ redrawContent textArea = do
         let
           col = snd $ fromJust $ mayCell
           char = fst $ fromJust $ mayCell
-        renderScene textArea (x,y) char col
+        cnt <- readIORef (TAC.context tac)
+        renderScene textArea (x,y) char col (Map.findWithDefault False (x,y) (TAC.breakMap cnt)) ((x,y) == TAC.curIPPos cnt)
         return ()
         
 
@@ -299,9 +304,8 @@ showCursor textArea (x,y) = do
   drawWindow <- GTK.widgetGetDrawWindow drawArea
   gc <- GC.gcNew drawWindow
   GC.gcSetValues gc $ GC.newGCValues { GC.foreground = defaultCursorColor }
-  --GTK.drawRectangle drawWindow gc True (curX (x*bef)) (curY (y*hef)) 2 hef
+  GTK.drawRectangle drawWindow gc True (curX (x*bef)) (curY (y*hef)) 2 hef
   --http://hackage.haskell.org/package/gtk-0.12.5.7/docs/Graphics-UI-Gtk-Gdk-Drawable.html#t:Drawable
-  GTK.drawArc drawWindow gc False (curX (x*bef)) (curY (y*hef)) 100 100 0  23040
   return ()
 
 -- delets the cursor at the given position.

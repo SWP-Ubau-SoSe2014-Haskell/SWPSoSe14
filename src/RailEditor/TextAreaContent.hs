@@ -25,7 +25,7 @@ module TextAreaContent (
   TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
   ActionQueue,
   RailType(RailString, RailList, RailLambda),
-  InterpreterContext(IC), dataStack, funcStack, breakMap, inputOffset,
+  InterpreterContext(IC), dataStack, funcStack, breakMap, inputOffset, curIPPos,
 
 -- * Constructors
   TextAreaContent.init,   -- initializes both data structures
@@ -94,7 +94,8 @@ data InterpreterContext =
     dataStack :: [RailType],
     funcStack :: [(String, Lexer.IP, Map.Map String RailType)],
     breakMap :: Map Position Bool,
-    inputOffset :: Int
+    inputOffset :: Int,
+    curIPPos :: Position
   }
 
 data TextAreaContent = 
@@ -140,7 +141,7 @@ init x y inputBuffer outputBuffer= do
   undoQ <- newIORef []
   redoQ <- newIORef []
   dir <- newIORef (1,0)
-  cont <- newIORef $ IC [] [] Map.empty 0
+  cont <- newIORef $ IC [] [] Map.empty 0 (-1, -1)
   let 
     cMap = CoMap cmapR size
     hMap = ChMap hmapR size

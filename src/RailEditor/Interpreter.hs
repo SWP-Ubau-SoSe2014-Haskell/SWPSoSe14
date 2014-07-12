@@ -39,7 +39,7 @@ module Interpreter (
   abortExecution :: TAC.TextAreaContent -> IO ()
   abortExecution tac = do
     cnt <- readIORef (TAC.context tac)
-    writeIORef (TAC.context tac) (TAC.IC [] [] (TAC.breakMap cnt) 0)
+    writeIORef (TAC.context tac) (TAC.IC [] [] (TAC.breakMap cnt) 0 (-1,-1))
 
   init :: TAC.TextAreaContent -> IO ()
   init tac = do
@@ -69,12 +69,21 @@ module Interpreter (
     currentText <- Gtk.textBufferGetText buffer start end True
     Gtk.textBufferSetText buffer (currentText ++ message)
 
+  updateCurIPPos :: TAC.TextAreaContent -> Funcmap -> IO ()
+  updateCurIPPos tac fmap = do
+    cnt <- readIORef (TAC.context tac)
+    when (not $ null $ TAC.funcStack cnt) $ do
+      let ((fname, ip, _):_) = TAC.funcStack cnt
+          offset = snd $ fromJust $ Map.lookup fname fmap
+      writeIORef (TAC.context tac) cnt{TAC.curIPPos = (Lexer.posx ip, Lexer.posy ip + offset)}
+
   interpret :: TAC.TextAreaContent -> IO ()
   interpret tac = do
     isblocked <- blocked tac
     when (not isblocked) $ do
       funcmap <- getFunctions tac
       dostep tac funcmap
+      updateCurIPPos tac funcmap
       stop <- needsHalt tac funcmap
       if stop then interpret tac else return ()
 
@@ -83,6 +92,7 @@ module Interpreter (
     when (not isblocked) $ do
       funcmap <- getFunctions tac
       dostep tac funcmap
+      updateCurIPPos tac funcmap
 
   dostep :: TAC.TextAreaContent -> Funcmap -> IO ()
   dostep tac funcmap = do
@@ -235,7 +245,7 @@ module Interpreter (
       writeIORef (TAC.context tac) cnt{TAC.dataStack = res:xs}
   perform tac _ IDT.Finish = do
     cnt <- readIORef (TAC.context tac)
-    writeIORef (TAC.context tac) cnt{TAC.funcStack = tail $ TAC.funcStack cnt}
+    writeIORef (TAC.context tac) cnt{TAC.funcStack = tail $ TAC.funcStack cnt, curIPPos = (-1, -1)}
   perform tac fmap (IDT.Junction _) = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt)
