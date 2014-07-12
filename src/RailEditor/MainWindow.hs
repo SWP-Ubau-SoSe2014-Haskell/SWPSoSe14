@@ -38,15 +38,17 @@ create = do
   Gtk.windowSetIcon window (Just pb)
   Gtk.onDestroy window Gtk.mainQuit
 
-  -- create TextArea with TextAreaContent
-  tac <- TAC.init 100 100
-  ta <- TA.initTextAreaWithContent tac
-  lwin <- TA.getTextAreaContainer ta
-
   interDT <- IAF.create
   let boxView = IAF.getContainer interDT
   footer <- FB.create
   let hboxInfoLine = FB.getContainer footer
+
+  -- create TextArea with TextAreaContent
+  tac <- TAC.init 100 100 (IAF.getInputBuffer interDT) (IAF.getOutputBuffer interDT)
+  ta <- TA.initTextAreaWithContent tac
+  lwin <- TA.getTextAreaContainer ta
+
+
 
   -- reset label with current position
   Gtk.afterKeyPress (TA.drawingArea ta) $ \event -> do
@@ -74,7 +76,7 @@ create = do
   let bufferIn  = IAF.getInputBuffer interDT
 
   menuBar <- MB.create window ta bufferOut bufferIn
-  extraBar <- TB.create ta footer
+  extraBar <- TB.create ta footer interDT
 
   vSepa <- Gtk.hSeparatorNew
 

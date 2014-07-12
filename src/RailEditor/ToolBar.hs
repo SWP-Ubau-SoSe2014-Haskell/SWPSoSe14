@@ -18,12 +18,18 @@ module ToolBar (
 import Data.IORef
 import qualified KeyHandler as KH
 import qualified FooterBar as FB
+import qualified InteractionField as IDF
 import qualified TextArea as TA
 import qualified Graphics.UI.Gtk as Gtk
+import qualified Interpreter as IN
+import qualified Lexer
+import qualified TextAreaContent as TAC
+import Control.Monad
     -- functions --
 
 -- | creates a toolbar
-create area footer = do
+create area footer interDT= do
+
     toolBar <- Gtk.menuBarNew
 
     -- create step button
@@ -54,6 +60,29 @@ create area footer = do
 
     highlightCheck <- Gtk.checkMenuItemNewWithLabel "highlighting"
     Gtk.checkMenuItemSetActive highlightCheck True
+    let dataBuffer = IDF.getDataStackBuffer interDT
+    let funcBuffer = IDF.getFunctionStackBuffer interDT
+
+    Gtk.onButtonPress run $ \event -> do
+      tac <- readIORef $ TA.textAreaContent area
+      IN.interpret tac
+      return True
+
+    Gtk.onButtonPress step $ \event -> do
+      tac <- readIORef $ TA.textAreaContent area
+      intCtxt <- readIORef $ TAC.context tac
+      IN.step tac
+      Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
+      Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
+      let fS = TAC.funcStack intCtxt
+      if ((length fS) > 0) 
+      then do
+        let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
+        putStrLn $ show ip
+      else do
+        let ip = (0,0)
+        putStrLn $ show ip
+      return True
 
     -- set mode action
     Gtk.onButtonPress insertMode $ \event -> do

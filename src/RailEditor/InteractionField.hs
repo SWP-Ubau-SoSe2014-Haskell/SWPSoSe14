@@ -16,7 +16,9 @@ module InteractionField (
 -- *Methods
   getContainer,
   getInputBuffer,
-  getOutputBuffer
+  getOutputBuffer,
+  getDataStackBuffer,
+  getFunctionStackBuffer
                         )
   where
 

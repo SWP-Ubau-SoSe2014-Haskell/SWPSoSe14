@@ -69,6 +69,7 @@ import Data.Maybe
 import qualified Data.List as List
 import Control.Monad
 import qualified Lexer
+import Graphics.UI.Gtk as Gtk
 
 data RGBColor = RGBColor Double Double Double deriving Show
 data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
@@ -101,7 +102,8 @@ data TextAreaContent =
     undoQueue :: IORef ActionQueue,
     redoQueue :: IORef ActionQueue,
     railDirection :: IORef Direction,
-    context :: IORef InterpreterContext
+    context :: IORef InterpreterContext,
+    buffer :: (Gtk.TextBuffer,Gtk.TextBuffer)
   }
   
 type Coord = Int
@@ -126,8 +128,10 @@ defaultChar = ' '
 -- | creates a new TextAreaContent
 init :: Coord -- ^ x-size
   -> Coord -- ^ y-size
+  -> Gtk.TextBuffer
+  -> Gtk.TextBuffer
   -> IO TextAreaContent
-init x y = do
+init x y inputBuffer outputBuffer= do
   size <- newIORef (x,y)
   hmapR <- newIORef Map.empty
   cmapR <- newIORef Map.empty
@@ -138,7 +142,7 @@ init x y = do
   let 
     cMap = CoMap cmapR size
     hMap = ChMap hmapR size
-  return $ TAC hMap cMap undoQ redoQ dir cont
+  return $ TAC hMap cMap undoQ redoQ dir cont (inputBuffer,outputBuffer)
 
 --------------------
 -- Methods
@@ -197,9 +201,11 @@ serialize areaContent = do
    
 -- | creates a TextAreaContent by a string
 deserialize :: String
+  -> Gtk.TextBuffer
+  -> Gtk.TextBuffer
   -> IO TextAreaContent
-deserialize stringContent = do
-  areaContent <- TextAreaContent.init newX newY
+deserialize stringContent inputB outputB = do
+  areaContent <- TextAreaContent.init newX newY inputB outputB
   --readStringListInEntryMap areaContent lined (0,0) 
   foldM (\y line -> do
     foldM (\x char -> do 
