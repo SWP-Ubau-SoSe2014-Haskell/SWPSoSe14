@@ -70,10 +70,10 @@ module Interpreter (
         tmpip = Lexer.step grid ip
         (maylex, newip) = Lexer.parse grid tmpip
     writeIORef (TAC.context tac) cnt{TAC.funcStack = (fname, newip, vars):xs}
-    when (isJust maylex) $ perform tac (fromJust maylex)
+    when (isJust maylex) $ perform tac funcmap (fromJust maylex)
 
-  perform :: TAC.TextAreaContent -> IDT.Lexeme -> IO ()
-  perform tac IDT.Boom = do
+  perform :: TAC.TextAreaContent -> Funcmap -> IDT.Lexeme -> IO ()
+  perform tac _ IDT.Boom = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt)
     then showError "Empty stack"
@@ -83,19 +83,28 @@ module Interpreter (
       else do
         showMessage $ show $ head $ TAC.dataStack cnt
         abortExecution tac
-  perform tac IDT.EOF = return ()
-  perform tac IDT.Input = return ()
-  perform tac IDT.Output = return ()
-  perform tac IDT.Underflow = return ()
-  perform tac IDT.RType = return ()
-  perform tac (IDT.Constant string) = return ()
-  perform tac (IDT.Push string) = do
+  -- TODO
+  perform tac _ IDT.EOF = return ()
+  perform tac _ IDT.Input = return ()
+  perform tac _ IDT.Output = return ()
+  perform tac _ IDT.Underflow = do
+    cnt <- readIORef (TAC.context tac)
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString $ show $ length $ TAC.dataStack cnt):(TAC.dataStack cnt)}
+  perform tac _ IDT.RType = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt)
+    then showError "Empty stack"
+    else writeIORef (TAC.context tac) cnt{TAC.dataStack = (typeOf $ head $ TAC.dataStack cnt):(tail $ TAC.dataStack cnt)}
+  perform tac _ (IDT.Constant string) = do
+    cnt <- readIORef (TAC.context tac)
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString string):(TAC.dataStack cnt)}
+  perform tac _ (IDT.Push string) = do
     cnt <- readIORef (TAC.context tac)
     let res = searchVar string (TAC.funcStack cnt)
     if isNothing res
     then showError ("'" ++ string ++ "' not found")
     else writeIORef (TAC.context tac) cnt{TAC.dataStack = (fromJust res):(TAC.dataStack cnt)}
-  perform tac (IDT.Pop string) = do
+  perform tac _ (IDT.Pop string) = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt)
     then showError "Empty stack"
@@ -103,23 +112,40 @@ module Interpreter (
       let ((fname, ip, vars):xs) = TAC.funcStack cnt
           nvars = Map.insert string (head $ TAC.dataStack cnt) vars
       writeIORef (TAC.context tac) cnt{TAC.dataStack = (tail $ TAC.dataStack cnt), TAC.funcStack = (fname, ip, nvars):xs}
-  perform tac (IDT.Call string) = return ()
-  perform tac IDT.Add1 = return ()
-  perform tac IDT.Divide = return ()
-  perform tac IDT.Multiply = return ()
-  perform tac IDT.Remainder = return ()
-  perform tac IDT.Subtract = return ()
-  perform tac IDT.Cut = return ()
-  perform tac IDT.Append = return ()
-  perform tac IDT.Size = return ()
-  perform tac IDT.Nil = return ()
-  perform tac IDT.Cons = return ()
-  perform tac IDT.Breakup = return ()
-  perform tac IDT.Greater = return ()
-  perform tac IDT.Equal = return ()
-  perform tac IDT.Finish = return ()
-  perform tac (IDT.Junction _) = return ()
-  perform tac (IDT.Lambda _) = return ()
+  -- TODO, do not forget to create new varmap
+  perform tac _ (IDT.Call string) = return ()
+  perform tac _ IDT.Add1 = return ()
+  perform tac _ IDT.Divide = return ()
+  perform tac _ IDT.Multiply = return ()
+  perform tac _ IDT.Remainder = return ()
+  perform tac _ IDT.Subtract = return ()
+  perform tac _ IDT.Cut = return ()
+  perform tac _ IDT.Append = return ()
+  perform tac _ IDT.Size = return ()
+  perform tac _ IDT.Nil = return ()
+  perform tac _ IDT.Cons = return ()
+  perform tac _ IDT.Breakup = return ()
+  perform tac _ IDT.Greater = return ()
+  perform tac _ IDT.Equal = return ()
+  perform tac _ IDT.Finish = return ()
+  perform tac fmap (IDT.Junction _) = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt)
+    then showError "Empty stack"
+    else
+      if not $ isBool $ head $ TAC.dataStack cnt
+      then showError "Wrong type on stack"
+      else do
+        let ((fname, ip, vars):xs) = TAC.funcStack cnt
+            (fip, tip) = Lexer.junctionturns (fst $ fromJust $ Map.lookup fname fmap) ip
+            nip = if head (TAC.dataStack cnt) == TAC.RailString "0" then fip else tip
+        writeIORef (TAC.context tac) cnt{TAC.dataStack = (tail $ TAC.dataStack cnt), TAC.funcStack = (fname, nip, vars):xs}
+  perform tac _ (IDT.Lambda _) = do
+    cnt <- readIORef (TAC.context tac)
+    let ((fname, ip, vars):xs) = TAC.funcStack cnt
+        (lip, nip) = Lexer.lambdadirs ip
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailLambda fname lip):(TAC.dataStack cnt), TAC.funcStack = (fname, nip, vars):xs}
+  --funcStack :: [(String, Lexer.IP, Map.Map String RailType)],
 
   searchVar :: String -> [(String, Lexer.IP, Map.Map String TAC.RailType)] -> Maybe TAC.RailType
   searchVar _ [] = Nothing
@@ -153,9 +179,11 @@ module Interpreter (
       return $ (fname, res)
 
   funcname :: IDT.Grid2D -> IO String
-  funcname code = do
-    (Left fname) <- return $ Lexer.funcname code
-    return fname
+  funcname code = case Lexer.funcname code of
+    (Left fname) -> return fname
+    (Right error) -> do
+      showError "No function name"
+      return ""
 
   needsHalt :: TAC.TextAreaContent -> Funcmap -> IO (Bool)
   needsHalt tac fmap = do
@@ -190,6 +218,13 @@ module Interpreter (
   isLambda :: TAC.RailType -> Bool
   isLambda (TAC.RailLambda _ _) = True
   isLambda _ = False
+
+  typeOf :: TAC.RailType -> TAC.RailType
+  typeOf var
+    | isString var = TAC.RailString "string"
+    | isNil var = TAC.RailString "nil"
+    | isList var = TAC.RailString "list"
+    | isLambda var = TAC.RailString "lambda"
 {-
 interprete :: InterpreterContext -> IO(Stack RailType)
 interprete ctxt = do
@@ -308,22 +343,6 @@ stackListCons _ = Left "List operation: invalid setting for cons\n"
 stackListNil :: Stack RailType -> Either String (Stack RailType)
 stackListNil stack = Right $ push (RailList Bottom) stack
 
-pushVariable :: IDT.Lexeme -> Stack RailType -> Map.Map String RailType -> Either String (Stack RailType)
-pushVariable (Push name) stack hMap
-        | isNothing elem = Left $ "Variable operation: try to push an unknown variable" ++ name ++ "\n"
-        | otherwise = Right $ push (fromJust elem) stack
-        where elem = Map.lookup name hMap
-
-popVariable :: IDT.Lexeme -> Stack RailType -> Map.Map String RailType -> Either String (Stack RailType , Map.Map String RailType)
-popVariable (Pop name) (Elem value rest) hMap = Right $ (rest, Map.insert name value hMap)
-
-systemType :: Stack RailType -> Either String (Stack RailType)
-systemType (Elem e rest) = Right $ push (RailString $ getRailTypeName e) rest
-systemType _ = Left "System operation: Empty Stack\n"
-
-systemUnderflow :: Stack RailType -> Either String (Stack RailType)
-systemUnderflow stack = Right $ push (intToRailString $ stackSize stack) stack
-
 systemOutput :: Stack RailType -> IO(Either String (Stack RailType))
 systemOutput (Elem (RailString a) rest) = putStr (substituteEscapedChars a) >> return (Right $ rest)
 systemOutput (Elem _ _) = return $ Left "System operation: unable to show list\n"
@@ -416,11 +435,4 @@ isRight _ = False
 toNumber :: String -> String -> Either String Int
 toNumber a errorMsg | foldl1 (&&) $ Prelude.map (\z -> elem z "0123456789") a = Right  (read a :: Int)
                     | otherwise = Left errorMsg
-
-getRailTypeName :: RailType -> String
-getRailTypeName (RailString _) = "string"
-getRailTypeName (RailList Bottom) = "nil"
-getRailTypeName (RailList _) = "list"
-getRailTypeName (RailLambda _) = "lambda"
-
 -}
