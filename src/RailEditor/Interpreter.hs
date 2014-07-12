@@ -7,6 +7,7 @@ module Interpreter (
   import qualified TextAreaContent as TAC
   import qualified Lexer
   import qualified Data.Map as Map
+  import Control.Monad
   import Data.IORef
   import Data.Maybe
 
@@ -25,6 +26,12 @@ module Interpreter (
   reset :: TAC.TextAreaContent -> IO ()
   reset tac = writeIORef (TAC.context tac) (TAC.IC [] [] Map.empty)
 
+  init :: TAC.TextAreaContent -> IO ()
+  init tac = do
+    reset tac
+    cnt <- readIORef (TAC.context tac)
+    writeIORef (TAC.context tac) cnt{TAC.funcStack = [("main", Lexer.start, Map.empty)]}
+
   interpret :: TAC.TextAreaContent -> IO ()
   interpret tac = do
     funcmap <- getFunctions tac
@@ -37,7 +44,15 @@ module Interpreter (
     dostep tac funcmap
 
   dostep :: TAC.TextAreaContent -> Map.Map String IDT.Grid2D -> IO ()
-  dostep tac funcmap = return ()
+  dostep tac funcmap = do
+    cnt <- readIORef (TAC.context tac)
+    let fstack = TAC.funcStack cnt
+    when (null fstack) (Interpreter.init tac)
+    cnt <- readIORef (TAC.context tac)
+    let ((fname, ip, vars):xs) = TAC.funcStack cnt
+        newip = Lexer.step (fromJust $ Map.lookup fname funcmap) ip
+        -- TO DO: parsing
+    writeIORef (TAC.context tac) cnt{TAC.funcStack = (fname, newip, vars):xs}
 
   getRelPosition :: TAC.TextAreaContent -> TAC.Position -> IO (String, TAC.Position)
   getRelPosition tac position = return ("", position)
@@ -75,9 +90,12 @@ module Interpreter (
   needsHalt :: TAC.TextAreaContent -> IO (Bool)
   needsHalt tac = do
     cnt <- readIORef (TAC.context tac)
-    let (fname, ip, _) = head $ TAC.funcStack cnt
-    pos <- return (Lexer.posx ip, Lexer.posy ip)
-    return $ Map.findWithDefault False (fname, pos) (TAC.breakMap cnt)
+    if null (TAC.funcStack cnt)
+    then return True
+    else do
+      let (fname, ip, _) = head $ TAC.funcStack cnt
+      pos <- return (Lexer.posx ip, Lexer.posy ip)
+      return $ Map.findWithDefault False (fname, pos) (TAC.breakMap cnt)
 {-
 interprete :: InterpreterContext -> IO(Stack RailType)
 interprete ctxt = do
