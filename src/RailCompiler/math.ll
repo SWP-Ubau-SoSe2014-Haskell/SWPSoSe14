@@ -301,15 +301,15 @@ define i32 @sub() {
 
   ; get top of stack
   call void @underflow_assert()
-  %struct_a = call %stack_element*()* @pop_struct()
-  %number_a = call i8*(%stack_element*)* @stack_element_get_data(
-                                                   %stack_element* %struct_a)
-
-  ; get second top of stack
-  call void @underflow_assert()
   %struct_b = call %stack_element*()* @pop_struct()
   %number_b = call i8*(%stack_element*)* @stack_element_get_data(
                                                    %stack_element* %struct_b)
+
+  ; get second top of stack
+  call void @underflow_assert()
+  %struct_a = call %stack_element*()* @pop_struct()
+  %number_a = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_a)
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
@@ -540,15 +540,15 @@ define i32 @div() {
 
   ; get top of stack
   call void @underflow_assert()
-  %struct_a = call %stack_element*()* @pop_struct()
-  %number_a = call i8*(%stack_element*)* @stack_element_get_data(
-                                                   %stack_element* %struct_a)
-
-  ; get second top of stack
-  call void @underflow_assert()
   %struct_b = call %stack_element*()* @pop_struct()
   %number_b = call i8*(%stack_element*)* @stack_element_get_data(
                                                    %stack_element* %struct_b)
+
+  ; get second top of stack
+  call void @underflow_assert()
+  %struct_a = call %stack_element*()* @pop_struct()
+  %number_a = call i8*(%stack_element*)* @stack_element_get_data(
+                                                   %stack_element* %struct_a)
 
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
