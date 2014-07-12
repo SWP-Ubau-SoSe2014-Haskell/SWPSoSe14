@@ -20,6 +20,7 @@ import Data.Maybe
 import qualified TextAreaContent as TAC
 import qualified TextAreaContentUtils as TACU
 import qualified RedoUndo as History
+import qualified Interpreter
 
 data InputMode = Replace | Insert | Smart
 
@@ -39,10 +40,13 @@ handleKey tac pos modus modif key val =
     then History.redo tac pos
     else History.undo tac pos
   else
-    case modus of
-      Insert -> handleKeyIns tac pos modif key val
-      Replace -> handleKeyRP tac pos modif key val
-      Smart -> handleKeySpec tac pos modif key val
+    if (elem Control modif && keyToChar val == Just 'b')
+    then Interpreter.toggleBreak tac pos >> return pos
+    else
+      case modus of
+        Insert -> handleKeyIns tac pos modif key val
+        Replace -> handleKeyRP tac pos modif key val
+        Smart -> handleKeySpec tac pos modif key val
 
 -- | handles keys in Insert-mode
 handleKeyIns :: TAC.TextAreaContent
