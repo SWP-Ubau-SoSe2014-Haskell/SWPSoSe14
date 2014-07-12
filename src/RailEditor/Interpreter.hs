@@ -33,13 +33,20 @@ module Interpreter (
   reset :: TAC.TextAreaContent -> IO ()
   reset tac = do
     cnt <- readIORef (TAC.context tac)
-    writeIORef (TAC.context tac) (TAC.IC [] [] (TAC.breakMap cnt))
+    writeIORef (TAC.context tac) (TAC.IC [] [] (TAC.breakMap cnt) 0)
 
   init :: TAC.TextAreaContent -> IO ()
   init tac = do
     reset tac
     cnt <- readIORef (TAC.context tac)
     writeIORef (TAC.context tac) cnt{TAC.funcStack = [("main", Lexer.start, Map.empty)]}
+
+  blocked :: TAC.TextAreaContent -> IO Bool
+  blocked tac = do
+    cnt <- readIORef (TAC.context tac)
+    let offset = TAC.inputOffset cnt
+    -- return $ offset > length input
+    return False
 
   showError :: TAC.TextAreaContent -> String -> IO ()
   showError tac string = do
@@ -49,19 +56,20 @@ module Interpreter (
   showMessage :: String -> IO ()
   showMessage _ = return ()
 
-  abortExecution :: TAC.TextAreaContent -> IO ()
-  abortExecution _ = return ()
-
   interpret :: TAC.TextAreaContent -> IO ()
   interpret tac = do
-    funcmap <- getFunctions tac
-    dostep tac funcmap
-    stop <- needsHalt tac funcmap
-    if stop then interpret tac else return ()
+    isblocked <- blocked tac
+    when (not isblocked) $ do
+      funcmap <- getFunctions tac
+      dostep tac funcmap
+      stop <- needsHalt tac funcmap
+      if stop then interpret tac else return ()
 
   step tac = do
-    funcmap <- getFunctions tac
-    dostep tac funcmap
+    isblocked <- blocked tac
+    when (not isblocked) $ do
+      funcmap <- getFunctions tac
+      dostep tac funcmap
 
   dostep :: TAC.TextAreaContent -> Funcmap -> IO ()
   dostep tac funcmap = do
@@ -90,7 +98,7 @@ module Interpreter (
       then showError tac "Element on top of stack is no String"
       else do
         showMessage $ show $ head $ TAC.dataStack cnt
-        abortExecution tac
+        reset tac
   -- TODO
   perform tac _ IDT.EOF = return ()
   perform tac _ IDT.Input = return ()
