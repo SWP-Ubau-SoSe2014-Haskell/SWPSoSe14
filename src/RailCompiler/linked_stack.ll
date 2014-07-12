@@ -55,6 +55,10 @@
 ; Constants
 @err_type_mismatch = private unnamed_addr constant [16 x i8] c"Type mismatch!\0A\00"
 @err_not_bool = private unnamed_addr constant [29 x i8] c"Stack value was not 0 or 1!\0A\00"
+@type_string = unnamed_addr constant [7 x i8] c"string\00"
+@type_lambda = unnamed_addr constant [7 x i8] c"lambda\00"
+@type_list = unnamed_addr constant [5 x i8] c"list\00"
+@type_nil = unnamed_addr constant [4 x i8] c"nil\00"
 
 ; External declarations
 
