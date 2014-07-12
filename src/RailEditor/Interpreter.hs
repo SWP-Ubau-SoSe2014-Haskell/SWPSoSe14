@@ -33,9 +33,13 @@ module Interpreter (
 
   reset :: TAC.TextAreaContent -> IO ()
   reset tac = do
-    cnt <- readIORef (TAC.context tac)
-    writeIORef (TAC.context tac) (TAC.IC [] [] (TAC.breakMap cnt))
+    abortExecution tac
     Gtk.textBufferSetText (snd $ TAC.buffer tac) ""
+
+  abortExecution :: TAC.TextAreaContent -> IO ()
+  abortExecution tac = do
+    cnt <- readIORef (TAC.context tac)
+    writeIORef (TAC.context tac) (TAC.IC [] [] (TAC.breakMap cnt) 0)
 
   init :: TAC.TextAreaContent -> IO ()
   init tac = do
@@ -43,14 +47,20 @@ module Interpreter (
     cnt <- readIORef (TAC.context tac)
     writeIORef (TAC.context tac) cnt{TAC.funcStack = [("main", Lexer.start, Map.empty)]}
 
+  blocked :: TAC.TextAreaContent -> IO Bool
+  blocked tac = do
+    cnt <- readIORef (TAC.context tac)
+    let offset = TAC.inputOffset cnt
+    -- return $ offset > length input
+    return False
+
   showError :: TAC.TextAreaContent -> String -> IO ()
   showError tac string = do
-    showMessage ("Error: " ++ string) (snd $ TAC.buffer tac)
-    reset tac
-    return ()
+    showMessage tac ("Error: " ++ string)
+    abortExecution tac
 
-  showMessage :: String -> Gtk.TextBuffer -> IO ()
-  showMessage message buffer = showRawMessage (message ++ "\n") buffer
+  showMessage :: TAC.TextAreaContent -> String -> IO ()
+  showMessage tac message = showRawMessage (message ++ "\n") (snd $ TAC.buffer tac)
 
   showRawMessage :: String -> Gtk.TextBuffer -> IO ()
   showRawMessage message buffer = do
@@ -59,19 +69,20 @@ module Interpreter (
     currentText <- Gtk.textBufferGetText buffer start end True
     Gtk.textBufferSetText buffer (currentText ++ message)
 
-  abortExecution :: TAC.TextAreaContent -> IO ()
-  abortExecution _ = return ()
-
   interpret :: TAC.TextAreaContent -> IO ()
   interpret tac = do
-    funcmap <- getFunctions tac
-    dostep tac funcmap
-    stop <- needsHalt tac funcmap
-    if stop then interpret tac else return ()
+    isblocked <- blocked tac
+    when (not isblocked) $ do
+      funcmap <- getFunctions tac
+      dostep tac funcmap
+      stop <- needsHalt tac funcmap
+      if stop then interpret tac else return ()
 
   step tac = do
-    funcmap <- getFunctions tac
-    dostep tac funcmap
+    isblocked <- blocked tac
+    when (not isblocked) $ do
+      funcmap <- getFunctions tac
+      dostep tac funcmap
 
   dostep :: TAC.TextAreaContent -> Funcmap -> IO ()
   dostep tac funcmap = do
@@ -99,7 +110,7 @@ module Interpreter (
       if not $ isString $ head $ TAC.dataStack cnt
       then showError tac "Element on top of stack is no String"
       else do
-        showMessage (show $ head $ TAC.dataStack cnt) (snd $ TAC.buffer tac)
+        showMessage tac (show $ head $ TAC.dataStack cnt)
         abortExecution tac
   -- TODO
   perform tac _ IDT.EOF = return ()
