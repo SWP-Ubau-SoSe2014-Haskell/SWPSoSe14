@@ -299,7 +299,9 @@ showCursor textArea (x,y) = do
   drawWindow <- GTK.widgetGetDrawWindow drawArea
   gc <- GC.gcNew drawWindow
   GC.gcSetValues gc $ GC.newGCValues { GC.foreground = defaultCursorColor }
-  GTK.drawRectangle drawWindow gc True (curX (x*bef)) (curY (y*hef)) 2 hef
+  --GTK.drawRectangle drawWindow gc True (curX (x*bef)) (curY (y*hef)) 2 hef
+  --http://hackage.haskell.org/package/gtk-0.12.5.7/docs/Graphics-UI-Gtk-Gdk-Drawable.html#t:Drawable
+  GTK.drawArc drawWindow gc False (curX (x*bef)) (curY (y*hef)) 100 100 0  23040
   return ()
 
 -- delets the cursor at the given position.
