@@ -343,6 +343,18 @@ generateInstruction Remainder =
     metadata = []
   }]
 
+-- |Generate instruction for the type instruction.
+generateInstruction RType =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "type",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 -- |Generate instruction for the sub instruction.
 generateInstruction Subtract =
   return [Do LLVM.General.AST.Call {
@@ -579,9 +591,11 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 -- |Entry point into module.
 process :: IDT.SemAna2InterCode -> IDT.InterCode2Backend
 process (IDT.ISI input) = IDT.IIB $ generateModule $ constants ++ variables ++ 
-    [ stackElementTypeDef, structTable, underflowCheck, FunctionDeclarations.print, crash, start, finish, inputFunc,
-      eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
-      popInt, equal, greater, popInto, pushFrom, popBool, initialiseSymbolTable, malloc, 
+    [ stackElementTypeDef, structTable, underflowCheck, 
+      FunctionDeclarations.print, crash, start, finish, inputFunc,
+      eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, 
+      strlen, strapp, strcut, popInt, equal, greater, popInto, pushFrom, 
+      popBool, initialiseSymbolTable, malloc, type1,
       copySymbolTable ] ++ codegen input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
