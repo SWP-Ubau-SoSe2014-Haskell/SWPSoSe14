@@ -52,7 +52,10 @@
 @false = unnamed_addr constant [2 x i8] c"0\00"
 @true = unnamed_addr constant [2 x i8] c"1\00"
 @write_mode = global [2 x i8] c"w\00"
-
+@type_string = external global [7 x i8]
+@type_lambda = external global  [7 x i8]
+@type_list = external global [5 x i8]
+@type_nil = external global [4 x i8]
 
 ; External declarations
 %FILE = type opaque
@@ -127,6 +130,50 @@ uas_okay:
   ret void
 }
 
+; pushes 'string' or 'nil' or 'list' or 'lambda' on stack, depending on the type
+; of the top stack element.
+define void @type(){
+  %element = call %stack_element* @pop_struct()
+  %actual_type = call i8 @stack_element_get_type(%stack_element* %element)
+  br label %check_string
+
+check_string:
+  %is_string = icmp eq i8 %actual_type, 0
+  br i1 %is_string, label %return_string, label %check_list
+
+return_string:
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
+                                         [7 x i8]* @type_string, i64 0, i64 0))
+  br label %exit
+
+check_list:
+  %is_list = icmp eq i8 %actual_type, 1
+  br i1 %is_list, label %check_nil, label %check_lambda
+
+check_nil:
+  %dataPtr = call i8* @stack_element_get_data(%stack_element* %element)
+  %is_nil = icmp eq i8* %dataPtr, null 
+  br i1 %is_nil, label %return_nil, label %return_list
+
+return_nil:
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
+                                         [4 x i8]* @type_nil, i64 0, i64 0))
+  br label %exit
+
+return_list:
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
+                                         [5 x i8]* @type_list, i64 0, i64 0))
+  br label %exit
+
+check_lambda:
+  br label %exit
+
+exit:
+  call void @stack_element_unref(%stack_element* %element)
+
+  ret void
+}
+
 ; Pop stack and print result string
 define void @print() {
   call void @underflow_assert()
@@ -142,7 +189,6 @@ define void @print() {
 
 ; Pop stack, print result string to stderr and exit the program.
 define void @crash(i1 %is_custom_error) {
-  call void @start()
   call void @underflow_assert()
   br i1 %is_custom_error, label %custom_error, label %raw_error
 
