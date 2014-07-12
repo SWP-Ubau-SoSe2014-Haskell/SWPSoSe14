@@ -39,6 +39,15 @@ module Interpreter (
     cnt <- readIORef (TAC.context tac)
     writeIORef (TAC.context tac) cnt{TAC.funcStack = [("main", Lexer.start, Map.empty)]}
 
+  showError :: String -> IO ()
+  showError _ = return ()
+
+  showMessage :: String -> IO ()
+  showMessage _ = return ()
+
+  abortExecution :: TAC.TextAreaContent -> IO ()
+  abortExecution _ = return ()
+
   interpret :: TAC.TextAreaContent -> IO ()
   interpret tac = do
     funcmap <- getFunctions tac
@@ -57,9 +66,66 @@ module Interpreter (
     when (null fstack) (Interpreter.init tac)
     cnt <- readIORef (TAC.context tac)
     let ((fname, ip, vars):xs) = TAC.funcStack cnt
-        newip = Lexer.step (fst $ fromJust $ Map.lookup fname funcmap) ip
-        -- TO DO: parsing
+        grid = fst $ fromJust $ Map.lookup fname funcmap
+        tmpip = Lexer.step grid ip
+        (maylex, newip) = Lexer.parse grid tmpip
     writeIORef (TAC.context tac) cnt{TAC.funcStack = (fname, newip, vars):xs}
+    when (isJust maylex) $ perform tac (fromJust maylex)
+
+  perform :: TAC.TextAreaContent -> IDT.Lexeme -> IO ()
+  perform tac IDT.Boom = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt)
+    then showError "Empty stack"
+    else
+      if not $ isString $ head $ TAC.dataStack cnt
+      then showError "Element on top of stack is no String"
+      else do
+        showMessage $ show $ head $ TAC.dataStack cnt
+        abortExecution tac
+  perform tac IDT.EOF = return ()
+  perform tac IDT.Input = return ()
+  perform tac IDT.Output = return ()
+  perform tac IDT.Underflow = return ()
+  perform tac IDT.RType = return ()
+  perform tac (IDT.Constant string) = return ()
+  perform tac (IDT.Push string) = do
+    cnt <- readIORef (TAC.context tac)
+    let res = searchVar string (TAC.funcStack cnt)
+    if isNothing res
+    then showError ("'" ++ string ++ "' not found")
+    else writeIORef (TAC.context tac) cnt{TAC.dataStack = (fromJust res):(TAC.dataStack cnt)}
+  perform tac (IDT.Pop string) = do
+    cnt <- readIORef (TAC.context tac)
+    if null (TAC.dataStack cnt)
+    then showError "Empty stack"
+    else do
+      let ((fname, ip, vars):xs) = TAC.funcStack cnt
+          nvars = Map.insert string (head $ TAC.dataStack cnt) vars
+      writeIORef (TAC.context tac) cnt{TAC.dataStack = (tail $ TAC.dataStack cnt), TAC.funcStack = (fname, ip, nvars):xs}
+  perform tac (IDT.Call string) = return ()
+  perform tac IDT.Add1 = return ()
+  perform tac IDT.Divide = return ()
+  perform tac IDT.Multiply = return ()
+  perform tac IDT.Remainder = return ()
+  perform tac IDT.Subtract = return ()
+  perform tac IDT.Cut = return ()
+  perform tac IDT.Append = return ()
+  perform tac IDT.Size = return ()
+  perform tac IDT.Nil = return ()
+  perform tac IDT.Cons = return ()
+  perform tac IDT.Breakup = return ()
+  perform tac IDT.Greater = return ()
+  perform tac IDT.Equal = return ()
+  perform tac IDT.Finish = return ()
+  perform tac (IDT.Junction _) = return ()
+  perform tac (IDT.Lambda _) = return ()
+
+  searchVar :: String -> [(String, Lexer.IP, Map.Map String TAC.RailType)] -> Maybe TAC.RailType
+  searchVar _ [] = Nothing
+  searchVar var ((_, _, vars):xs)
+    | isNothing $ Map.lookup var vars = searchVar var xs
+    | otherwise = Map.lookup var vars
 
   getFunctions :: TAC.TextAreaContent -> IO Funcmap
   getFunctions tac = do
@@ -100,6 +166,30 @@ module Interpreter (
       let (fname, ip, _) = head $ TAC.funcStack cnt
       pos <- return (Lexer.posx ip, Lexer.posy ip + (snd $ fromJust $ Map.lookup fname fmap))
       return $ Map.findWithDefault False pos (TAC.breakMap cnt)
+
+  isNumeric :: TAC.RailType -> Bool
+  isNumeric (TAC.RailString string) = and $ map (\c -> c `elem` "0123456789") string
+  isNumeric _ = False
+
+  isList :: TAC.RailType -> Bool
+  isList (TAC.RailList _) = True
+  isList _ = False
+
+  isNil :: TAC.RailType -> Bool
+  isNil (TAC.RailList []) = True
+  isNil _ = False
+
+  isString :: TAC.RailType -> Bool
+  isString (TAC.RailString _) = True
+  isString _ = False
+
+  isBool :: TAC.RailType -> Bool
+  isBool (TAC.RailString string) = string == "0" || string == "1"
+  isBool _ = False
+
+  isLambda :: TAC.RailType -> Bool
+  isLambda (TAC.RailLambda _ _) = True
+  isLambda _ = False
 {-
 interprete :: InterpreterContext -> IO(Stack RailType)
 interprete ctxt = do
@@ -327,48 +417,10 @@ toNumber :: String -> String -> Either String Int
 toNumber a errorMsg | foldl1 (&&) $ Prelude.map (\z -> elem z "0123456789") a = Right  (read a :: Int)
                     | otherwise = Left errorMsg
 
-fromPop :: IDT.Lexeme -> String
-fromPop (Pop name) = name
-
-fromPush :: IDT.Lexeme -> String
-fromPush (Push name) = name
-
-fromConstant :: IDT.Lexeme -> String
-fromConstant (Constant a) = a
-fromConstant _ = error "this is not a constant"
-
 getRailTypeName :: RailType -> String
 getRailTypeName (RailString _) = "string"
 getRailTypeName (RailList Bottom) = "nil"
 getRailTypeName (RailList _) = "list"
 getRailTypeName (RailLambda _) = "lambda"
 
-
-getLexemeName :: IDT.Lexeme -> String
-getLexemeName Boom = "Boom"
-getLexemeName EOF = "EOF"
-getLexemeName Input = "Input"
-getLexemeName Output = "Output" --
-getLexemeName Underflow = "Underflow" --
-getLexemeName RType = "RType" --
-getLexemeName (Constant _) = "Constant" --
-getLexemeName (Push _) = "Push" --
-getLexemeName (Pop _) = "Pop" --
-getLexemeName (Call _) = "Call" --
-getLexemeName Add = "Add" --
-getLexemeName Divide = "Divide" --
-getLexemeName Multiply = "Multiply" --
-getLexemeName Remainder = "Remainder" --
-getLexemeName Substract = "Substract" --
-getLexemeName Cut = "Cut" --
-getLexemeName Append = "Append" --
-getLexemeName Size = "Size" --
-getLexemeName Nil = "Nil" --
-getLexemeName Cons = "Cons" --
-getLexemeName Breakup = "Breakup" --
-getLexemeName Greater = "Greater"
-getLexemeName Equal = "Equal" --
-getLexemeName Start = "Start" --
-getLexemeName Finish = "Finish" --
-getLexemeName (Junction _) = "Junction" --
 -}

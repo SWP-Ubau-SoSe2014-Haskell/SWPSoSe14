@@ -24,7 +24,7 @@ module TextAreaContent (
   RGBColor(RGBColor),
   TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
   ActionQueue,
-  RailType,
+  RailType(RailString, RailList, RailLambda),
   InterpreterContext(IC), dataStack, funcStack, breakMap,
 
 -- * Constructors
@@ -80,7 +80,13 @@ data Action = Remove String | Insert String | Replace String String | RemoveLine
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
 -- types for interpreter
-data RailType = RailString String | RailList [RailType] | RailLambda String Lexer.IP deriving (Show, Eq)
+data RailType = RailString String | RailList [RailType] | RailLambda String Lexer.IP deriving (Eq)
+
+instance Show RailType
+ where
+  show (RailString string) = string
+  show (RailList list) = show list
+  show (RailLambda string ip) = string ++ (show (Lexer.posx ip, Lexer.posy ip))
 data InterpreterContext = 
   IC {
     dataStack :: [RailType],
