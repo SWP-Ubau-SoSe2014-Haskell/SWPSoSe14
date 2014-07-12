@@ -245,7 +245,7 @@ module Interpreter (
       writeIORef (TAC.context tac) cnt{TAC.dataStack = res:xs}
   perform tac _ IDT.Finish = do
     cnt <- readIORef (TAC.context tac)
-    writeIORef (TAC.context tac) cnt{TAC.funcStack = tail $ TAC.funcStack cnt, curIPPos = (-1, -1)}
+    writeIORef (TAC.context tac) cnt{TAC.funcStack = tail $ TAC.funcStack cnt, TAC.curIPPos = (-1, -1)}
   perform tac fmap (IDT.Junction _) = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt)
