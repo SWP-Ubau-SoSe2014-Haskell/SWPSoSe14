@@ -85,7 +85,7 @@ data InterpreterContext =
   IC {
     dataStack :: [RailType],
     funcStack :: [(String, Lexer.IP, Map.Map String RailType)],
-    breakMap :: Map (String, Position) Bool
+    breakMap :: Map Position Bool
   }
 
 data TextAreaContent = 
@@ -265,12 +265,10 @@ putCell :: TextAreaContent
   -> Position -- ^ coordinates of the required cell
   -> (Char,RGBColor) -- ^ char and color to put
   -> IO ()
-putCell areaContent coord (char,color) 
-  | char == ' ' = return ()
-  | otherwise = do
-    putColor areaContent coord color
-    putValue areaContent coord char
-    
+putCell areaContent coord (char,color) = do
+  putColor areaContent coord color
+  putValue areaContent coord char
+
 -- | setting input direction
 putDirection :: TextAreaContent
   -> Direction
@@ -286,7 +284,7 @@ getDirection tac = do
   let dirTac = railDirection tac
   readIORef dirTac
 
--- | delets a cell and don't let empty map in CHarMaps
+-- | delets a cell
 deleteCell :: TextAreaContent 
   -> Position
   -> IO (Bool)
@@ -369,8 +367,7 @@ getPositionedGrid areaContent = do
     insertWhenFct x line y  offset 
       | x == [] || line == Map.empty = x
       | otherwise = (List.init x)++[(Map.insert (y-offset) line (fst (last x)), (snd (last x)))]
-
--- | Finds the last char in line.
+ 
 findLastChar :: TextAreaContent -> Coord -> IO(Coord)
 findLastChar tac y = do
   let (ChMap hMap _) = charMap tac

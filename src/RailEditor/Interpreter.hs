@@ -1,5 +1,5 @@
 module Interpreter (
-                    addBreak, removeBreak,
+                    addBreak, removeBreak, toggleBreak,
                     interpret, step, reset
                    )
   where
@@ -11,17 +11,24 @@ module Interpreter (
   import Data.IORef
   import Data.Maybe
 
+  type Funcmap = Map.Map String IDT.PositionedGrid
+
   addBreak :: TAC.TextAreaContent -> TAC.Position -> IO ()
   addBreak tac position = do
     cnt <- readIORef (TAC.context tac)
-    key <- getRelPosition tac position
-    writeIORef (TAC.context tac) cnt{TAC.breakMap = Map.insert key True (TAC.breakMap cnt)}
+    writeIORef (TAC.context tac) cnt{TAC.breakMap = Map.insert position True (TAC.breakMap cnt)}
 
   removeBreak :: TAC.TextAreaContent -> TAC.Position -> IO ()
   removeBreak tac position = do
     cnt <- readIORef (TAC.context tac)
-    key <- getRelPosition tac position
-    writeIORef (TAC.context tac) cnt{TAC.breakMap = Map.delete key (TAC.breakMap cnt)}
+    writeIORef (TAC.context tac) cnt{TAC.breakMap = Map.delete position (TAC.breakMap cnt)}
+
+  toggleBreak :: TAC.TextAreaContent -> TAC.Position -> IO ()
+  toggleBreak tac position = do
+    cnt <- readIORef (TAC.context tac)
+    if isNothing $ Map.lookup position (TAC.breakMap cnt)
+    then addBreak tac position
+    else removeBreak tac position
 
   reset :: TAC.TextAreaContent -> IO ()
   reset tac = writeIORef (TAC.context tac) (TAC.IC [] [] Map.empty)
@@ -36,28 +43,25 @@ module Interpreter (
   interpret tac = do
     funcmap <- getFunctions tac
     dostep tac funcmap
-    stop <- needsHalt tac
+    stop <- needsHalt tac funcmap
     if stop then interpret tac else return ()
 
   step tac = do
     funcmap <- getFunctions tac
     dostep tac funcmap
 
-  dostep :: TAC.TextAreaContent -> Map.Map String IDT.Grid2D -> IO ()
+  dostep :: TAC.TextAreaContent -> Funcmap -> IO ()
   dostep tac funcmap = do
     cnt <- readIORef (TAC.context tac)
     let fstack = TAC.funcStack cnt
     when (null fstack) (Interpreter.init tac)
     cnt <- readIORef (TAC.context tac)
     let ((fname, ip, vars):xs) = TAC.funcStack cnt
-        newip = Lexer.step (fromJust $ Map.lookup fname funcmap) ip
+        newip = Lexer.step (fst $ fromJust $ Map.lookup fname funcmap) ip
         -- TO DO: parsing
     writeIORef (TAC.context tac) cnt{TAC.funcStack = (fname, newip, vars):xs}
 
-  getRelPosition :: TAC.TextAreaContent -> TAC.Position -> IO (String, TAC.Position)
-  getRelPosition tac position = return ("", position)
-
-  getFunctions :: TAC.TextAreaContent -> IO (Map.Map String IDT.Grid2D)
+  getFunctions :: TAC.TextAreaContent -> IO Funcmap
   getFunctions tac = do
     pGrid <- TAC.getPositionedGrid tac
     let (IDT.IPL funcs) = pGrid
@@ -67,7 +71,7 @@ module Interpreter (
     addnames resmap [] = return resmap
     addnames resmap (x:xs) = do
       fname <- funcname (fst x)
-      newmap <- return $ Map.insert fname (fst x) resmap
+      newmap <- return $ Map.insert fname x resmap
       addnames newmap xs
 
   getFunctionWith :: TAC.TextAreaContent -> TAC.Position -> IO (String, IDT.Grid2D)
@@ -87,15 +91,15 @@ module Interpreter (
     (Left fname) <- return $ Lexer.funcname code
     return fname
 
-  needsHalt :: TAC.TextAreaContent -> IO (Bool)
-  needsHalt tac = do
+  needsHalt :: TAC.TextAreaContent -> Funcmap -> IO (Bool)
+  needsHalt tac fmap = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.funcStack cnt)
     then return True
     else do
       let (fname, ip, _) = head $ TAC.funcStack cnt
-      pos <- return (Lexer.posx ip, Lexer.posy ip)
-      return $ Map.findWithDefault False (fname, pos) (TAC.breakMap cnt)
+      pos <- return (Lexer.posx ip, Lexer.posy ip + (snd $ fromJust $ Map.lookup fname fmap))
+      return $ Map.findWithDefault False pos (TAC.breakMap cnt)
 {-
 interprete :: InterpreterContext -> IO(Stack RailType)
 interprete ctxt = do
