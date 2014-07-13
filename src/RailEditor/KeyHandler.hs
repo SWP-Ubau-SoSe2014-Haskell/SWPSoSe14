@@ -40,7 +40,7 @@ handleKey tac pos modus modif key val =
     then History.redo tac pos
     else History.undo tac pos
   else
-    if (elem Control modif && keyToChar val == Just 'b')
+    if (elem Control modif && keyToChar val == Just 'b')  --set breakpoint
     then Interpreter.toggleBreak tac pos >> return pos
     else
       case modus of

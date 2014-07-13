@@ -24,6 +24,7 @@ import qualified Graphics.UI.Gtk as Gtk
 import qualified Interpreter as IN
 import qualified Lexer
 import qualified TextAreaContent as TAC
+import qualified Data.Map as Map
 import Control.Monad
     -- functions --
 
@@ -38,17 +39,15 @@ create area footer interDT= do
     Gtk.imageMenuItemSetImage step image
     Gtk.menuShellAppend toolBar step
 
-    -- create continue button
-    image2 <- Gtk.imageNewFromStock Gtk.stockGotoLast Gtk.IconSizeMenu
-    continue <- Gtk.imageMenuItemNewWithLabel ""
-    Gtk.imageMenuItemSetImage continue image2
-    Gtk.menuShellAppend toolBar continue
-
     -- create run button
     imageD <- Gtk.imageNewFromStock Gtk.stockGoForward Gtk.IconSizeMenu
     run <- Gtk.imageMenuItemNewWithLabel ""
     Gtk.imageMenuItemSetImage run imageD
     Gtk.menuShellAppend toolBar run
+
+    variables <- Gtk.menuItemNewWithLabel "variables"
+
+    reset <- Gtk.menuItemNewWithLabel "reset"
 
     -- create mode-menu
     mode <- Gtk.menuNew
@@ -63,14 +62,12 @@ create area footer interDT= do
     let dataBuffer = IDF.getDataStackBuffer interDT
     let funcBuffer = IDF.getFunctionStackBuffer interDT
 
-    Gtk.on run Gtk.menuItemActivate  $ do
-      tac <- readIORef $ TA.textAreaContent area
-      IN.interpret tac
-
-    Gtk.on step Gtk.menuItemActivate $ do
+    Gtk.onButtonPress run  $ \event -> do
       tac <- readIORef $ TA.textAreaContent area
       intCtxt <- readIORef $ TAC.context tac
-      IN.step tac
+      IN.interpret tac
+      intCtxt <- readIORef $ TAC.context tac
+      TA.redrawContent area
       Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
       Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
       let fS = TAC.funcStack intCtxt
@@ -81,6 +78,46 @@ create area footer interDT= do
       else do
         let ip = (0,0)
         putStrLn $ show ip
+      return True
+
+    Gtk.onButtonPress step $ \event -> do
+      tac <- readIORef $ TA.textAreaContent area
+      intCtxt <- readIORef $ TAC.context tac
+      IN.step tac
+      intCtxt <- readIORef $ TAC.context tac
+      TA.redrawContent area
+      Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
+      Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
+      let fS = TAC.funcStack intCtxt
+      if ((length fS) > 0) 
+      then do
+        let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
+        putStrLn $ show ip
+      else do
+        let ip = (0,0)
+        putStrLn $ show ip
+      return True
+
+    bufferVariables <- Gtk.textBufferNew Nothing
+
+    Gtk.onButtonPress variables $ \event -> do
+      tac <- readIORef $ TA.textAreaContent area
+      intCtxt <- readIORef $ TAC.context tac
+      let list = TAC.funcStack intCtxt
+      when (length list /= 0) $ do
+        let vars = unlines $ map (\(x,y)-> x ++ " = " ++ (show y)) $ Map.toList $ (\(_,_,x) -> x)$ head $ list
+        Gtk.textBufferSetText bufferVariables vars
+        Gtk.postGUIAsync $ IDF.textViewWindowShow bufferVariables "Variables"
+      return True
+
+    Gtk.onButtonPress reset $ \event-> do
+      tac <- readIORef $ TA.textAreaContent area
+      Gtk.textBufferSetText bufferVariables ""
+      Gtk.textBufferSetText dataBuffer ""
+      Gtk.textBufferSetText funcBuffer ""
+      IN.reset tac
+      TA.redrawContent area
+      return True
 
     -- set mode action
     Gtk.onButtonPress insertMode $ \event -> do
@@ -113,5 +150,7 @@ create area footer interDT= do
     Gtk.menuShellAppend mode replaceMode
     Gtk.menuShellAppend mode smartMode
     Gtk.menuShellAppend mode highlightCheck
+    Gtk.menuShellAppend toolBar variables
+    Gtk.menuShellAppend toolBar reset
 
     return toolBar

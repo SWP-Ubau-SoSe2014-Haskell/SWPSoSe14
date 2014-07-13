@@ -25,7 +25,8 @@ module TextAreaContent (
   TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
   ActionQueue,
   RailType(RailString, RailList, RailLambda),
-  InterpreterContext(IC), dataStack, funcStack, breakMap, inputOffset, curIPPos,
+  InterpreterContext(IC), dataStack, funcStack, breakMap, inputOffset, curIPPos,railFlags,
+  RailFlag(Interpret,Step,Blocked,EOFWait),
 
 -- * Constructors
   TextAreaContent.init,   -- initializes both data structures
@@ -59,7 +60,8 @@ module TextAreaContent (
   redoQueue,
   undoQueue,
   context,
-  buffer
+  buffer,
+  railFlags
   ) where
 
 import Graphics.UI.Gtk
@@ -84,6 +86,8 @@ type ActionQueue = [(TextAreaContent.Action, Position)]
 -- types for interpreter
 data RailType = RailString String | RailList [RailType] | RailLambda String Lexer.IP deriving (Eq)
 
+data RailFlag = Interpret | Step | Blocked | EOFWait deriving (Eq)
+
 instance Show RailType
  where
   show (RailString string) = string
@@ -95,7 +99,8 @@ data InterpreterContext =
     funcStack :: [(String, Lexer.IP, Map.Map String RailType)],
     breakMap :: Map Position Bool,
     inputOffset :: Int,
-    curIPPos :: Position
+    curIPPos :: Position,
+    railFlags :: [RailFlag]
   }
 
 data TextAreaContent = 
@@ -141,7 +146,7 @@ init x y inputBuffer outputBuffer= do
   undoQ <- newIORef []
   redoQ <- newIORef []
   dir <- newIORef (1,0)
-  cont <- newIORef $ IC [] [] Map.empty 0 (-1, -1)
+  cont <- newIORef $ IC [] [] Map.empty 0 (-1, -1) []
   let 
     cMap = CoMap cmapR size
     hMap = ChMap hmapR size

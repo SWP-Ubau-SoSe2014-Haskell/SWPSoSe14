@@ -22,7 +22,7 @@ import qualified TextArea         as TA
 import TextAreaContent as TAC
 import qualified InteractionField as IAF
 import Data.IORef
-import qualified Interpreter
+import qualified Interpreter as IN
 import qualified Paths_rail_compiler_editor as Path
 
     -- functions --
@@ -48,8 +48,6 @@ create = do
   ta <- TA.initTextAreaWithContent tac
   lwin <- TA.getTextAreaContainer ta
 
-
-
   -- reset label with current position
   Gtk.afterKeyPress (TA.drawingArea ta) $ \event -> do
     let posRef = TA.currentPosition ta
@@ -74,6 +72,17 @@ create = do
   -- buffer for plug 'n' play
   let bufferOut = IAF.getOutputBuffer interDT
   let bufferIn  = IAF.getInputBuffer interDT
+
+  Gtk.on bufferIn Gtk.bufferInsertText $ \iter string ->  do
+    putStrLn "In"
+    tac <- readIORef (TA.textAreaContent ta)
+    cnt <- readIORef (TAC.context tac)
+    let flags = TAC.railFlags cnt
+    if (elem TAC.Interpret flags)
+    then IN.interpret tac
+    else if (elem TAC.Step flags)
+         then IN.step tac
+         else return ()
 
   menuBar <- MB.create window ta bufferOut bufferIn
   extraBar <- TB.create ta footer interDT

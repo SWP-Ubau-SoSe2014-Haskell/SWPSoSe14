@@ -18,7 +18,8 @@ module InteractionField (
   getInputBuffer,
   getOutputBuffer,
   getDataStackBuffer,
-  getFunctionStackBuffer
+  getFunctionStackBuffer,
+  textViewWindowShow 
                         )
   where
 
@@ -26,6 +27,7 @@ module InteractionField (
 
 import qualified Graphics.UI.Gtk as Gtk
     -- functions --
+
 
 -- | encapsulates the Information needed for manipulating the InteractionField
 data InteractionDT = InterDT { getContainer :: Gtk.VBox,
@@ -69,7 +71,7 @@ create = do
   Gtk.onClicked buttonPopUpIn $ Gtk.postGUIAsync $ textViewWindowShow bufferIn "Input"
   Gtk.onClicked buttonPopUpOut $ Gtk.postGUIAsync $ textViewWindowShow bufferOut "Output"
   Gtk.onClicked buttonPopUpStackF $ Gtk.postGUIAsync $ textViewWindowShow bufferStackFunc "Function-Stack"
-  Gtk.onClicked buttonPopUpStackV $ Gtk.postGUIAsync $ textViewWindowShow bufferStackVar "Variable-Stack"
+  Gtk.onClicked buttonPopUpStackV $ Gtk.postGUIAsync $ textViewWindowShow bufferStackVar "Data-Stack"
 
   -- compose Input
   hboxLabelButtonIn <- Gtk.hBoxNew False 0
@@ -157,6 +159,6 @@ textViewWindowShow textBuffer title = do
 
 -- sets the properties of a zoom button
 setButtonProps button = do
-  image <- Gtk.imageNewFromFile "full.png"
+  image <- Gtk.imageNewFromFile "rail-graphics/full.png"
   Gtk.buttonSetImage button image
   Gtk.buttonSetImagePosition button Gtk.PosRight

@@ -23,7 +23,8 @@ module TextArea(
   drawingArea,
   getTextAreaContainer, -- This function should be used to get a widget to place in MainWindow
   setInputMode,
-  setHighlighting
+  setHighlighting,
+  redrawContent
   )where
     
     -- imports --
