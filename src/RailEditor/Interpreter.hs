@@ -57,7 +57,7 @@ module Interpreter (
     start <- Gtk.textBufferGetStartIter buffer
     end <- Gtk.textBufferGetEndIter buffer
     currentText <- Gtk.textBufferGetText buffer start end True
-    putStrLn $ "off:" ++ (show offset) ++ "; "++ (show$ length currentText)
+    putStrLn $ "off:" ++ show offset ++ "; "++ show (length currentText)
     return $ offset  > length currentText
 
   showError :: TAC.TextAreaContent -> String -> IO ()
@@ -76,7 +76,7 @@ module Interpreter (
   updateCurIPPos :: TAC.TextAreaContent -> Funcmap -> IO ()
   updateCurIPPos tac fmap = do
     cnt <- readIORef (TAC.context tac)
-    when (not $ null $ TAC.funcStack cnt) $ do
+    unless (null $ TAC.funcStack cnt) $ do
       let ((fname, ip, _):_) = TAC.funcStack cnt
           offset = snd $ fromJust $ Map.lookup fname fmap
       writeIORef (TAC.context tac) cnt{TAC.curIPPos = (Lexer.posx ip, Lexer.posy ip + offset)}
@@ -86,45 +86,41 @@ module Interpreter (
     cnt <- readIORef (TAC.context tac)
     isBlocked <- blocked tac
     let flags = TAC.railFlags cnt
-    if (elem TAC.Step flags) && null (TAC.funcStack cnt)
-    then do
-      showError tac "Please reset, before you change the execution mode"
+    if TAC.Step `elem` flags && null (TAC.funcStack cnt)
+    then showError tac "Please reset, before you change the execution mode"
     else do
-      when (not $ elem TAC.Interpret flags) $ writeIORef (TAC.context tac) cnt{TAC.railFlags = TAC.Interpret:flags}
-      if (elem TAC.Blocked flags)
+      unless (TAC.Interpret `elem` flags) $ writeIORef (TAC.context tac) cnt{TAC.railFlags = TAC.Interpret:flags}
+      if TAC.Blocked `elem` flags
       then do
         putStrLn "is blocked"
-        if (not isBlocked)
-        then do
+        unless isBlocked $ do
           putStrLn "unblock"
           inputAfterBlock tac
-          writeIORef (TAC.context tac) cnt{TAC.railFlags = (delete TAC.Blocked flags)}
-        else return ()
+          writeIORef (TAC.context tac) cnt{TAC.railFlags = delete TAC.Blocked flag}
       else do
         putStrLn "noBlock"
         funcmap <- getFunctions tac
         dostep tac funcmap
         updateCurIPPos tac funcmap
         stop <- needsHalt tac funcmap
-        if stop then return () else interpret tac
+        unless stop $ interpret tac
 
   step tac = do
     cnt <- readIORef (TAC.context tac)
     isBlocked <- blocked tac
     let flags = TAC.railFlags cnt
-    if (elem TAC.Interpret flags) && null (TAC.funcStack cnt)
-    then do
-      showError tac "Please reset, before you change the execution mode"
+    if elem TAC.Interpret flags && null (TAC.funcStack cnt)
+    then showError tac "Please reset, before you change the execution mode"
     else do
-      when (not $ elem TAC.Step flags) $ writeIORef (TAC.context tac) cnt{TAC.railFlags = TAC.Step:flags}
-      if (elem TAC.Blocked flags)
+      unless (TAC.Step `elem` flags) $ writeIORef (TAC.context tac) cnt{TAC.railFlags = TAC.Step:flags}
+      if TAC.Blocked `elem` flags
       then do
         putStrLn "is blocked"
-        if (not isBlocked)
+        if not isBlocked
         then do
           putStrLn "unblock"
           inputAfterBlock tac
-          writeIORef (TAC.context tac) cnt{TAC.railFlags = (delete TAC.Blocked flags)}
+          writeIORef (TAC.context tac) cnt{TAC.railFlags = delete TAC.Blocked flags}
         else return ()
       else do
         funcmap <- getFunctions tac
@@ -141,7 +137,7 @@ module Interpreter (
     currentText <- Gtk.textBufferGetText buffer start end True
     putStrLn "read"
     let char = currentText !! offset
-    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString $ [char]):(TAC.dataStack cnt)}
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = TAC.RailString [char]:TAC.dataStack cnt}
 
   dostep :: TAC.TextAreaContent -> Funcmap -> IO ()
   dostep tac funcmap = do
@@ -189,12 +185,12 @@ module Interpreter (
       start <- Gtk.textBufferGetStartIter buffer
       end <- Gtk.textBufferGetEndIter buffer
       currentText <- Gtk.textBufferGetText buffer start end True
-      writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString $ [currentText !! offset]):(TAC.dataStack cnt)}
+      writeIORef (TAC.context tac) cnt{TAC.dataStack = TAC.RailString [currentText !! offset]:TAC.dataStack cnt}
 
   perform tac _ IDT.Output = do
     cnt <- readIORef (TAC.context tac)
     let dataSt = TAC.dataStack cnt
-    if (dataSt == [])
+    if dataSt == []
     then showError tac "Empty Stack"
     else if (\((TAC.RailString _):_) -> True) dataSt
          then do 
