@@ -18,7 +18,7 @@
 ;    * 0 means string. dataPtr points to a null-terminated string.
 ;    * 1 means list. Note that there is no seperate type for empty lists,
 ;      those are represented with type == 1 and dataPtr == null.
-;      For non-empty lists, dataPtr points to another stack_element which
+;      For non-empty lists, dataPtr points to another stack_wrapper which
 ;      is the head of the (linked) list.
 ;    * 2 means lambda.
 ;  * void *dataPtr: Points to type-specific data. May be null.
@@ -60,7 +60,9 @@
 
 ; Constants
 @err_type_mismatch = private unnamed_addr constant [16 x i8] c"Type mismatch!\0A\00"
+@err_unhandled_type = private unnamed_addr constant [30 x i8] c"Cannot unref unhandled type!\0A\00"
 @err_not_bool = private unnamed_addr constant [29 x i8] c"Stack value was not 0 or 1!\0A\00"
+@err_empty_list = private unnamed_addr constant [13 x i8] c"Empty list!\0A\00"
 @type_string = unnamed_addr constant [7 x i8] c"string\00"
 @type_lambda = unnamed_addr constant [7 x i8] c"lambda\00"
 @type_list = unnamed_addr constant [5 x i8] c"list\00"
@@ -82,6 +84,7 @@ declare i8* @xstrdup(i8*)
 
 declare void @crash(i1)
 declare void @underflow_assert()
+declare void @list_unref_elements(%stack_element*)
 
 
 ; Function definitions
@@ -125,10 +128,32 @@ define void @stack_element_unref(%stack_element* %element) {
 
 free_data:
   %data = call i8* @stack_element_get_data(%stack_element* %element)
+  %type = call i8 @stack_element_get_type(%stack_element* %element)
+  switch i8 %type, label %unhandled_type
+    [
+      i8 0, label %free_string
+      i8 1, label %free_list
+    ]
+
+unhandled_type:
+  %err_unhandled_type = getelementptr [30 x i8]* @err_unhandled_type, i8 0, i8 0
+  call %stack_element* @push_string_cpy(i8* %err_unhandled_type)
+  call void @crash(i1 0)
+  ret void
+
+free_string:
   call void @free(i8* %data)
+  br label %free_element
+
+free_list:
+  call void @list_unref_elements(%stack_element* %element)
+  br label %free_element
+
+free_element:
   %mem = bitcast %stack_element* %element to i8*
   call void @free(i8* %mem)
   br label %finished
+
 update_refcount:
   call void(%stack_element*, i32)* @stack_element_set_refcount(%stack_element* %element, i32 %refcount_1)
   br label %finished
@@ -331,6 +356,30 @@ invalid_type:
   call void @crash(i1 0)
 
   ret void
+}
+
+; Assert that the data in the stack_element is a non-empty list.
+;
+; Crashes the program if the assertion fails.
+define void @stack_element_assert_is_non_empty_list(%stack_element* %element) {
+  ; Type 1 is list.
+  call void @stack_element_assert_type(%stack_element* %element, i8 1)
+
+  %data = call i8* @stack_element_get_data(%stack_element* %element)
+  %is_null = icmp eq i8* %data, null
+  br i1 %is_null, label %l_empty_list, label %l_non_empty_list
+
+l_empty_list:
+  ; Bad. Crash.
+  %err_empty_list = getelementptr [13 x i8]* @err_empty_list, i8 0, i8 0
+  call %stack_element* @push_string_cpy(i8* %err_empty_list)
+  call void @crash(i1 0)
+
+  ret void
+
+l_non_empty_list:
+    ; All good.
+    ret void
 }
 
 ; Get (but do not remove) the topmost %stack_wrapper struct.
