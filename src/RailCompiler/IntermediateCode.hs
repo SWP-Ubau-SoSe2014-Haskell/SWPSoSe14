@@ -569,8 +569,7 @@ generateInstruction Finish =
 generateInstruction (IDT.Call "") = do
   index <- fresh
   index2 <- fresh
-  index3 <- fresh
-  index4 <- fresh
+  index6 <- fresh
   return [ UnName index := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -589,7 +588,7 @@ generateInstruction (IDT.Call "") = do
     functionAttributes = [],
     metadata = []
   },
-    UnName index3 := LLVM.General.AST.Call {
+    UnName index6 := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
@@ -598,12 +597,12 @@ generateInstruction (IDT.Call "") = do
     functionAttributes = [],
     metadata = []
   },
-    UnName index4 := LLVM.General.AST.Call {
+    Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
     function = Right $ LocalReference $ UnName index2,
-    arguments = [(LocalReference $ UnName index3, [])],
+    arguments = [(LocalReference $ UnName index6, [])],
     functionAttributes = [],
     metadata = []
   }]
@@ -777,9 +776,10 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 process :: IDT.SemAna2InterCode -> IDT.InterCode2Backend
 process (IDT.ISI input) = IDT.IIB $ generateModule $ constants ++ variables ++ 
     [ stackElementTypeDef, structTable, lambdaElement, underflowCheck, FunctionDeclarations.print, 
-      crash, start, finish, inputFunc, eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, 
-      div1, streq, strlen, strapp, strcut, popInt, equal, greater, popInto, pushFrom, popBool, initialiseSymbolTable, 
-      malloc, copySymbolTable, pushLambda, getLambda, popLambda, getTable ] ++ codegen input
+      crash, start, finish, inputFunc, eofCheck, pushStringCpy, pop, peek, add, 
+      sub, rem1, mul, div1, streq, strlen, strapp, strcut, popInt, equal, greater, 
+      popInto, pushFrom, popBool, initialiseSymbolTable, malloc, type1, 
+      copySymbolTable, pushLambda, getLambda, popLambda, getTable ] ++ codegen input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input
