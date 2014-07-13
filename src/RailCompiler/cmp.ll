@@ -18,6 +18,7 @@
 %union.anon = type { i8* }
 
 declare i8* @stack_element_get_data(%stack_element* %element)
+declare i8 @stack_element_get_type(%stack_element*)
 declare void @stack_element_unref(%stack_element* %element)
 declare i32 @get_stack_elem(i8*, %struct.stack_elem*)
 declare %stack_element* @push_string_ptr(i8* %str)
@@ -30,6 +31,7 @@ declare i32 @strcmp(i8*, i8*)
 declare void @push_int(i64)
 declare i8* @pop_string()
 declare void @crash(i1)
+declare i1 @list_equal(%stack_element*, %stack_element*)
 
 @main.number_a = private unnamed_addr constant [4 x i8] c"abc\00"
 @main.number_b  = private unnamed_addr constant [4 x i8] c"adc\00"
@@ -42,7 +44,7 @@ define i32 @main_cmp() {
   call %stack_element* @push_string_cpy(i8* %number0)
   call %stack_element* @push_string_cpy(i8* %number1)
 
-  call i32 @equal()
+  call void @equal()
   %result = call i8* @pop_string()
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]*
               @popped, i32 0, i32 0), i8* %result)
@@ -55,25 +57,72 @@ define i32 @main_cmp() {
 ;                                 equal
 ;##############################################################################
 
-define i32 @equal(){
+
+; Check if the topmost stack elements are equal.
+;
+; Pushes true onto the stack if the elements are equal and false
+; otherwise.
+;
+; Crashes the program on errors (prints an appropriate error message).
+define void @equal() {
+  %struct_a = call %stack_element* @pop_struct()
+  %struct_b = call %stack_element* @pop_struct()
+  %are_equal = call i1 @do_equal(%stack_element* %struct_a, %stack_element* %struct_b)
+
+  br i1 %are_equal, label %push_true, label %push_false
+
+push_true:
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
+                                          [2 x i8]* @true, i64 0, i64 0))
+  br label %done
+
+push_false:
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
+                                          [2 x i8]* @false, i64 0, i64 0))
+  br label %done
+
+done:
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
+  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
+  ret void
+}
+
+; Perform the actual equality check.
+;
+; Returns 1 if the stack elements are equal or 0 otherwise.
+;
+; Crashes the program on errors (prints an appropriate error message).
+define i1 @do_equal(%stack_element* %struct_a, %stack_element* %struct_b) {
   ; return value of this function
-  %func_result = alloca i32, align 4
+  %func_result = alloca i1, align 4
 
   %new_elem_a = alloca %struct.stack_elem, align 8
   %new_elem_b = alloca %struct.stack_elem, align 8
  
-  ; get top of stack
-  call void @underflow_assert()
-  %struct_a = call %stack_element*()* @pop_struct()
+  ; Get data and type of first element.
   %number_a = call i8*(%stack_element*)* @stack_element_get_data(
                                                    %stack_element* %struct_a)
+  %stack_type_a = call i8 @stack_element_get_type(%stack_element* %struct_a)
 
-  ; get second top of stack
-  call void @underflow_assert()
-  %struct_b = call %stack_element*()* @pop_struct()
+  ; Get data and type of second element.
   %number_b = call i8*(%stack_element*)* @stack_element_get_data(
                                                    %stack_element* %struct_b)
+  %stack_type_b = call i8 @stack_element_get_type(%stack_element* %struct_b)
 
+  ; The spec says that two elements of different types are always unequal.
+  %equal_stack_types = icmp eq i8 %stack_type_a, %stack_type_b
+  br i1 %equal_stack_types, label %check_stack_type, label %exit_with_false
+
+check_stack_type:
+  ; Same stack element type, so it does not matter which of the two types
+  ; we use in the switch statement.
+  switch i8 %stack_type_a, label %exit_with_invalid_type
+    [
+      i8 0, label %get_stack_elem_a
+      i8 1, label %compare_lists
+    ]
+
+get_stack_elem_a:
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
   %is_zero_a = icmp slt i32 %ret_a, 0
@@ -100,6 +149,14 @@ get_types:
                                         i32 1, label %assume_b_int
                                         i32 2, label %assume_b_float
                                         i32 3, label %assume_b_string]
+
+;##############################################################################
+;                        list comparison
+;##############################################################################
+
+compare_lists:
+  %lists_are_equal = call i1 @list_equal(%stack_element* %struct_a, %stack_element* %struct_b)
+  br i1 %lists_are_equal, label %exit_with_true, label %exit_with_false
 
 ;##############################################################################
 ;                        integer comparison
@@ -173,30 +230,20 @@ exit_with_invalid_type:
   br label %exit_with_failure
 
 exit_with_failure:
-  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
-  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
   call void @crash(i1 0)
+  ret i1 1
+
+exit_with_true:
+  store i1 1, i1* %func_result
   br label %exit
 
-exit_with_true: 
-  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
-                                          [2 x i8]* @true, i64 0, i64 0))
-  br label %exit_with_success
-
-exit_with_false: 
-  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
-                                          [2 x i8]* @false, i64 0, i64 0))
-  br label %exit_with_success
-
-exit_with_success:
-  store i32 0, i32* %func_result
+exit_with_false:
+  store i1 0, i1* %func_result
   br label %exit
 
 exit:
-  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_a)
-  call void(%stack_element*)* @stack_element_unref(%stack_element* %struct_b)
-  %result = load i32* %func_result
-  ret i32 %result
+  %result = load i1* %func_result
+  ret i1 %result
 }
 
 ;##############################################################################
@@ -328,3 +375,5 @@ exit:
   %result = load i32* %func_result
   ret i32 %result
 }
+
+; vim:ts=2 sw=2 et
