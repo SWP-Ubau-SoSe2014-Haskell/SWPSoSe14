@@ -20,7 +20,13 @@
 ; External declarations
 
 ; Own external LLVM variables/functions
-
+declare %stack_element* @stack_element_new(i8, i8*)
+declare void @stack_element_set_data(%stack_element*, i8*)
+declare i8* @stack_element_get_data(%stack_element*)
+declare %stack_wrapper* @stack_wrapper_new(%stack_element*, %stack_wrapper*)
+declare void @stack_wrapper_free(%stack_wrapper*)
+declare %stack_element* @stack_wrapper_get_element(%stack_wrapper*)
+declare %stack_wrapper* @stack_wrapper_get_next(%stack_wrapper*)
 
 
 ; Function definitions
@@ -30,7 +36,7 @@ define %stack_element* @list_new() {
     ; Type 1 is reserved for the "list" type.
     ; Empty lists are simply stack_element structs with a null data pointer.
     %elm = call %stack_element* @stack_element_new(i8 1, i8* null)
-    return %stack_element* %elm
+    ret %stack_element* %elm
 }
 
 ; Prepend a stack_element to a list (also called "cons").
@@ -46,14 +52,14 @@ define %stack_element* @list_prepend(%stack_element* %list, %stack_element* %ele
 
     ; This is the new list head, so store it in the topmost stack_element.
     %data = bitcast %stack_wrapper* %new_head_wrapper to i8*
-    call void @stack_element_set_data(%stack_element %list, i8* %data)
+    call void @stack_element_set_data(%stack_element* %list, i8* %data)
 
     ; That's it!
     ret %stack_element* %list
 }
 
 ; Pop the head off a non-empty list.
-define %stack_element* @list_pop(%stack_element %list) {
+define %stack_element* @list_pop(%stack_element* %list) {
     ; Get the top stack_wrapper of the list.
     %head_wrapper0 = call i8* @stack_element_get_data(%stack_element* %list)
     %head_wrapper1 = bitcast i8* %head_wrapper0 to %stack_wrapper*
