@@ -54,6 +54,7 @@
 
 ; Constants
 @err_type_mismatch = private unnamed_addr constant [16 x i8] c"Type mismatch!\0A\00"
+@err_unhandled_type = private unnamed_addr constant [30 x i8] c"Cannot unref unhandled type!\0A\00"
 @err_not_bool = private unnamed_addr constant [29 x i8] c"Stack value was not 0 or 1!\0A\00"
 @err_empty_list = private unnamed_addr constant [13 x i8] c"Empty list!\0A\00"
 @type_string = unnamed_addr constant [7 x i8] c"string\00"
@@ -77,6 +78,7 @@ declare i8* @xstrdup(i8*)
 
 declare void @crash(i1)
 declare void @underflow_assert()
+declare void @list_unref_elements(%stack_element*)
 
 
 ; Function definitions
@@ -120,10 +122,32 @@ define void @stack_element_unref(%stack_element* %element) {
 
 free_data:
   %data = call i8* @stack_element_get_data(%stack_element* %element)
+  %type = call i8 @stack_element_get_type(%stack_element* %element)
+  switch i8 %type, label %unhandled_type
+    [
+      i8 0, label %free_string
+      i8 1, label %free_list
+    ]
+
+unhandled_type:
+  %err_unhandled_type = getelementptr [30 x i8]* @err_unhandled_type, i8 0, i8 0
+  call %stack_element* @push_string_cpy(i8* %err_unhandled_type)
+  call void @crash(i1 0)
+  ret void
+
+free_string:
   call void @free(i8* %data)
+  br label %free_element
+
+free_list:
+  call void @list_unref_elements(%stack_element* %element)
+  br label %free_element
+
+free_element:
   %mem = bitcast %stack_element* %element to i8*
   call void @free(i8* %mem)
   br label %finished
+
 update_refcount:
   call void(%stack_element*, i32)* @stack_element_set_refcount(%stack_element* %element, i32 %refcount_1)
   br label %finished
