@@ -68,7 +68,6 @@ module TextAreaContent (
   getClipboard
   ) where
 
-import Graphics.UI.Gtk
 import qualified InterfaceDT as IDT
 import Data.Map as Map
 import Data.IORef
@@ -96,7 +95,7 @@ instance Show RailType
  where
   show (RailString string) = string
   show (RailList list) = show list
-  show (RailLambda string ip) = string ++ (show (Lexer.posx ip, Lexer.posy ip))
+  show (RailLambda string ip) = string ++ show (Lexer.posx ip, Lexer.posy ip)
 data InterpreterContext = 
   IC {
     dataStack :: [RailType],
@@ -172,18 +171,18 @@ fillCharMapWith :: Map.Map Coord (Map.Map Coord (Char,Bool)) --Map of content at
   -> Map.Map Coord (Map.Map Coord (Char,Bool))--Map with content at every y x coord (x*y operations)
 fillCharMapWith charMap content (xBound,yBound) =
   Prelude.foldl (\yMap yK -> 
-    if (isNothing $ Map.lookup yK yMap) -- line Map nothing?
+    if isNothing $ Map.lookup yK yMap -- line Map nothing?
     then insert --insert the filled xMap into yMap
       yK 
       (Prelude.foldl (\xMap xK -> --foldl with empty map
-        if (isNothing $ Map.lookup xK xMap) --check for char at x,y
+        if isNothing $ Map.lookup xK xMap --check for char at x,y
         then Map.insert xK content xMap 
-        else xMap)(Map.empty)[0..xBound])
+        else xMap) Map.empty [0..xBound])
       yMap
     else insert --insert the filled xMap into yMap
       yK
       (Prelude.foldl (\xMap xK -> --foldl with
-        if (isNothing $ Map.lookup xK xMap) --check for char at x,y
+        if isNothing $ Map.lookup xK xMap --check for char at x,y
         then Map.insert xK content xMap 
         else xMap)(fromJust $ Map.lookup yK yMap)[0..xBound])
        yMap
@@ -209,7 +208,7 @@ serialize areaContent = do
   foldM (\code (y,lineMap) -> do
       let lineList = assocs lineMap
       l <- foldM (\line (x,(char,_)) -> return $ line++[char]) "" lineList
-      let cleanLine = ((reverse . dropWhile (== ' ') . reverse) l)++['\n']
+      let cleanLine = (reverse . dropWhile (== ' ') . reverse) l ++ "\n"
       return $ code++cleanLine
     ) "" listOfLines
    
@@ -221,8 +220,8 @@ deserialize :: String
 deserialize stringContent inputB outputB = do
   areaContent <- TextAreaContent.init newX newY inputB outputB
   --readStringListInEntryMap areaContent lined (0,0) 
-  foldM (\y line -> do
-    foldM (\x char -> do 
+  foldM_ (\y line -> do
+    foldM_ (\x char -> do 
         putValue areaContent (x,y) (char,False)
         return $ x+1
       ) 0 line 
@@ -241,7 +240,7 @@ resize areaContent (xm,ym) = do
     (ChMap charMapIORef charSize) = charMap areaContent
     (CoMap colorMapIORef colorSize) = colorMap areaContent
   writeIORef charSize (xm,ym)
-  modifyIORef' colorSize (\_ -> (xm,ym))
+  writeIORef colorSize (xm,ym)
 
 -- | sets the character for a cell identified by a coordinate
 -- If the coords are out of bounds the function resizes the TAC.
@@ -251,9 +250,9 @@ putValue :: TextAreaContent
   -> IO ()
 putValue areaContent (x,y) content = do
   (xMax,yMax) <- TextAreaContent.size areaContent
-  if (y > yMax || x > xMax)
+  if y > yMax || x > xMax
   then do 
-    resize areaContent (xMax + (abs $ xMax-x),yMax + (abs $ yMax-y))
+    resize areaContent (xMax + abs (xMax-x),yMax + abs (yMax-y))
     putValue areaContent (x,y) content
   else do
     let 
@@ -261,9 +260,7 @@ putValue areaContent (x,y) content = do
       (CoMap cMap _) = colorMap areaContent
     valHMap <- readIORef hMap
     let lineMap = Map.lookup y valHMap
-    if (isNothing lineMap) 
-    then modifyIORef' hMap (Map.insert y (Map.insert x content Map.empty))
-    else modifyIORef' hMap (Map.insert y (Map.insert x content $ fromJust lineMap))
+    modifyIORef' hMap $ Map.insert y $ maybe (insert x content empty) (insert x content) lineMap
 
 -- | sets the color of a cell identified by 
 -- If the coords are out of bounds the function resizes the TAC.
@@ -273,18 +270,18 @@ putColor :: TextAreaContent
   -> IO ()
 putColor areaContent (x,y) color = do
   (xMax,yMax) <- TextAreaContent.size areaContent
-  if (x > xMax || y > yMax)
+  if x > xMax || y > yMax
   then do
-    resize areaContent (xMax + (abs $ xMax-x),yMax + (abs $ yMax-y))
+    resize areaContent (xMax + abs (xMax-x),yMax + abs (yMax-y))
     putColor areaContent (x,y) color
   else do
     let (CoMap cMap _) = colorMap areaContent
-    modifyIORef' cMap (\cmap -> Map.insert (x,y) color cmap)
+    modifyIORef' cMap $ Map.insert (x,y) color
 
 deleteColors :: TextAreaContent -> IO ()
 deleteColors tac = do
   let(CoMap cMap _) = colorMap tac
-  modifyIORef cMap (\_ -> Map.empty)
+  writeIORef cMap Map.empty
 
 -- / sets a cell
 putCell :: TextAreaContent
@@ -298,14 +295,14 @@ putCell areaContent coord (content,color) = do
 -- | setting input direction
 putDirection :: TextAreaContent
   -> Direction
-  -> IO()
+  -> IO ()
 putDirection tac dir = do
   let dirTac = railDirection tac
-  modifyIORef dirTac (\ _ -> dir)
+  modifyIORef dirTac $ const dir
 
 -- | getting input direction
 getDirection :: TextAreaContent
-  ->IO(Direction)
+  -> IO Direction
 getDirection tac = do
   let dirTac = railDirection tac
   readIORef dirTac
@@ -313,13 +310,13 @@ getDirection tac = do
 -- | delets a cell
 deleteCell :: TextAreaContent 
   -> Position
-  -> IO (Bool)
+  -> IO Bool
 deleteCell areaContent (x,y) = do
   let 
     (ChMap hMap _) = charMap  areaContent
     (CoMap cMap _) = colorMap areaContent
   (xMax,yMax) <- TextAreaContent.size areaContent
-  if (x > xMax || y > yMax)
+  if x > xMax || y > yMax
   then return False
   else do
     modifyIORef hMap (\m -> del m (x,y))
@@ -327,14 +324,11 @@ deleteCell areaContent (x,y) = do
     return True
   where
     delMap :: Map.Map Coord (Map.Map Coord (Char,Bool)) -> Position -> Map.Map Coord (Char,Bool)
-    delMap m (x,y) = 
-      if isNothing (Map.lookup y m)
-      then Map.empty
-      else Map.delete x (fromJust $ Map.lookup y m)
+    delMap m (x,y) = maybe Map.empty (Map.delete x) (Map.lookup y m)
     del :: Map.Map Coord (Map.Map Coord (Char,Bool)) -> Position -> Map.Map Coord (Map.Map Coord (Char,Bool))
     del m (x,y)
-      | (delMap m (x,y)) == Map.empty = (Map.delete y m)
-      | otherwise = (Map.insert y (delMap m (x,y)) m)
+      | delMap m (x,y) == Map.empty = Map.delete y m
+      | otherwise = Map.insert y (delMap m (x,y)) m
      
 -- | returns the character and the color of a cell
 getCell :: TextAreaContent 
@@ -347,29 +341,22 @@ getCell areaContent (x,y) = do
   cmap <- readIORef cMap
   let valMap =  Map.lookup y hmap
   let color =  Map.findWithDefault defaultColor (x,y) cmap --now lazy
-  case (isNothing valMap) of
-    True -> return Nothing
-    _ -> do
+  return $ if isNothing valMap then Nothing else do
       let mayValue = Map.lookup x $ fromJust valMap
-      case (isNothing mayValue) of
-       True -> return Nothing
-       _ -> return $ Just (fromJust mayValue, color)
+      if isNothing mayValue then Nothing else Just (fromJust mayValue, color)
        
 -- / checks if line is empty
 isEmptyLine :: TextAreaContent
   -> Coord
-  -> IO(Bool)
+  -> IO Bool
 isEmptyLine areaContent line = do
   let (ChMap hMap _) = charMap areaContent
   hmap <- readIORef hMap
-  let val =  Map.lookup line hmap
-  if val==Nothing
-  then return True
-  else return False
+  return $ isNothing $ Map.lookup line hmap
 
 {-This function is important for highlighting it returns the datatype
   which Lexer needs to lex. -}
-getPositionedGrid :: TextAreaContent -> IO(IDT.PreProc2Lexer)
+getPositionedGrid :: TextAreaContent -> IO IDT.PreProc2Lexer
 getPositionedGrid areaContent = do
   let (ChMap hMap hSize) = charMap areaContent
   s@(xMax,yMax) <- readIORef hSize
@@ -377,41 +364,38 @@ getPositionedGrid areaContent = do
   pGrid <- buildPosGrid ([],0) (assocs hmap)
   return $ IDT.IPL (fst pGrid)
   where
-    buildPosGrid :: ([IDT.PositionedGrid],Int) -> [(Int,(Map.Map Int (Char,Bool)))] -> IO(([IDT.PositionedGrid],Int))
-    buildPosGrid a b = foldM  
+    buildPosGrid :: ([IDT.PositionedGrid],Int) -> [(Int,Map.Map Int (Char,Bool))] -> IO ([IDT.PositionedGrid],Int)
+    buildPosGrid = foldM  
       (\(grids,offset) (y,line) -> do
         let mayDollar = Map.lookup 0 line 
-            simplifiedLine = Map.map (\(char,_) -> char) line
-        if (isNothing mayDollar)
-        then return $ ((insertWhenFct grids simplifiedLine y offset),offset)
-        else 
-          if ((fst $ fromJust mayDollar) == '$')
-          then return $ (grids++[((Map.insert 0 simplifiedLine Map.empty),y)],y)
-          else return $ ((insertWhenFct grids simplifiedLine y offset),offset)
-      ) a b
+            simplifiedLine = Map.map fst line
+        return $ 
+          if isNothing mayDollar
+          then (insertWhenFct grids simplifiedLine y offset,offset)
+          else
+            if fst (fromJust mayDollar) == '$'
+            then (grids ++ [(Map.insert 0 simplifiedLine Map.empty, y)], y)
+            else (insertWhenFct grids simplifiedLine y offset, offset)
+      )
     
     insertWhenFct :: [IDT.PositionedGrid] -> Map.Map Int Char -> Int -> Int -> [IDT.PositionedGrid]
     insertWhenFct x line y  offset 
-      | x == [] || line == Map.empty = x
-      | otherwise = (List.init x)++[(Map.insert (y-offset) line (fst (last x)), (snd (last x)))]
+      | List.null x || line == Map.empty = x
+      | otherwise = List.init x ++[(Map.insert (y-offset) line (fst (last x)), snd (last x))]
  
-findLastChar :: TextAreaContent -> Coord -> IO(Coord)
+findLastChar :: TextAreaContent -> Coord -> IO Coord
 findLastChar tac y = do
   let (ChMap hMap _) = charMap tac
   hmap <- readIORef hMap
   let mayLine = Map.lookup y hmap
-  if isNothing mayLine
-  then return $ -1
-  else return $ fst(List.last(assocs(fromJust mayLine)))
-     
+  return $ if isNothing mayLine then -1 else fst $ List.last $ assocs $ fromJust mayLine
   
 -- | returns the size of a TextAreaContent.
 size :: TextAreaContent
-  -> IO (Position) -- ^ size of the TextAreaContent
+  -> IO Position -- ^ size of the TextAreaContent
 size areaContent = do 
   let (ChMap _ size) = charMap areaContent
-  s <- readIORef size
-  return s
+  readIORef size
 
 getSelectedPositons :: TextAreaContent -> IO [Position]
 getSelectedPositons areaContent = do
@@ -421,8 +405,7 @@ getSelectedPositons areaContent = do
 isSelected :: TextAreaContent -> Position -> IO Bool
 isSelected tac pos = do
   cell <- getCell tac pos
-  if isJust cell then return $ snd $ fst $ fromJust cell
-  else return False
+  return $ isJust cell && snd (fst $ fromJust cell)
   
 getPositons :: TextAreaContent -> IO [Position]
 getPositons areaContent = do
@@ -441,4 +424,4 @@ setClipboard tac = do
   writeIORef (clipboard tac) positions --(List.zip positions chars)
 
 getClipboard :: TextAreaContent -> IO [Position]
-getClipboard tac = readIORef (clipboard tac) >>= return
+getClipboard tac = readIORef (clipboard tac)

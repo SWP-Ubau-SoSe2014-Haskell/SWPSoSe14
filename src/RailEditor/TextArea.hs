@@ -47,13 +47,13 @@ import qualified Graphics.UI.Gtk.Gdk.GC as GC
   This is the main datatype of TextArea 
 -}
 data TextArea = TA { drawingArea :: GTK.DrawingArea,
-    textAreaContent :: IORef (TAC.TextAreaContent), --The TAC
+    textAreaContent :: IORef TAC.TextAreaContent, --The TAC
     scrolledWindow :: GTK.ScrolledWindow, --The part to bind it in a container
-    currentPosition :: IORef (TAC.Position), --The current position of cursor without hef and bef
+    currentPosition :: IORef TAC.Position, --The current position of cursor without hef and bef
     vAdjustment :: GTK.Adjustment, --needed to create a scrolledWindow
     hAdjustment :: GTK.Adjustment, --needed to create a scrolledWindow
-    inputMode :: IORef (KeyHandler.InputMode), -- needed to set and get the current input mode
-    getHighlighted :: IORef (Bool)} -- needed to determine, whether the area is highlighted
+    inputMode :: IORef KeyHandler.InputMode, -- needed to set and get the current input mode
+    getHighlighted :: IORef Bool} -- needed to determine, whether the area is highlighted
 
 --The cursor color
 defaultCursorColor :: GC.Color
@@ -73,7 +73,7 @@ height = 600
   This function returns a scrolled Window which can be used
   to bind it on a widget.
 -}
-getTextAreaContainer :: TextArea -> IO (GTK.ScrolledWindow)
+getTextAreaContainer :: TextArea -> IO GTK.ScrolledWindow
 getTextAreaContainer textArea = return $ scrolledWindow textArea
 
 setInputMode :: TextArea -> KeyHandler.InputMode -> IO ()
@@ -96,12 +96,12 @@ setTextAreaContent textArea areaContent= do
   tac <- readIORef areaRef
   s@(xMax,yMax) <- TAC.size tac
   (w,h) <- GTK.widgetGetSizeRequest drawArea
-  if((yMax*hef) > h ) && ((xMax*bef) > w)
-  then GTK.widgetSetSizeRequest drawArea (w + (xMax*bef-w)) (h+((yMax*hef)-w))
+  if yMax*hef > h && xMax*bef > w
+  then GTK.widgetSetSizeRequest drawArea (w + (xMax*bef-w)) (h+(yMax*hef-w))
   else do
-    when ((yMax*hef) > h ) $
+    when (yMax*hef > h ) $
       GTK.widgetSetSizeRequest drawArea w (h+((yMax*hef)-w))
-    when ((xMax*bef) > w) $
+    when (xMax*bef > w) $
       GTK.widgetSetSizeRequest drawArea (w + (xMax*bef-w))  h
   when highlighted $ HIGH.highlight tac
   redrawContent textArea
@@ -109,20 +109,19 @@ setTextAreaContent textArea areaContent= do
 -- | sets (True) or unsets (False) the highlighting 
 setHighlighting :: TextArea -> Bool -> IO ()
 setHighlighting area val = do
-  modifyIORef (getHighlighted area) $ \_ -> val
+  writeIORef (getHighlighted area) val
   tac <- readIORef $ textAreaContent area
   if val
   then HIGH.highlight tac
   else TAC.deleteColors tac
   redrawContent area
 
-
 {-
   This function setup the TextArea. It Set up the drawWindow 
   related to textAreaContent. It also setup the different user events
   for editing the TextArea
 -}
-initTextAreaWithContent :: TAC.TextAreaContent -> IO (TextArea)
+initTextAreaWithContent :: TAC.TextAreaContent -> IO TextArea
 initTextAreaWithContent areaContent = do
   veAdjustment <- GTK.adjustmentNew 0 0 0 (fromIntegral hef) 0 0
   hoAdjustment <- GTK.adjustmentNew 0 0 0 (fromIntegral bef) 0 0
@@ -180,8 +179,8 @@ initTextAreaWithContent areaContent = do
     posBef@(x,y) <- readIORef posRef
     pos@(kx,ky) <- KeyHandler.handleKey tac posBef modus modif key val
     --expand the drawWindow when needed
-    extendDrawingAreaHorizontally textArea (kx)
-    extendDrawingAreaVertically textArea (ky)
+    extendDrawingAreaHorizontally textArea kx
+    extendDrawingAreaVertically textArea ky
     writeIORef posRef pos
     highlighted <- readIORef (getHighlighted textArea)
     when highlighted $ HIGH.highlight tac
@@ -198,9 +197,8 @@ initTextAreaWithContent areaContent = do
       posRef   = currentPosition textArea
       areaRef  = textAreaContent textArea
     content <- readIORef areaRef
-    pos <- readIORef posRef
-    showCursor textArea pos
     redrawContent textArea
+    readIORef posRef >>= showCursor textArea
     return sent
   return textArea
 
@@ -208,17 +206,17 @@ initTextAreaWithContent areaContent = do
 {-
   This function setup the DrawArea using GTK.DrawingArea.
 -}
-setUpDrawingArea :: IO (GTK.DrawingArea)
+setUpDrawingArea :: IO GTK.DrawingArea
 setUpDrawingArea = do
   drawingArea <- GTK.drawingAreaNew
   GTK.widgetModifyBg drawingArea GTK.StateNormal defaultBgColor
   GTK.set drawingArea [GTK.widgetCanFocus GTK.:= True]
   GTK.widgetAddEvents drawingArea [GTK.ButtonMotionMask]
-  GTK.widgetSetSizeRequest drawingArea (width) (height)
+  GTK.widgetSetSizeRequest drawingArea width height
   return drawingArea
 
 --This handles a mouse button press event
-handleButtonPress :: TextArea -> TAC.Position -> IO (TAC.Position)  
+handleButtonPress :: TextArea -> TAC.Position -> IO TAC.Position
 handleButtonPress textArea (x,y) = do
   let tacIORef = textAreaContent textArea
       curPosIORef = currentPosition textArea
@@ -228,7 +226,7 @@ handleButtonPress textArea (x,y) = do
   deselectEntries textArea tac selection
   Selection.updateCells tac selection False
   return newPos
-  where newPos = ((div x bef),(div y hef))-- position without hef and bef
+  where newPos = (div x bef,div y hef)-- position without hef and bef
 
 {-
   This function renders a character at the given position.
@@ -246,31 +244,18 @@ renderScene textArea (x,y) char (TAC.RGBColor r g b) breakpoint isIP = do
     CAIRO.showText [char]
   gc <- GC.gcNew drawWindow
   GC.gcSetValues gc $ GC.newGCValues { GC.foreground = defaultCursorColor }
-  when breakpoint $ GTK.drawRectangle drawWindow gc False ((curX (x*bef))-2) (curY (y*hef)) bef hef
-  when isIP $ GTK.drawArc drawWindow gc False ((curX (x*bef))-2) ((curY (y*hef))+2) bef hef 0 23040
+  when breakpoint $ GTK.drawRectangle drawWindow gc False ((curX x*bef)-2) (curY y*hef) bef hef
+  when isIP $ GTK.drawArc drawWindow gc False ((curX x*bef)-2) ((curY y*hef)+2) bef hef 0 23040
 
 --This function returns the y coord in relation to drawingArea    
 yCoord :: TAC.Coord -> TAC.Coord
 yCoord 0 = hef
-yCoord y = (y*hef)+hef
+yCoord y = y*hef + hef
 
 --This function returns the  coord in relation to drawingArea  
 xCoord :: TAC.Coord -> TAC.Coord
-xCoord x = (x*bef)
+xCoord x = x*bef
   
--- removes the content from Text Area which is displayed in scrollable Frame
-removeContent :: TextArea -> IO ()
-removeContent textArea = do
-  let 
-    drawArea = drawingArea textArea
-    vAdj = vAdjustment textArea 
-    hAdj = hAdjustment textArea
-  vAdjValue <- GTK.adjustmentGetValue vAdj
-  hAdjValue <- GTK.adjustmentGetValue hAdj
-  drawWindow <- GTK.widgetGetDrawWindow drawArea
-  s@(w,h) <- GTK.drawableGetSize drawWindow
-  GTK.drawWindowClearArea drawWindow (round hAdjValue) (round vAdjValue) w h
- 
 {-
   This Function removes the caracter at given position
   The function should be called in renderScene to avoid overwriting.
@@ -285,7 +270,6 @@ removeCharacter textArea (x,y) = do
 -- This Function draws every character in scrollable Frame.
 redrawContent :: TextArea -> IO ()  
 redrawContent textArea = do
-  removeContent textArea
   let 
     tacIORef = textAreaContent textArea
     drawArea = drawingArea textArea
@@ -295,11 +279,14 @@ redrawContent textArea = do
   hAdjValue <- GTK.adjustmentGetValue hAdj
   drawFrameHeight <- GTK.adjustmentGetPageSize vAdj
   drawFrameWidth <- GTK.adjustmentGetPageSize hAdj
+  drawWindow <- GTK.widgetGetDrawWindow drawArea
+  s@(w,h) <- GTK.drawableGetSize drawWindow
+  GTK.drawWindowClearArea drawWindow (round hAdjValue) (round vAdjValue) w h
   let 
     xFrom = div (round hAdjValue) bef
     yFrom = div (round vAdjValue) hef
-    xTo =  div ((round hAdjValue)+(round drawFrameWidth)) bef
-    yTo = div ((round vAdjValue)+(round drawFrameHeight)) hef
+    xTo =  div (round hAdjValue + round drawFrameWidth) bef
+    yTo = div (round vAdjValue + round drawFrameHeight) hef
   tac <- readIORef tacIORef
   --Function from Control.Monad Monad m => [a] -> (a -> m b) -> m ()
   forM_ [xFrom..xTo] (\x -> forM_ [yFrom..yTo] (\y -> draw textArea (x,y)))
@@ -310,16 +297,11 @@ redrawContent textArea = do
       let tacIORef = textAreaContent textArea
       tac <- readIORef tacIORef
       mayCell <- TAC.getCell tac pos
-      if (isNothing mayCell) 
-      then return()
-      else do
-        let
-          ((char,isSelected),color) = fromJust $ mayCell
+      unless (isNothing mayCell) $ do 
+        let ((char,isSelected), color) = fromJust mayCell
         cnt <- readIORef (TAC.context tac)
         renderScene textArea pos char color (Map.findWithDefault False pos (TAC.breakMap cnt)) (pos == TAC.curIPPos cnt)
         when isSelected $ selectEntry textArea pos
-        return ()
-        
 
 --Draws a cursor at the position.
 --The function adds the TACU offsets
@@ -342,11 +324,11 @@ clearCursor textArea (x,y) = do
     (fromIntegral (curX (x*bef))) 
     (fromIntegral (curY (y*hef)))
     2
-    (fromIntegral(hef))
+    (fromIntegral hef)
 
 --Coords for the cursor to fit the cells of characters
-curX x = abs(x-(mod x bef)-1)
-curY y = y-(mod y hef)
+curX x = abs(x - mod x bef-1)
+curY y = y - mod y hef
 
 {-
   This function extends the TextArea horizontal and set the scroll Frame.
@@ -362,9 +344,8 @@ extendDrawingAreaHorizontally textArea x = do
   value <- GTK.adjustmentGetValue adjustment
   when ((x*bef)+bef >= w) $
     GTK.widgetSetSizeRequest drawArea ((x*bef)+bef) h
-  when ((x*bef) +bef >= (round width)+(round value) ||
-    (x*bef)-bef < (round value)) $
-    GTK.adjustmentSetValue adjustment $ (fromIntegral (x*bef))
+  when (x*bef +bef >= round width + round value || x*bef-bef < round value) $
+    GTK.adjustmentSetValue adjustment $ fromIntegral (x*bef)
     
 {-
   This function extends the TextArea vertically and set the scroll Frame.
@@ -378,12 +359,12 @@ extendDrawingAreaVertically textArea y = do
   height <- GTK.adjustmentGetPageSize adjustment
   (w,h) <- GTK.widgetGetSizeRequest drawArea
   value <- GTK.adjustmentGetValue adjustment
-  when ((y*hef) + hef >= h) $
-    GTK.widgetSetSizeRequest drawArea w ((y*hef) + hef)
-  when ((y*hef)+hef >= (round height)+(round value)) $
-    GTK.adjustmentSetValue adjustment $ value + (fromIntegral hef)
-  when ((y*hef)-hef < (round value)) $
-    GTK.adjustmentSetValue adjustment $ value - (fromIntegral hef)
+  when (y*hef + hef >= h) $
+    GTK.widgetSetSizeRequest drawArea w (y*hef + hef)
+  when (y*hef+hef >= round height + round value) $
+    GTK.adjustmentSetValue adjustment $ value + fromIntegral hef
+  when (y*hef-hef < round value) $
+    GTK.adjustmentSetValue adjustment $ value - fromIntegral hef
 
 
 selectEntries :: TextArea -> [TAC.Position] -> IO ()

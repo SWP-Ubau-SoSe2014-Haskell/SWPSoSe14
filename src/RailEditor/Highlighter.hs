@@ -30,7 +30,7 @@ getGrid2dFromPreProc2Lexer(IDT.IPL grid2D) = grid2D
 
 -- highlights all entries saved in the data structur of the TextAreaCotent-module
 highlight :: TAC.TextAreaContent -> IO()
-highlight textAC = do
+highlight textAC =
   EXC.catch (do
     pGrid <- TAC.getPositionedGrid textAC
     let (IDT.IPL positionedGrid) = pGrid
@@ -71,7 +71,7 @@ highlightFct :: Grid2D
   -> IO IP
 highlightFct grid2D ip yOffset textAC
   | ip == crash = return crash
-  |otherwise = do
+  |otherwise =
   case lex of
     Nothing -> do
       TAC.putColor textAC (xC,yC) TAC.black
@@ -135,8 +135,7 @@ highlightFct grid2D ip yOffset textAC
 -- colors all entry red
 -- This function is needed to recolor after editing
 paintItRed :: TAC.TextAreaContent -> IO ()
-paintItRed tac = do
-  TAC.deleteColors tac
+paintItRed = TAC.deleteColors
   
 
   
