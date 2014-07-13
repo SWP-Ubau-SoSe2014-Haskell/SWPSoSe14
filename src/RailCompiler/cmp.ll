@@ -31,6 +31,7 @@ declare i32 @strcmp(i8*, i8*)
 declare void @push_int(i64)
 declare i8* @pop_string()
 declare void @crash(i1)
+declare i1 @list_equal(%stack_element*, %stack_element*)
 
 @main.number_a = private unnamed_addr constant [4 x i8] c"abc\00"
 @main.number_b  = private unnamed_addr constant [4 x i8] c"adc\00"
@@ -154,8 +155,8 @@ get_types:
 ;##############################################################################
 
 compare_lists:
-  ; TODO: Implement me!
-  br label %exit_with_invalid_type
+  %lists_are_equal = call i1 @list_equal(%stack_element* %struct_a, %stack_element* %struct_b)
+  br i1 %lists_are_equal, label %exit_with_true, label %exit_with_false
 
 ;##############################################################################
 ;                        integer comparison

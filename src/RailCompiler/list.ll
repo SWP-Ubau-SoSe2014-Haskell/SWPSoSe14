@@ -32,6 +32,7 @@ declare void @push_struct(%stack_element*)
 declare %stack_element* @pop_struct()
 declare void @stack_element_assert_type(%stack_element*, i8)
 declare void @stack_element_assert_is_non_empty_list(%stack_element*)
+declare i1 @do_equal(%stack_element* %struct_a, %stack_element*)
 
 
 ; Function definitions
@@ -118,7 +119,7 @@ define %stack_element* @list_pop(%stack_element* %list) {
 ; Returns 1 if both lists are equal or 0 otherwise.
 ;
 ; Crashes the program on errors (prints an appropriate error message).
-define i8 @list_equal(%stack_element* %list_a, %stack_element* %list_b) {
+define i1 @list_equal(%stack_element* %list_a, %stack_element* %list_b) {
 top:
     ; Get the top stack_wrappers of both lists.
     %head_wrapper_a0 = call i8* @stack_element_get_data(%stack_element* %list_a)
@@ -150,17 +151,24 @@ null_check:
 
 compare_elements:
     ; We have two elements which are both not null, so we can compare them.
+    ; Set next pointers:
     %next_wrapper_a = call %stack_wrapper* @stack_wrapper_get_next(%stack_wrapper* %curr_wrapper_a)
     %next_wrapper_b = call %stack_wrapper* @stack_wrapper_get_next(%stack_wrapper* %curr_wrapper_b)
 
-    ; TODO: Implement me!
-    br label %compare_lists
+    ; Get the wrapped stack elements.
+    %elm_a = call %stack_element* @stack_wrapper_get_element(%stack_wrapper* %curr_wrapper_a)
+    %elm_b = call %stack_element* @stack_wrapper_get_element(%stack_wrapper* %curr_wrapper_b)
+
+    ; Now we can do the actual comparison.
+    %are_equal = call i1 @do_equal(%stack_element* %elm_a, %stack_element* %elm_b)
+    ; If the elements are equal, check the next pair, else exit.
+    br i1 %are_equal, label %compare_lists, label %end_not_equal
 
 end_equal:
-    ret i8 1
+    ret i1 1
 
 end_not_equal:
-    ret i8 0
+    ret i1 0
 }
 
 
