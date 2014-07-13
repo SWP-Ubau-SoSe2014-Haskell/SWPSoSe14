@@ -26,7 +26,7 @@ module Lexer (
               -- * Utility functions
               fromAST, toAST,
               -- * Editor functions
-              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs , move , current, RelDirection(Forward)
+              step, parse, IP(IP), posx, posy, start, crash, turnaround, junctionturns, lambdadirs , move , current, RelDirection(Forward), funcname
              )
  where
 
@@ -58,25 +58,29 @@ module Lexer (
    | Map.size code < 2 = emptyfunc -- oneliners are illegal; follower == 0 will
                                -- lead to a crash, which is what we want.
    | Map.size firstline == 0 || fromJust (Map.lookup 0 firstline) /= '$' = emptyfunc
-   | otherwise = (funcname firstline, finalize (head nxs))
+   | otherwise = (func, finalize (head nxs))
   where
-    emptyfunc = (funcname firstline, [(1, Start, 0)])
+    emptyfunc = (func, [(1, Start, 0)])
     firstline = fromJust (Map.lookup 0 code)
+    func = case funcname code of
+      (Prelude.Left name) -> name
+      (Prelude.Right err) -> error err
     (nxs, _) = nodes code [[(1, Start, 0)]] start
 
  -- |Get the name of the given function.
- funcname :: Map.Map Int Char -- ^A line containing the function declaration,
-                              -- e. g. @$ \'main\'@.
-    -> String -- ^The function name
- funcname line = helper (tostring 0 line)
+ funcname :: IDT.Grid2D -> Either String String
+ funcname code
+   | isNothing (Map.lookup 0 code) = Prelude.Right EH.strFunctionNameMissing
+   | otherwise = helper (tostring 0 line)
   where
+   line = fromJust (Map.lookup 0 code)
    tostring i line
-     | isNothing (Map.lookup i line) = ""
+     | isNothing (Map.lookup i line) = if i > Map.size line then "" else tostring (i+1) line
      | otherwise = fromJust (Map.lookup i line):tostring (i+1) line
    helper line
-     | null line || length (elemIndices '\'' line) < 2 || null fn = error EH.strFunctionNameMissing
-     | not $ null $ fn `intersect` "'{}()!" = error EH.strInvalidFuncName
-     | otherwise = fn
+     | null line || length (elemIndices '\'' line) < 2 || null fn = Prelude.Right EH.strFunctionNameMissing
+     | not $ null $ fn `intersect` "'{}()!" = Prelude.Right EH.strInvalidFuncName
+     | otherwise = Prelude.Left fn
     where fn = takeWhile (/='\'') $ tail $ dropWhile (/='\'') line
 
  -- |Get the nodes for the given function.

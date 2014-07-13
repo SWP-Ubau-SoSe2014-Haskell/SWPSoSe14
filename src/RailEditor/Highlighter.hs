@@ -30,12 +30,12 @@ getGrid2dFromPreProc2Lexer(IDT.IPL grid2D) = grid2D
 
 -- highlights all entries saved in the data structur of the TextAreaCotent-module
 highlight :: TAC.TextAreaContent -> IO()
-highlight textAC = do
-  code <- TAC.serialize textAC
+highlight textAC =
   EXC.catch (do
-    let positionedGrid =  getGrid2dFromPreProc2Lexer $ PRE.process  (IIP code)
+    pGrid <- TAC.getPositionedGrid textAC
+    let (IDT.IPL positionedGrid) = pGrid
     (xm,ym) <- TAC.size textAC
-    paintItRed 0 0 xm ym textAC --TODO Do it efficient using redo/undo to get the current pressed entry
+    paintItRed textAC
     highlightFcts positionedGrid textAC
     return ()
     ) handleErrors
@@ -43,11 +43,6 @@ highlight textAC = do
 --Handels errors and prints them out used in context of Lexer and Preprocessor
 handleErrors :: EXC.ErrorCall  -> IO ()
 handleErrors e = print(show e)
-{-
-  | excep == Nothing = return ()
-  | otherwise = putStrLn $ fromJust excep
-  where
-    excep = EXC.fromException e-}
 
 -- highlight all rail-functions
 highlightFcts ::  [PositionedGrid]-- List of funtions in line-representation with y coord of function(position of $) 
@@ -98,45 +93,49 @@ highlightFct grid2D ip yOffset textAC
     Just (Call str) -> colorStrCommand str TAC.green
     _ -> do
       cBlue
-      highlightFct grid2D nextIP yOffset textAC
+      cGold
+      if lex == Just Finish
+      then return crash
+      else highlightFct grid2D nextIP yOffset textAC
     where
       (lex, parseIP) = parse grid2D ip
       nextIP = step grid2D parseIP
-      xC = posx ip
-      yC = posy ip+yOffset
+      xC = fromIntegral $ posx ip
+      yC = fromIntegral $ posy ip+yOffset
+      -- colors Start and finish gold
+      cGold ::IO ()
+      cGold | fromJust lex `elem` [Start,Finish] = TAC.putColor textAC (xC,yC) TAC.gold
+            | otherwise = return()
       -- colors rail-builtins blue
       cBlue :: IO ()
       cBlue | fromJust lex `elem` [NOP,Boom,EOF,Input,Output,IDT.Underflow,
               RType,Add1,Divide,Multiply,Subtract,Remainder,Cut,Append,Size,Nil,
               Cons,Breakup,Greater,Equal] = TAC.putColor textAC (xC,yC) TAC.blue
-            |otherwise = return()
+            | otherwise = return()
       --function to color commands with strings like [], {}
-      colorStrCommand :: String -> Color -> IO IP
+      colorStrCommand :: String -> TAC.RGBColor -> IO IP
       colorStrCommand str color = do
         colorMoves grid2D (turnaround ip)
           (turnaround parseIP) color textAC
         highlightFct grid2D (step grid2D parseIP) yOffset textAC
       --steps the IP to the beginning of an constant, call or pop
-      colorMoves :: Grid2D -> IP -> IP -> Color -> TAC.TextAreaContent-> IO IP
+      colorMoves :: Grid2D -> IP -> IP -> TAC.RGBColor -> TAC.TextAreaContent-> IO IP
       colorMoves grid2D endIP curIP color textAC 
         | endIP == curIP = do
-          TAC.putColor textAC (posx curIP,posy curIP+yOffset) color
+          TAC.putColor textAC (x,y) color
           return crash
         | otherwise = do
-          TAC.putColor textAC (posx curIP,posy curIP+yOffset) color
+          TAC.putColor textAC (x,y) color
           colorMoves grid2D endIP (move curIP Forward) color textAC
           return crash
-
--- colors all entry red in a rect from x,y to xMax,yMax
+        where
+          x = fromIntegral $ posx curIP
+          y = fromIntegral $ posy curIP+yOffset
+          
+-- colors all entry red
 -- This function is needed to recolor after editing
-paintItRed :: Int-- x coord start
-  -> Int--y coord str
-  -> Int--x coord end
-  -> Int--y coord end
-  -> TAC.TextAreaContent
-  -> IO [IO()]
-paintItRed x y xMax yMax textAC =
-  return [TAC.putColor textAC (xs,ys) TAC.red | xs <- [x..xMax], ys <- [y..yMax]]
+paintItRed :: TAC.TextAreaContent -> IO ()
+paintItRed = TAC.deleteColors
   
-  
+
   
