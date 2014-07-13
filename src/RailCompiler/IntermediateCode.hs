@@ -512,6 +512,42 @@ generateInstruction (IDT.Call functionName) =
     metadata = []
   }]
 
+-- |Generate instruction for pushing nil.
+generateInstruction Nil =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "gen_list_push_nil",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for list cons.
+generateInstruction Cons =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "gen_list_cons",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for list breakup.
+generateInstruction Breakup =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "gen_list_breakup",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 -- |Fallback for unhandled lexemes (generates no-op).
 generateInstruction _ = return [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
 
@@ -622,7 +658,10 @@ process (IDT.ISI input) = IDT.IIB $ generateModule $ constants ++ variables ++
       initialiseSymbolTable,
       malloc,
       type1,
-      copySymbolTable
+      copySymbolTable,
+      listPushNil,
+      listCons,
+      listBreakup
     ] ++ codegen input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input

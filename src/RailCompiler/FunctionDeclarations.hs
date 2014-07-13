@@ -257,3 +257,27 @@ copySymbolTable = GlobalDefinition $ Global.functionDefaults {
     Parameter (PointerType (NamedTypeReference $ 
     Name "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
 }
+
+-- |Function declaration for pushing nil onto the stack.
+listPushNil :: Definition
+listPushNil = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "gen_list_push_nil",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for list cons.
+listCons :: Definition
+listCons = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "gen_list_cons",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for list breakup.
+listBreakup :: Definition
+listBreakup = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "gen_list_breakup",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
