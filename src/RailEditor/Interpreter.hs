@@ -86,7 +86,7 @@ module Interpreter (
     cnt <- readIORef (TAC.context tac)
     isBlocked <- blocked tac
     let flags = TAC.railFlags cnt
-    if (elem TAC.Step flags)
+    if (elem TAC.Step flags) && null (TAC.funcStack cnt)
     then do
       showError tac "Please reset, before you change the execution mode"
     else do
@@ -112,7 +112,7 @@ module Interpreter (
     cnt <- readIORef (TAC.context tac)
     isBlocked <- blocked tac
     let flags = TAC.railFlags cnt
-    if (elem TAC.Interpret flags)
+    if (elem TAC.Interpret flags) && null (TAC.funcStack cnt)
     then do
       showError tac "Please reset, before you change the execution mode"
     else do
