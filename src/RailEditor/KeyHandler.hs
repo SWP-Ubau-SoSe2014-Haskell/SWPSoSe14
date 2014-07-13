@@ -146,10 +146,22 @@ handlePrintKeySpec :: TAC.TextAreaContent
 handlePrintKeySpec tac pos@(x,y) key val = do
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   cell <- TAC.getCell tac pos
-  let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
-  History.action tac pos (TAC.Replace [curchar] [char])
-  TAC.putCell tac pos (char,TAC.defaultColor)
-  return (x+1,y)
+  dir@(dx,dy) <- TAC.getDirection tac
+  if char `elem` "*+x^v><-|/@"
+  then do
+    let
+      newDir@(nx,ny) = getNewDirection char dir
+      (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
+    History.action tac pos (TAC.Replace [curchar] [char])
+    TAC.putCell tac pos (char,TAC.defaultColor)
+    return (x+nx,y+ny)
+  else do
+    let
+      newDir@(nx,ny) = dir
+      (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
+    History.action tac pos (TAC.Replace [curchar] [char])
+    TAC.putCell tac pos (char,TAC.defaultColor)
+    return (x+nx,y+ny)
 
 -- | handling of printable keys in Insert-mode
 handlePrintKeyIns :: TAC.TextAreaContent
@@ -323,3 +335,71 @@ handleDelete tac pos@(x,y) = do
     TACU.moveChars tac (x+1,y) (-1,0)
     return pos
 
+-- Rail Smart-mode setting of Cursor-Position
+-- directions
+dNW :: TAC.Direction
+dNW = (-1,-1)
+dN :: TAC.Direction
+dN = (0,-1)
+dNO :: TAC.Direction
+dNO = (1,-1)
+dW :: TAC.Direction
+dW = (-1,0)
+dD :: TAC.Direction
+dD = (0,0)
+dO :: TAC.Direction
+dO = (1,0)
+dSW :: TAC.Direction
+dSW = (-1,1)
+dS :: TAC.Direction
+dS = (0,1)
+dSO :: TAC.Direction
+dSO = (1,1)
+
+-- | find new direction, sets (0,0) if input isundefined
+getNewDirection :: Char -> TAC.Direction -> TAC.Direction
+getNewDirection _ (0,0) = (1,0)
+getNewDirection '*' x = x
+getNewDirection '@' (x,y) = (-x,-y)
+getNewDirection '+' dir
+  |dir `elem` [dS, dN, dW, dO] = dir
+  |otherwise = dD
+getNewDirection 'x' dir
+  | dir `elem` [dSO, dSW, dNO, dNW] = dir
+  | otherwise = dD
+getNewDirection '|' dir
+  | dir `elem` [dS, dSW, dSO] = dS
+  | dir `elem` [dN, dNO, dNW] = dN
+  | otherwise = dD
+getNewDirection '-' dir
+  | dir `elem` [dO, dSO, dNO] = dO
+  | dir `elem` [dW, dSW, dNW] = dW
+  | otherwise = dD
+getNewDirection '/' dir
+  | dir `elem` [dO, dN, dNO] = dNO
+  | dir `elem` [dW, dS, dSW] = dSW
+  | otherwise = dD
+getNewDirection '\\' dir
+  | dir `elem` [dW, dN, dNW] = dNW
+  | dir `elem` [dS, dO, dSO] = dSO
+  | otherwise = dD
+getNewDirection '<' dir
+  | dir == dO  = dSO
+  | dir == dSW = dW
+  | dir == dNW = dNO
+  | otherwise  = dD
+getNewDirection '>' dir
+  | dir == dW  = dNW
+  | dir == dNO = dO
+  | dir == dSO = dSW
+  | otherwise  = dD
+getNewDirection 'v' dir
+  | dir == dN  = dNO
+  | dir == dSO = dS
+  | dir == dSW = dNW
+  | otherwise  = dD
+getNewDirection '^' dir
+  | dir == dS  = dSW
+  | dir == dNO = dSO
+  | dir == dNW = dN
+  | otherwise  = dD
