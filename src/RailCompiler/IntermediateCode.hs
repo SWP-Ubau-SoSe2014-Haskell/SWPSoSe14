@@ -343,6 +343,18 @@ generateInstruction Remainder =
     metadata = []
   }]
 
+-- |Generate instruction for the type instruction.
+generateInstruction RType =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "type",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 -- |Generate instruction for the sub instruction.
 generateInstruction Subtract =
   return [Do LLVM.General.AST.Call {

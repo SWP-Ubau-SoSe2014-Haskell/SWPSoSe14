@@ -114,6 +114,14 @@ div1 = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- |Function declaration for 'type'.
+type1 :: Definition
+type1 = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "type",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 -- |Function declaration for pushing constants.
 pushStringCpy :: Definition
 pushStringCpy = GlobalDefinition $ Global.functionDefaults {
@@ -286,3 +294,4 @@ getTable = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
     Name "lambda_element") (AddrSpace 0)) (UnName 0) [] ], False)
 }
+
