@@ -51,3 +51,24 @@ define %stack_element* @list_prepend(%stack_element* %list, %stack_element* %ele
     ; That's it!
     ret %stack_element* %list
 }
+
+; Pop the head off a non-empty list.
+define %stack_element* @list_pop(%stack_element %list) {
+    ; Get the top stack_wrapper of the list.
+    %head_wrapper0 = call i8* @stack_element_get_data(%stack_element* %list)
+    %head_wrapper1 = bitcast i8* %head_wrapper0 to %stack_wrapper*
+
+    ; Get the contents of the wrapper.
+    %top_elm = call %stack_element* @stack_wrapper_get_element(%stack_wrapper* %head_wrapper1)
+
+    ; What's the new head of the list?
+    %new_head0 = call %stack_wrapper* @stack_wrapper_get_next(%stack_wrapper* %head_wrapper1)
+    %new_head1 = bitcast %stack_wrapper* %new_head0 to i8*
+    call void @stack_element_set_data(%stack_element* %list, i8* %new_head1)
+
+    ; Now we can free the old topmost wrapper.
+    call void @stack_wrapper_free(%stack_wrapper* %head_wrapper1)
+
+    ; That's it!
+    ret %stack_element* %top_elm
+}
