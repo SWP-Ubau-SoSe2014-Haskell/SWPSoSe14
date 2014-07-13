@@ -25,7 +25,7 @@ module TextAreaContent (
   TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
   ActionQueue,
   RailType(RailString, RailList, RailLambda),
-  InterpreterContext(IC), dataStack, funcStack, breakMap, inputOffset, curIPPos,railFlags,
+  InterpreterContext(IC), dataStack, funcStack, breakMap, inputOffset, curIPPos, railFlags,
   RailFlag(Interpret,Step,Blocked,EOFWait),
 
 -- * Constructors
@@ -61,7 +61,6 @@ module TextAreaContent (
   undoQueue,
   context,
   buffer,
-  railFlags,
   getSelectedPositons,
   getPositons,
   setClipboard,
@@ -87,7 +86,7 @@ data Action = Remove [(Char,Bool)] | Insert [(Char,Bool)] | Replace [(Char,Bool)
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
 -- types for interpreter
-data RailType = RailString String | RailList [RailType] | RailLambda String Lexer.IP deriving (Eq)
+data RailType = RailString String | RailList [RailType] | RailLambda String Lexer.IP (Map.Map String RailType) deriving (Eq)
 
 data RailFlag = Interpret | Step | Blocked | EOFWait deriving (Eq)
 
@@ -95,7 +94,7 @@ instance Show RailType
  where
   show (RailString string) = string
   show (RailList list) = show list
-  show (RailLambda string ip) = string ++ show (Lexer.posx ip, Lexer.posy ip)
+  show (RailLambda string ip _) = string ++ show (Lexer.posx ip, Lexer.posy ip)
 data InterpreterContext = 
   IC {
     dataStack :: [RailType],

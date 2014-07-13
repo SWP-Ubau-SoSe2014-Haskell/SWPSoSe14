@@ -236,8 +236,8 @@ module Interpreter (
         if not $ isLambda $ head $ TAC.dataStack cnt
         then showError tac "Wrong type on stack, string expected"
         else do
-          let ((TAC.RailLambda fn ip):xs) = TAC.dataStack cnt
-          writeIORef (TAC.context tac) cnt{TAC.funcStack = (fn, ip, Map.empty):(TAC.funcStack cnt), TAC.dataStack = xs}
+          let ((TAC.RailLambda fn ip map):xs) = TAC.dataStack cnt
+          writeIORef (TAC.context tac) cnt{TAC.funcStack = (fn, ip, map):(TAC.funcStack cnt), TAC.dataStack = xs}
     else writeIORef (TAC.context tac) cnt{TAC.funcStack = (string, Lexer.start, Map.empty):(TAC.funcStack cnt)}
   perform tac _ IDT.Add1 = performMath tac (+)
   perform tac _ IDT.Divide = performMath tac (div) -- may be needed to adjust according to compiler
@@ -337,7 +337,7 @@ module Interpreter (
     cnt <- readIORef (TAC.context tac)
     let ((fname, ip, vars):xs) = TAC.funcStack cnt
         (lip, nip) = Lexer.lambdadirs ip
-    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailLambda fname lip):(TAC.dataStack cnt), TAC.funcStack = (fname, nip, vars):xs}
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailLambda fname lip vars):(TAC.dataStack cnt), TAC.funcStack = (fname, nip, vars):xs}
 
   performMath :: TAC.TextAreaContent -> (Int -> Int -> Int) -> IO ()
   performMath tac op = do
@@ -424,7 +424,7 @@ module Interpreter (
   isBool _ = False
 
   isLambda :: TAC.RailType -> Bool
-  isLambda (TAC.RailLambda _ _) = True
+  isLambda (TAC.RailLambda _ _ _) = True
   isLambda _ = False
 
   typeOf :: TAC.RailType -> TAC.RailType
