@@ -20,6 +20,7 @@
 ;      those are represented with type == 1 and dataPtr == null.
 ;      For non-empty lists, dataPtr points to another stack_element which
 ;      is the head of the (linked) list.
+;    * 2 means lambda.
 ;  * void *dataPtr: Points to type-specific data. May be null.
 ;  * i32 refCount: The element's reference count. When this reaches 0, the element
 ;    is free'd.
@@ -46,6 +47,11 @@
 ; linked list.
 %stack_wrapper = type { %stack_element*, %stack_wrapper* }
 
+; Definitions for lambda push and pop
+; The first Element is a pointer to the lambda funtion, the second is a
+; pointer to the symbol table for the lambda 
+%struct.table = type { i8*, %stack_element*, %struct.table* }
+%lambda_element = type {i32 (%struct.table*)**, %struct.table*}
 
 ; Global variables
 @stack = global %stack_wrapper* null  ; Linked list of stack_element structs.
@@ -488,4 +494,48 @@ define void @push_float(double %top_float)
   call %stack_element* @push_string_ptr(i8* %buffer_addr)
 
   ret void
+}
+
+; takes a function pointer and a table pointer and pushes both as a struct onto the stack
+define void @push_lambda(i32 (%struct.table*)** %function_ptr, %struct.table* %table_ptr)
+{
+  %l = call i8* @malloc(i16 16)
+  %l_ptr = bitcast i8* %l to %lambda_element*
+  ; store function pointer
+  %l_ptr_func = getelementptr inbounds %lambda_element* %l_ptr, i32 0, i32 0
+  store i32 (%struct.table*)** %function_ptr, i32 (%struct.table*)*** %l_ptr_func
+  ; store tablre pointer
+  %l_ptr_table = getelementptr inbounds %lambda_element* %l_ptr, i32 0, i32 1
+  store %struct.table* %table_ptr, %struct.table** %l_ptr_table
+
+  ; push element onto the stack
+  %l_elem = call %stack_element* @stack_element_new(i8 2, i8* %l)
+  call void @push_struct(%stack_element* %l_elem)
+  ret void
+}
+
+; pops form stack and checks if stack_element is a lambda
+; returns a pointer to the lambda element
+define %lambda_element* @pop_lambda()
+{
+  %l_elem = call %stack_element* @pop_struct()
+  ;; TODO check type
+  %l_ptr = call i8* @stack_element_get_data(%stack_element* %l_elem)
+  %l_ptr_bitcast = bitcast i8* %l_ptr to %lambda_element*
+  ret %lambda_element* %l_ptr_bitcast
+}
+
+; returns the pointer to the lambda function
+define i32 (%struct.table*)* @get_lambda_pointer(%lambda_element* %l){
+  %l_func_ptr = getelementptr inbounds %lambda_element* %l, i32 0, i32 0
+  %l_func = load i32 (%struct.table*)*** %l_func_ptr
+  %l_func2 = load i32 (%struct.table*)** %l_func
+  ret i32 (%struct.table*)* %l_func2
+}
+
+; returns the pointer to the lambda symbol table
+define %struct.table* @get_lambda_table(%lambda_element* %l){
+  %l_table_ptr = getelementptr inbounds %lambda_element* %l, i32 0, i32 1
+  %l_table = load %struct.table** %l_table_ptr
+  ret %struct.table* %l_table
 }

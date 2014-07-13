@@ -50,3 +50,17 @@ structTable = TypeDefinition (Name "struct.table")
                 [ PointerType (IntegerType 8) (AddrSpace 0), 
                   PointerType (NamedTypeReference $ Name "stack_element") (AddrSpace 0), 
                   PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0)])
+
+functionReturnLambda :: Type
+functionReturnLambda = FunctionType {
+      resultType = IntegerType 32,
+      argumentTypes = [ PointerType (NamedTypeReference $ Name "struct.table")
+         (AddrSpace 0)],
+      isVarArg = False
+}
+
+lambdaElement :: Definition
+lambdaElement = TypeDefinition (Name "lambda_element")
+      (Just $ StructureType False
+                [ PointerType (PointerType functionReturnLambda (AddrSpace 0)) (AddrSpace 0), 
+                  PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0)])

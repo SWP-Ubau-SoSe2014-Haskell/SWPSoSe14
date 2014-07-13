@@ -249,3 +249,40 @@ copySymbolTable = GlobalDefinition $ Global.functionDefaults {
     Parameter (PointerType (NamedTypeReference $ 
     Name "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
 }
+
+-- |Function declaration for pushing lambda
+pushLambda :: Definition
+pushLambda = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "push_lambda",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter (PointerType (
+    PointerType functionReturnLambda (AddrSpace 0)) (AddrSpace 0)) (UnName 0) [],
+    Parameter (PointerType (NamedTypeReference $ 
+    Name "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
+}
+
+-- |Function declaration for popping a lambda element
+popLambda :: Definition
+popLambda = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "pop_lambda",
+  Global.returnType = PointerType (NamedTypeReference $ Name "lambda_element") (AddrSpace 0),
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for getting a pointer to a lambda function
+getLambda :: Definition
+getLambda = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "get_lambda_pointer",
+  Global.returnType = PointerType functionReturnLambda (AddrSpace 0),
+  Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
+    Name "lambda_element") (AddrSpace 0)) (UnName 0) [] ], False)
+}
+
+-- |Function declaration for getting lambda symbol table
+getTable :: Definition
+getTable = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "get_lambda_table",
+  Global.returnType = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
+  Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
+    Name "lambda_element") (AddrSpace 0)) (UnName 0) [] ], False)
+}
