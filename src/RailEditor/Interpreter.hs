@@ -228,7 +228,17 @@ module Interpreter (
       writeIORef (TAC.context tac) cnt{TAC.dataStack = (tail $ TAC.dataStack cnt), TAC.funcStack = (fname, ip, nvars):xs}
   perform tac _ (IDT.Call string) = do
     cnt <- readIORef (TAC.context tac)
-    writeIORef (TAC.context tac) cnt{TAC.funcStack = (string, Lexer.start, Map.empty):(TAC.funcStack cnt)}
+    if null string
+    then do
+      if null (TAC.dataStack cnt)
+      then showError tac "Empty stack"
+      else do
+        if not $ isLambda $ head $ TAC.dataStack cnt
+        then showError tac "Wrong type on stack, string expected"
+        else do
+          let ((TAC.RailLambda fn ip):xs) = TAC.dataStack cnt
+          writeIORef (TAC.context tac) cnt{TAC.funcStack = (fn, ip, Map.empty):(TAC.funcStack cnt), TAC.dataStack = xs}
+    else writeIORef (TAC.context tac) cnt{TAC.funcStack = (string, Lexer.start, Map.empty):(TAC.funcStack cnt)}
   perform tac _ IDT.Add1 = performMath tac (+)
   perform tac _ IDT.Divide = performMath tac (div) -- may be needed to adjust according to compiler
   perform tac _ IDT.Multiply = performMath tac (*)
