@@ -60,9 +60,12 @@ module RedoUndo (
         TAC.putCell tac actpos (x, TAC.defaultColor)
       runaction tac (TAC.Insert xs, actpos)
     runaction tac (TAC.Replace a [], actpos) = return actpos
-    runaction tac (TAC.Replace a (x:xs), actpos) = do
-      TAC.putCell tac actpos (x, TAC.defaultColor)
-      runaction tac (TAC.Replace a xs, actpos)
+    runaction tac (TAC.Replace a (x:xs), actpos@(px, py)) =
+      if x == ' '
+      then runaction tac (TAC.Remove [x], actpos)
+      else do
+        TAC.putCell tac actpos (x, TAC.defaultColor)
+        runaction tac (TAC.Replace a xs, (px+1, py))
     runaction tac (TAC.RemoveLine, (x, y)) = do
       TACU.moveLinesUp tac y
       return (x, y-1)
