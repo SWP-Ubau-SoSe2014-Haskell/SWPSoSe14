@@ -21,6 +21,7 @@
 
 ; Own external LLVM variables/functions
 declare %stack_element* @stack_element_new(i8, i8*)
+declare void @stack_element_unref(%stack_element*)
 declare void @stack_element_set_data(%stack_element*, i8*)
 declare i8* @stack_element_get_data(%stack_element*)
 declare %stack_wrapper* @stack_wrapper_new(%stack_element*, %stack_wrapper*)
@@ -37,6 +38,35 @@ define %stack_element* @list_new() {
     ; Empty lists are simply stack_element structs with a null data pointer.
     %elm = call %stack_element* @stack_element_new(i8 1, i8* null)
     ret %stack_element* %elm
+}
+
+; Decrement the refcount of each element of a list.
+;
+; This does not free the stack_element which holds the list itself.
+; That one is free'd by stack_element_unref().
+define void @list_unref_elements(%stack_element* %list) {
+top:
+    %head_wrapper0 = call i8* @stack_element_get_data(%stack_element* %list)
+    %head_wrapper1 = bitcast i8* %head_wrapper0 to %stack_wrapper*
+    br label %free_list_elements
+
+free_list_elements:
+    %curr_wrapper = phi %stack_wrapper* [ %head_wrapper1, %top ], [ %next_wrapper, %free_one_list_element ]
+
+    %is_null = icmp eq %stack_wrapper* %curr_wrapper, null
+    br i1 %is_null, label %done, label %free_one_list_element
+
+free_one_list_element:
+    %next_wrapper = call %stack_wrapper* @stack_wrapper_get_next(%stack_wrapper* %curr_wrapper)
+    %elm = call %stack_element* @stack_wrapper_get_element(%stack_wrapper* %curr_wrapper)
+    call void @stack_element_unref(%stack_element* %elm)
+    call void @stack_wrapper_free(%stack_wrapper* %curr_wrapper)
+
+    br label %free_list_elements
+
+done:
+    ; Nothing to do since the list is empty.
+    ret void
 }
 
 ; Prepend a stack_element to a list (also called "cons").
