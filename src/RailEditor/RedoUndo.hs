@@ -24,8 +24,8 @@ module RedoUndo (
     -- functions --
     invert :: (TAC.Action, TAC.Position) -> (TAC.Action, TAC.Position)
     invert (TAC.Concat act1 act2, pos) = (TAC.Concat (invert act1) (invert act2), pos)
-    invert (TAC.Remove string, pos) = (TAC.Insert string, pos)
-    invert (TAC.Insert string, pos) = (TAC.Remove string, pos)
+    invert (TAC.Remove content, pos) = (TAC.Insert content, pos)
+    invert (TAC.Insert content, pos) = (TAC.Remove content, pos)
     invert (TAC.Replace a b, pos) = (TAC.Replace b a, pos)
     invert (TAC.RemoveLine, (x, y)) = (TAC.InsertLine, (x, y-1))
     invert (TAC.InsertLine, (x, y)) = (TAC.RemoveLine, (x, y+1))
@@ -52,19 +52,19 @@ module RedoUndo (
       TACU.moveChars tac actpos (-1,0)
       runaction tac (TAC.Remove xs, actpos)
     runaction tac (TAC.Insert [], actpos) = return actpos
-    runaction tac (TAC.Insert (x:xs), actpos) = do
-      if x == '\n'
+    runaction tac (TAC.Insert (content@(char,_):xs), actpos) = do
+      if char == '\n'
       then TACU.moveLinesDownXShift tac actpos True
       else do
         TACU.moveChars tac actpos (1,0)
-        TAC.putCell tac actpos (x, TAC.defaultColor)
+        TAC.putCell tac actpos (content, TAC.defaultColor)
       runaction tac (TAC.Insert xs, actpos)
     runaction tac (TAC.Replace a [], actpos) = return actpos
-    runaction tac (TAC.Replace a (x:xs), actpos@(px, py)) =
-      if x == ' '
-      then runaction tac (TAC.Remove [x], actpos)
+    runaction tac (TAC.Replace a (content@(char,_):xs), actpos@(px, py)) =
+      if char == ' '
+      then runaction tac (TAC.Remove [content], actpos)
       else do
-        TAC.putCell tac actpos (x, TAC.defaultColor)
+        TAC.putCell tac actpos (content, TAC.defaultColor)
         runaction tac (TAC.Replace a xs, (px+1, py))
     runaction tac (TAC.RemoveLine, (x, y)) = do
       TACU.moveLinesUp tac y

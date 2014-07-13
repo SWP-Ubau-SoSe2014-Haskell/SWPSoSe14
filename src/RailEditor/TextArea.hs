@@ -31,6 +31,7 @@ module TextArea(
 import qualified TextAreaContent as TAC
 import qualified KeyHandler
 import qualified Highlighter as HIGH
+import qualified Selection
 
 import qualified Graphics.Rendering.Cairo as CAIRO
 import qualified Graphics.UI.Gtk as GTK
@@ -143,7 +144,24 @@ initTextAreaWithContent areaContent = do
     readIORef posRef >>= clearCursor textArea
     handleButtonPress textArea (round(Events.eventX event),round(Events.eventY event)) >>= writeIORef posRef
     return $ Events.eventSent event
-
+    
+  GTK.on drawArea GTK.motionNotifyEvent $ do
+    actualPos <- GTK.eventCoordinates
+    CAIRO.liftIO $ do
+      let areaRef = textAreaContent textArea
+      tac <- readIORef areaRef
+      currentPos <- readIORef posRef                            
+      newPos <- updatePosition actualPos
+      clearCursor textArea currentPos
+      showCursor textArea newPos
+      when (currentPos /= newPos) $ do
+        (isAlreadySelected,selectedContent) <- Selection.handleSelection tac currentPos newPos
+        if isAlreadySelected 
+        then deselectEntries textArea tac selectedContent
+        else selectEntries textArea selectedContent
+        writeIORef posRef newPos
+    GTK.eventRequestMotions
+    return True
   {-
     This function is called when the user presses a key.
     It starts the heyHandler the highlighter and redraw the textAreaContent.
@@ -195,14 +213,20 @@ setUpDrawingArea = do
   drawingArea <- GTK.drawingAreaNew
   GTK.widgetModifyBg drawingArea GTK.StateNormal defaultBgColor
   GTK.set drawingArea [GTK.widgetCanFocus GTK.:= True]
+  GTK.widgetAddEvents drawingArea [GTK.ButtonMotionMask]
   GTK.widgetSetSizeRequest drawingArea (width) (height)
   return drawingArea
 
 --This handles a mouse button press event
 handleButtonPress :: TextArea -> TAC.Position -> IO (TAC.Position)  
 handleButtonPress textArea (x,y) = do
-  let curPosIORef = currentPosition textArea
+  let tacIORef = textAreaContent textArea
+      curPosIORef = currentPosition textArea
   showCursor textArea newPos
+  tac <- readIORef tacIORef
+  selection <- TAC.getSelectedPositons tac
+  deselectEntries textArea tac selection
+  Selection.updateCells tac selection False
   return newPos
   where newPos = ((div x bef),(div y hef))-- position without hef and bef
 
@@ -217,7 +241,7 @@ renderScene textArea (x,y) char (TAC.RGBColor r g b) breakpoint isIP = do
   drawWindow <- GTK.widgetGetDrawWindow drawArea
   GTK.renderWithDrawable drawWindow $ do 
     CAIRO.setSourceRGBA r g b 1.0
-    CAIRO.moveTo (fromIntegral (xCoord x)) (fromIntegral (yCoord y))
+    CAIRO.moveTo (fromIntegral (xCoord x + 2)) (fromIntegral (yCoord y - 3))
     CAIRO.setFontSize 14
     CAIRO.showText [char]
   gc <- GC.gcNew drawWindow
@@ -282,18 +306,18 @@ redrawContent textArea = do
   where
     -- Call renderScene to 
     draw:: TextArea -> TAC.Position -> IO()
-    draw textArea (x,y) = do
+    draw textArea pos = do
       let tacIORef = textAreaContent textArea
       tac <- readIORef tacIORef
-      mayCell <- TAC.getCell tac (x,y)
+      mayCell <- TAC.getCell tac pos
       if (isNothing mayCell) 
       then return()
       else do
         let
-          col = snd $ fromJust $ mayCell
-          char = fst $ fromJust $ mayCell
+          ((char,isSelected),color) = fromJust $ mayCell
         cnt <- readIORef (TAC.context tac)
-        renderScene textArea (x,y) char col (Map.findWithDefault False (x,y) (TAC.breakMap cnt)) ((x,y) == TAC.curIPPos cnt)
+        renderScene textArea pos char color (Map.findWithDefault False pos (TAC.breakMap cnt)) (pos == TAC.curIPPos cnt)
+        when isSelected $ selectEntry textArea pos
         return ()
         
 
@@ -360,3 +384,47 @@ extendDrawingAreaVertically textArea y = do
     GTK.adjustmentSetValue adjustment $ value + (fromIntegral hef)
   when ((y*hef)-hef < (round value)) $
     GTK.adjustmentSetValue adjustment $ value - (fromIntegral hef)
+
+
+selectEntries :: TextArea -> [TAC.Position] -> IO ()
+selectEntries _ [] = return ()
+selectEntries textArea (x:xs) = do
+  selectEntry textArea x
+  selectEntries textArea xs
+
+selectEntry :: TextArea -> TAC.Position -> IO ()
+selectEntry textArea (x,y) = drawSelection textArea TAC.black 0.1 (x,y) (fromIntegral bef) (fromIntegral hef) 
+
+deselectEntries :: TextArea -> TAC.TextAreaContent -> [TAC.Position] -> IO ()
+deselectEntries _ _ [] = return ()
+deselectEntries textArea tac (x:xs) = do
+  deselectEntry textArea tac x
+  deselectEntries textArea tac xs
+    
+deselectEntry :: TextArea -> TAC.TextAreaContent -> TAC.Position -> IO ()
+deselectEntry textArea tac pos  = do
+  drawSelection textArea TAC.white 1 pos (bef+2) hef 
+  maybeCell <- TAC.getCell tac pos
+  let ((char,isSelected),color) = fromJust maybeCell
+  cnt <- readIORef (TAC.context tac)
+  renderScene textArea pos char color (Map.findWithDefault False pos (TAC.breakMap cnt)) (pos == TAC.curIPPos cnt)
+
+drawSelection :: TextArea -> TAC.RGBColor -> Double -> TAC.Position -> TAC.Coord -> TAC.Coord -> IO () 
+drawSelection textArea (TAC.RGBColor r g b) alpha (x,y) width height = do
+  drawWindow <- GTK.widgetGetDrawWindow $ drawingArea textArea
+  GTK.renderWithDrawable drawWindow $ do
+    CAIRO.setSourceRGBA r g b alpha
+    CAIRO.rectangle (fromIntegral (xCoord x)) (fromIntegral (hef * y)) (fromIntegral width) (fromIntegral height)
+    CAIRO.fill
+
+updatePosition :: (Double,Double) -> IO TAC.Position
+updatePosition (x,y) = 
+  return (round leftX,round topY)
+  where leftX = getMultiplier x (fromIntegral bef) 0
+        topY  = getMultiplier y (fromIntegral hef) 0
+  
+getMultiplier :: Double -> Double -> Double -> Double
+getMultiplier a b count
+  | a > b * (count+1) = getMultiplier a b (count+1)
+  | otherwise = count
+

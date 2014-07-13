@@ -1,7 +1,7 @@
 {- |
 Module      :  KeyHandler.hs
 Description :  .
-Maintainer  :  Kristin Knorr, Nicolas Lehmann (c)
+Maintainer  :  Kristin Knorr, Nicolas Lehmann, Benjamin Kodera (c)
 License     :  MIT
 
 Stability   :  stable
@@ -21,6 +21,7 @@ import qualified TextAreaContent as TAC
 import qualified TextAreaContentUtils as TACU
 import qualified RedoUndo as History
 import qualified Interpreter
+import qualified Selection
 
 data InputMode = Replace | Insert | Smart
 
@@ -39,6 +40,18 @@ handleKey tac pos modus modif key val =
     if elem Shift modif
     then History.redo tac pos
     else History.undo tac pos
+  else if (elem Control modif &&
+    (keyToChar val == Just 'c' || keyToChar val == Just 'C'))  -- copy
+  then do
+    TAC.setClipboard tac
+    return pos
+  else if (elem Control modif &&
+    (keyToChar val == Just 'v' || keyToChar val == Just 'V'))  -- paste
+  then do
+    clipboard <- TAC.getClipboard tac
+    cells <- Selection.getCellsByPositons tac clipboard
+    History.action tac pos (TAC.Insert cells)
+    Selection.relocateCells tac clipboard pos >>= return
   else
     if (elem Control modif && keyToChar val == Just 'b')  --set breakpoint
     then Interpreter.toggleBreak tac pos >> return pos
@@ -136,9 +149,9 @@ handlePrintKeyRP :: TAC.TextAreaContent
 handlePrintKeyRP tac pos@(x,y) key val = do
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   cell <- TAC.getCell tac pos
-  let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
-  History.action tac pos (TAC.Replace [curchar] [char])
-  TAC.putCell tac pos (char,TAC.defaultColor)
+  let ((curchar,isSelected), _) = if isNothing cell then ((TAC.defaultChar,False), TAC.defaultColor) else fromJust cell
+  History.action tac pos (TAC.Replace [(curchar,False)] [(char,False)])
+  TAC.putCell tac pos ((char,isSelected),TAC.defaultColor)
   return (x+1,y)
 
 -- | handling of printable keys in Replace-mode and Smart-mode (overwriting)
@@ -150,9 +163,9 @@ handlePrintKeySpec :: TAC.TextAreaContent
 handlePrintKeySpec tac pos@(x,y) key val = do
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
   cell <- TAC.getCell tac pos
-  let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
-  History.action tac pos (TAC.Replace [curchar] [char])
-  TAC.putCell tac pos (char,TAC.defaultColor)
+  let (content@(curchar,isSelected), _) = if isNothing cell then ((TAC.defaultChar,False), TAC.defaultColor) else fromJust cell
+  History.action tac pos (TAC.Replace [content] [(char,False)])
+  TAC.putCell tac pos ((char,False),TAC.defaultColor)
   return (x+1,y)
 
 -- | handling of printable keys in Insert-mode
@@ -163,9 +176,9 @@ handlePrintKeyIns :: TAC.TextAreaContent
   -> IO(TAC.Position)
 handlePrintKeyIns tac pos@(x,y) key val = do
   let char = (if key=="dead_circumflex" then '^' else fromJust $ keyToChar val)
-  History.action tac pos (TAC.Insert [char])
+  History.action tac pos (TAC.Insert [(char,False)])
   TACU.moveChars tac pos (1,0)
-  TAC.putCell tac pos (char,TAC.defaultColor)
+  TAC.putCell tac pos ((char,False),TAC.defaultColor)
   return (x+1,y)
 
 -- | checking if key is an arrow 
@@ -256,9 +269,9 @@ handleBackSpace tac (x,y) =
       if empty
       then return(0,y)
       else do
-        cell <- TAC.getCell tac (x-1,y)
-        let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
-        History.action tac (x-1,y) (TAC.Remove [curchar])
+        maybeCell <- TAC.getCell tac (x-1,y)
+        let cell = if isNothing maybeCell then ((TAC.defaultChar,False), TAC.defaultColor) else fromJust maybeCell
+        History.action tac (x-1,y) (TAC.Remove [fst cell])
         TAC.deleteCell tac (x-1,y)
         TACU.moveChars tac (x,y) (-1,0)
         return (x-1,y)
@@ -295,16 +308,16 @@ handleTab tac pos@(x,y) modif = do
       then
         if x>3
         then do
-          History.action tac (x-4,y) (TAC.Remove "    ")
+          History.action tac (x-4,y) (TAC.Remove (take 4 (repeat (' ',False))))
           TACU.moveChars tac pos (-4,0)
           return (x-4,y)
         else do
-          History.action tac (0,y) (TAC.Remove (take x (repeat ' ')))
+          History.action tac (0,y) (TAC.Remove (take x (repeat (' ',False))))
           TACU.moveChars tac pos (-x,0)
           return (0,y)
       else return pos
     _ -> do
-      History.action tac pos (TAC.Insert "    ")
+      History.action tac pos (TAC.Insert (take 4 (repeat (' ',False))))
       TACU.moveChars tac pos (4,0)
       return(x+4,y)
 
@@ -320,9 +333,9 @@ handleDelete tac pos@(x,y) = do
     TACU.moveLinesUp tac (y+1)
     return (x,y)
   else do
-    cell <- TAC.getCell tac pos
-    let (curchar, _) = if isNothing cell then (TAC.defaultChar, TAC.defaultColor) else fromJust cell
-    History.action tac pos (TAC.Remove [curchar])
+    maybeCell <- TAC.getCell tac pos
+    let cell = if isNothing maybeCell then ((TAC.defaultChar,False), TAC.defaultColor) else fromJust maybeCell
+    History.action tac pos (TAC.Remove [fst cell])
     TAC.deleteCell tac (x,y)
     TACU.moveChars tac (x+1,y) (-1,0)
     return pos
