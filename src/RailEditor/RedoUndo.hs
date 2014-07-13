@@ -20,6 +20,8 @@ module RedoUndo (
     import Control.Monad
     import qualified TextAreaContent as TAC
     import qualified TextAreaContentUtils as TACU
+    
+    data UndoRedo = Undo | Redo deriving Eq
 
     -- functions --
     invert :: (TAC.Action, TAC.Position) -> (TAC.Action, TAC.Position)
@@ -34,7 +36,7 @@ module RedoUndo (
     action :: TAC.TextAreaContent -> TAC.Position -> TAC.Action -> IO ()
     action tac position useraction = do
       redoqueue <- readIORef (TAC.redoQueue tac)
-      when (not (null redoqueue)) $ writeIORef (TAC.redoQueue tac) []
+      unless (null redoqueue) $ writeIORef (TAC.redoQueue tac) []
       undoqueue <- readIORef (TAC.undoQueue tac)
       writeIORef (TAC.undoQueue tac) (invert (useraction, position):undoqueue)
 
@@ -43,8 +45,8 @@ module RedoUndo (
     shiftaction (from, to) = (tail from, invert (head from):to, head from)
 
     -- run whatever action given
-    runaction :: TAC.TextAreaContent -> (TAC.Action, TAC.Position) -> IO (TAC.Position)
-    runaction tac (TAC.Concat act1 act2, actpos) = do
+    runaction :: TAC.TextAreaContent -> (TAC.Action, TAC.Position) -> IO TAC.Position
+    runaction tac (TAC.Concat act1 act2, actpos) =
       runaction tac act1 >> runaction tac act2
     runaction tac (TAC.Remove [], actpos) = return actpos
     runaction tac (TAC.Remove (x:xs), actpos) = do
@@ -74,31 +76,35 @@ module RedoUndo (
       return (0, y+1)
 
     -- allows to undo actions in the editor
-    undo :: TAC.TextAreaContent -> TAC.Position -> IO (TAC.Position)
+    undo :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position
     undo tac pos = do
       undoqueue <- readIORef (TAC.undoQueue tac)
-      if (not (null undoqueue))
-      then do
-        redoqueue <- readIORef (TAC.redoQueue tac)
-        undoqueue <- readIORef (TAC.undoQueue tac)
-        let (newundo, newredo, action) = shiftaction (undoqueue, redoqueue)
-        writeIORef (TAC.redoQueue tac) newredo
-        writeIORef (TAC.undoQueue tac) newundo
-        runaction tac action
-      else
-        return pos
+      if not (null undoqueue)
+      then runRedoUndo tac Undo
+      else return pos
 
     -- allows to redo actions in the editor
-    redo :: TAC.TextAreaContent -> TAC.Position -> IO (TAC.Position)
+    redo :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position
     redo tac pos = do
       redoqueue <- readIORef (TAC.redoQueue tac)
-      if (not (null redoqueue))
-      then do
-        redoqueue <- readIORef (TAC.redoQueue tac)
-        undoqueue <- readIORef (TAC.undoQueue tac)
-        let (newredo, newundo, action) = shiftaction (redoqueue, undoqueue)
-        writeIORef (TAC.redoQueue tac) newredo
-        writeIORef (TAC.undoQueue tac) newundo
-        runaction tac action
-      else
-        return pos
+      if not (null redoqueue)
+      then runRedoUndo tac Redo
+      else return pos
+
+    runRedoUndo :: TAC.TextAreaContent -> UndoRedo -> IO TAC.Position
+    runRedoUndo tac cmd = do
+      redoqueue <- readIORef (TAC.redoQueue tac)
+      undoqueue <- readIORef (TAC.undoQueue tac)
+      if cmd == Undo then do
+        let (newundo, newredo, action) = shiftaction (undoqueue, redoqueue)
+        exec tac newundo newredo action
+      else do
+        let (newredo, newundo, action) = shiftaction (redoqueue, undoqueue) 
+        exec tac newundo newredo action
+     
+    exec :: TAC.TextAreaContent -> TAC.ActionQueue -> TAC.ActionQueue -> (TAC.Action,TAC.Position) -> IO TAC.Position
+    exec tac u r action = do
+      writeIORef (TAC.redoQueue tac) r
+      writeIORef (TAC.undoQueue tac) u
+      runaction tac action
+        

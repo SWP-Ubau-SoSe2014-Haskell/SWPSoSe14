@@ -24,18 +24,14 @@ import Data.Maybe
 import qualified TextAreaContent as TAC
 import qualified Data.List as List
 
---type Selection = IORef  [Position]
-
 handleSelection :: TAC.TextAreaContent -> TAC.Position -> TAC.Position -> IO (Bool,[TAC.Position])
 handleSelection tac currentPos newPos = do
   positions <- TAC.getPositons tac
   let selectedEntries = getSelectedEntries positions currentPos newPos
-  if (List.length selectedEntries > 0) then do
+  if not (null selectedEntries) then do
     cell <- TAC.getCell tac $ head selectedEntries
     let isAlreadySelected = snd $ fst $ fromJust cell
-    if isAlreadySelected 
-    then updateCells tac selectedEntries False
-    else updateCells tac selectedEntries True
+    updateCells tac selectedEntries $ not isAlreadySelected 
     return (isAlreadySelected,selectedEntries)
   else return (False,[])
   
@@ -58,7 +54,7 @@ relocateCells tac positions (x,y) = do
   let (x1,y1) =  getTopLeft positions
       (x2,y2) = getBottomRight positions
   _relocateCells tac positions (x,y) (x1,y1)
-  return $ (x+x2-x1,y+y2-y1)
+  return (x+x2-x1,y+y2-y1)
 
 _relocateCells :: TAC.TextAreaContent -> [TAC.Position] -> TAC.Position -> TAC.Position -> IO ()
 _relocateCells _ [] _ _ = return ()
@@ -74,7 +70,7 @@ relocateCell tac pos@(x,y) (newX,newY) (offsetX,offsetY) = do
   TAC.putCell tac (newX+x-offsetX,newY+y-offsetY) ((char,False),TAC.defaultColor)
 
 getCellsByPositons :: TAC.TextAreaContent -> [TAC.Position] -> IO [(Char,Bool)]
-getCellsByPositons tac postions = _getCellsByPositons tac postions [] >>= return 
+getCellsByPositons tac postions = _getCellsByPositons tac postions []
 
 _getCellsByPositons :: TAC.TextAreaContent -> [TAC.Position] -> [(Char,Bool)] -> IO [(Char,Bool)]
 _getCellsByPositons _ [] cells = return cells
@@ -84,15 +80,15 @@ _getCellsByPositons tac (x:xs) cells = do
   _getCellsByPositons tac xs (content:cells)
 
 getSelectedEntries :: [TAC.Position] -> TAC.Position -> TAC.Position -> [TAC.Position]
-getSelectedEntries positions (x1,y1) (x2,y2) =
+getSelectedEntries positions (x1,y1) (x2,y2)
   -- down
-  if (y2 > y1) then List.filter (\(x,y) -> x >= x1 && y == y1 || y > y1 && y < y2 || x < x2 && y == y2) positions
+  | y2 > y1 = List.filter (\(x,y) -> x >= x1 && y == y1 || y > y1 && y < y2 || x < x2 && y == y2) positions
   -- right
-  else if (x2 > x1 && y2 == y1) then List.filter (\(x,y) -> x >= x1 && x < x2 && y == y2) positions 
+  | x2 > x1 && y2 == y1 = List.filter (\(x,y) -> x >= x1 && x < x2 && y == y2) positions 
   -- left
-  else if (x2 < x1 && y2 == y1) then List.filter (\(x,y) -> x < x1 && x >= x2 && y == y2) positions 
+  | x2 < x1 && y2 == y1 = List.filter (\(x,y) -> x < x1 && x >= x2 && y == y2) positions 
   -- up
-  else List.filter (\(x,y) -> x < x1 && y == y1 || y < y1 && y > y2 || x >= x2 && y == y2) positions
+  | otherwise = List.filter (\(x,y) -> x < x1 && y == y1 || y < y1 && y > y2 || x >= x2 && y == y2) positions
 
 {-
 selectAll :: DrawingArea -> ContentRef -> IO ()
