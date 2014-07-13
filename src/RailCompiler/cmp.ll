@@ -79,7 +79,16 @@ define i32 @equal(){
 
   ; The spec says that two elements of different types are always unequal.
   %equal_stack_types = icmp eq i8 %stack_type_a, %stack_type_b
-  br i1 %equal_stack_types, label %get_stack_elem_a, label %exit_with_false
+  br i1 %equal_stack_types, label %check_stack_type, label %exit_with_false
+
+check_stack_type:
+  ; Same stack element type, so it does not matter which of the two types
+  ; we use in the switch statement.
+  switch i8 %stack_type_a, label %exit_with_invalid_type
+    [
+      i8 0, label %get_stack_elem_a
+      i8 1, label %compare_lists
+    ]
 
 get_stack_elem_a:
   ; get type of number_a
@@ -108,6 +117,14 @@ get_types:
                                         i32 1, label %assume_b_int
                                         i32 2, label %assume_b_float
                                         i32 3, label %assume_b_string]
+
+;##############################################################################
+;                        list comparison
+;##############################################################################
+
+compare_lists:
+  ; TODO: Implement me!
+  br label %exit_with_invalid_type
 
 ;##############################################################################
 ;                        integer comparison
