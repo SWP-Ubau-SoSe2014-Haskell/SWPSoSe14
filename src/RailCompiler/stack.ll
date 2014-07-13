@@ -155,6 +155,10 @@ check_nil:
   %is_nil = icmp eq i8* %dataPtr, null 
   br i1 %is_nil, label %return_nil, label %return_list
 
+check_lambda:
+  %is_lambda = icmp eq i8 %actual_type, 2
+  br i1 %is_lambda, label %return_lambda, label %return_error
+
 return_nil:
   call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
                                          [4 x i8]* @type_nil, i64 0, i64 0))
@@ -165,7 +169,15 @@ return_list:
                                          [5 x i8]* @type_list, i64 0, i64 0))
   br label %exit
 
-check_lambda:
+return_lambda:
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
+                                         [7 x i8]* @type_lambda, i64 0, i64 0))
+  br label %exit
+
+return_error:
+  call %stack_element* @push_string_cpy(i8* getelementptr inbounds(
+                                          [14 x i8]* @err_type, i64 0, i64 0))
+  call void @crash(i1 0)
   br label %exit
 
 exit:
