@@ -591,12 +591,39 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 -- |Entry point into module.
 process :: IDT.SemAna2InterCode -> IDT.InterCode2Backend
 process (IDT.ISI input) = IDT.IIB $ generateModule $ constants ++ variables ++ 
-    [ stackElementTypeDef, structTable, underflowCheck, 
-      FunctionDeclarations.print, crash, start, finish, inputFunc,
-      eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, 
-      strlen, strapp, strcut, popInt, equal, greater, popInto, pushFrom, 
-      popBool, initialiseSymbolTable, malloc, type1,
-      copySymbolTable ] ++ codegen input
+    [
+      stackElementTypeDef,
+      structTable,
+      underflowCheck,
+      FunctionDeclarations.print,
+      crash,
+      start,
+      finish,
+      inputFunc,
+      eofCheck,
+      pushStringCpy,
+      pop,
+      peek,
+      add,
+      sub,
+      rem1,
+      mul,
+      div1,
+      streq,
+      strlen,
+      strapp,
+      strcut,
+      popInt,
+      equal,
+      greater,
+      popInto,
+      pushFrom,
+      popBool,
+      initialiseSymbolTable,
+      malloc,
+      type1,
+      copySymbolTable
+    ] ++ codegen input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input
