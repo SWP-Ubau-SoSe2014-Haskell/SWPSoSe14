@@ -1,11 +1,11 @@
 0
 #
-\nabc
+\nabc\na
 #
 1
 #
-a\nbc
+a\nbc\na
 #
 3
 #
-abc\n
+abc\n\na

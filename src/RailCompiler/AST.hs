@@ -197,7 +197,7 @@ module AST (fromAST, toAST, parse, adjacent, valids)
   where
    junctioncheck (Nothing, ip)
      | current code ip `elem` "+x*" && next code ip `elem` "v^<>" = (Nothing, crashfrom ip)
-     | forward == ' ' && (left == current code ip || right == current code ip) = (Nothing, crashfrom ip)
+--     | forward == ' ' && (left == current code ip || right == current code ip) = (Nothing, crashfrom ip)
      | forward == ' ' && (left `elem` "v^<>+x*" || right `elem` "v^<>+x*") = (Nothing, crashfrom ip)
      | otherwise = (Nothing, ip)
     where
@@ -234,8 +234,8 @@ module AST (fromAST, toAST, parse, adjacent, valids)
     -> Bool -- ^Whether or not the move could be made
  moveable code ip reldir
    | Map.size code == 0 = False
-   | newy < 0 || newy >= Map.size code = False
-   | dir ip `elem` [W, E] && (newx < 0 || newx >= Map.size line) = False
+   | isNothing (Map.lookup newy code) = False
+   | dir ip `elem` [W, E] && isNothing (Map.lookup newx line) = False
    | otherwise = True
   where
    (newy, newx) = posdir ip reldir
@@ -307,8 +307,9 @@ module AST (fromAST, toAST, parse, adjacent, valids)
                                 --     * Valid characters for movement to the (relative) left.
                                 --     * Valid characters for movement in the (relative) forward direction.
                                 --     * Valid characters for movement to the (relative) right.
- valids code ip = tripleinvert (commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip InstructionPointer.Left}, finvalid ip, commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip InstructionPointer.Right})
+ valids code ip = tripleinvert (secinv code ip InstructionPointer.Left, finvalid ip, secinv code ip InstructionPointer.Right)
   where
+   secinv code ip direction = [current code ip] ++ commandchars ++ dirinvalid ip ++ finvalid ip{dir = absolute ip direction}
    tripleinvert (l, f, r) = (filter (`notElem` l) everything, filter (`notElem` f) everything, filter (`notElem` r) everything)
    finvalid ip = dirinvalid ip ++ crossinvalid ip -- illegal to move forward
    dirinvalid ip -- illegal without crosses
