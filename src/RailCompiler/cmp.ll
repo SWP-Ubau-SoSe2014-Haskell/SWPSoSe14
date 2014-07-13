@@ -18,6 +18,7 @@
 %union.anon = type { i8* }
 
 declare i8* @stack_element_get_data(%stack_element* %element)
+declare i8 @stack_element_get_type(%stack_element*)
 declare void @stack_element_unref(%stack_element* %element)
 declare i32 @get_stack_elem(i8*, %struct.stack_elem*)
 declare %stack_element* @push_string_ptr(i8* %str)
@@ -67,13 +68,20 @@ define i32 @equal(){
   %struct_a = call %stack_element*()* @pop_struct()
   %number_a = call i8*(%stack_element*)* @stack_element_get_data(
                                                    %stack_element* %struct_a)
+  %stack_type_a = call i8 @stack_element_get_type(%stack_element* %struct_a)
 
   ; get second top of stack
   call void @underflow_assert()
   %struct_b = call %stack_element*()* @pop_struct()
   %number_b = call i8*(%stack_element*)* @stack_element_get_data(
                                                    %stack_element* %struct_b)
+  %stack_type_b = call i8 @stack_element_get_type(%stack_element* %struct_b)
 
+  ; The spec says that two elements of different types are always unequal.
+  %equal_stack_types = icmp eq i8 %stack_type_a, %stack_type_b
+  br i1 %equal_stack_types, label %get_stack_elem_a, label %exit_with_false
+
+get_stack_elem_a:
   ; get type of number_a
   %ret_a = call i32 @get_stack_elem(i8* %number_a, %struct.stack_elem* %new_elem_a)
   %is_zero_a = icmp slt i32 %ret_a, 0
@@ -328,3 +336,5 @@ exit:
   %result = load i32* %func_result
   ret i32 %result
 }
+
+; vim:ts=2 sw=2 et
