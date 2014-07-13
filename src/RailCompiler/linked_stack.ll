@@ -355,7 +355,7 @@ invalid_type:
 ; Assert that the data in the stack_element is a non-empty list.
 ;
 ; Crashes the program if the assertion fails.
-define void @stack_element_is_non_empty_list(%stack_element* %element) {
+define void @stack_element_assert_is_non_empty_list(%stack_element* %element) {
   ; Type 1 is list.
   call void @stack_element_assert_type(%stack_element* %element, i8 1)
 

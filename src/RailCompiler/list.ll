@@ -28,6 +28,10 @@ declare %stack_wrapper* @stack_wrapper_new(%stack_element*, %stack_wrapper*)
 declare void @stack_wrapper_free(%stack_wrapper*)
 declare %stack_element* @stack_wrapper_get_element(%stack_wrapper*)
 declare %stack_wrapper* @stack_wrapper_get_next(%stack_wrapper*)
+declare void @push_struct(%stack_element*)
+declare %stack_element* @pop_struct()
+declare void @stack_element_assert_type(%stack_element*, i8)
+declare void @stack_element_assert_is_non_empty_list(%stack_element*)
 
 
 ; Function definitions
@@ -107,4 +111,46 @@ define %stack_element* @list_pop(%stack_element* %list) {
 
     ; That's it!
     ret %stack_element* %top_elm
+}
+
+
+; Convenience functions for use in generated code.
+
+; Push nil (an empty list) onto the stack.
+define void @gen_list_push_nil() {
+    %list = call %stack_element* @list_new()
+    call void @push_struct(%stack_element* %list)
+    ret void
+}
+
+; Prepend the topmost element to the list, which is the stack element after
+; the topmost element, and push the resulting list.
+define void @gen_list_cons() {
+    %elm_to_prepend = call %stack_element* @pop_struct()
+    %list = call %stack_element* @pop_struct()
+
+    ; Make sure %list is a list.
+    call void @stack_element_assert_type(%stack_element* %list, i8 1)
+
+    ; Now we can prepend the element to the list...
+    call %stack_element* @list_prepend(%stack_element* %list, %stack_element* %elm_to_prepend)
+
+    ; ...and push the list again.
+    call void @push_struct(%stack_element* %list)
+
+    ret void
+}
+
+define void @gen_list_breakup() {
+    %list = call %stack_element* @pop_struct()
+    call void @stack_element_assert_is_non_empty_list(%stack_element* %list)
+
+    ; Now pop the topmost list element.
+    %top = call %stack_element* @list_pop(%stack_element* %list)
+
+    ; Now we can push the list and its former first element again.
+    call void @push_struct(%stack_element* %list)
+    call void @push_struct(%stack_element* %top)
+
+    ret void
 }
