@@ -18,7 +18,7 @@
 ;    * 0 means string. dataPtr points to a null-terminated string.
 ;    * 1 means list. Note that there is no seperate type for empty lists,
 ;      those are represented with type == 1 and dataPtr == null.
-;      For non-empty lists, dataPtr points to another stack_element which
+;      For non-empty lists, dataPtr points to another stack_wrapper which
 ;      is the head of the (linked) list.
 ;  * void *dataPtr: Points to type-specific data. May be null.
 ;  * i32 refCount: The element's reference count. When this reaches 0, the element
