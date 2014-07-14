@@ -49,7 +49,12 @@ handleKey tac pos modus modif key val
     clipboard <- TAC.getClipboard tac
     cells <- Selection.getCellsByPositons tac clipboard
     History.action tac pos (TAC.Insert cells)
-    Selection.relocateCells tac clipboard pos
+    positions <- TAC.getSelectedPositons tac
+    newPos <- if not (null positions) 
+                 then Selection.relocateCells tac clipboard (Selection.getMinimum positions)
+                 else Selection.relocateCells tac clipboard pos
+    Selection.clear tac newPos
+    return newPos
   | otherwise =
       if elem Control modif && keyToChar val == Just 'b'  --set breakpoint
       then Interpreter.toggleBreak tac pos >> return pos

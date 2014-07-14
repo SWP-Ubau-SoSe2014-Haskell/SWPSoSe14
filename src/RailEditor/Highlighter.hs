@@ -85,6 +85,11 @@ highlightFct grid2D ip yOffset textAC
       let (falseIP,trueIP) = junctionturns grid2D parseIP
       highlightFct grid2D falseIP yOffset textAC
       highlightFct grid2D trueIP yOffset textAC
+    Just (Lambda _) -> do
+      TAC.putColor textAC (xC,yC) TAC.gold
+      let (lip,bip) = lambdadirs parseIP
+      highlightFct grid2D (step grid2D lip) yOffset textAC
+      highlightFct grid2D (step grid2D bip) yOffset textAC
     Just (Constant str)   ->
       if [current grid2D parseIP] == "]" || 
          [current grid2D parseIP] == "["

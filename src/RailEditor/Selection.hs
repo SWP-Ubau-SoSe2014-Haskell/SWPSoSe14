@@ -16,6 +16,7 @@ module Selection (
                     clear,
                     getFirstPositions,
                     getBottomRight,
+                    getMinimum,
                     getCellsByPositons
                  )
   where
@@ -48,9 +49,10 @@ updateCells tac (pos:xs) value = do
 updateCell :: TAC.TextAreaContent -> TAC.Position -> Bool -> IO ()  
 updateCell tac pos value = do
   cell <- TAC.getCell tac pos
-  let char = fst $ fst $ fromJust cell
-  TAC.deleteCell tac pos
-  TAC.putCell tac pos ((char,value),TAC.defaultColor)
+  when (isJust cell) $ do
+    let char = fst $ fst $ fromJust cell
+    TAC.deleteCell tac pos
+    TAC.putCell tac pos ((char,value),TAC.defaultColor)
 
 relocateCells :: TAC.TextAreaContent -> [TAC.Position] -> TAC.Position -> IO TAC.Position
 relocateCells tac [] pos = return pos
@@ -69,17 +71,18 @@ _relocateCells tac (pos:xs) newPos offset = do
 relocateCell :: TAC.TextAreaContent -> TAC.Position -> TAC.Position -> TAC.Position -> IO ()  
 relocateCell tac pos@(x,y) (newX,newY) (offsetX,offsetY) = do
   cell <- TAC.getCell tac pos
-  let char = fst $ fst $ fromJust cell
-  --TAC.deleteCell tac oldPos   -- for cut and paste
-  TAC.putCell tac (newX+x-offsetX,newY+y-offsetY) ((char,False),TAC.defaultColor)
+  when (isJust cell) $ do
+    let char = fst $ fst $ fromJust cell
+    TAC.putCell tac (newX+x-offsetX,newY+y-offsetY) ((char,False),TAC.defaultColor)
 
+-- | clears a selection and removes all selected characters
 clear :: TAC.TextAreaContent -> TAC.Position -> IO (TAC.Position,TAC.Position)
 clear tac pos@(x,y) = do
   positions <- TAC.getSelectedPositons tac
   if not (null positions) then do
     cells <- Selection.getCellsByPositons tac positions
     History.action tac (getMinimum positions) (TAC.Remove cells)
-    Selection.clearCells tac positions
+    clearCells tac positions
     return (getMinimum positions,getMaximum positions)
   else return ((x-1,y),(x-1,y))
 
@@ -90,14 +93,17 @@ clearCells tac (x:xs) = do
   clearCells tac xs
 
 getCellsByPositons :: TAC.TextAreaContent -> [TAC.Position] -> IO [(Char,Bool)]
-getCellsByPositons tac postions = _getCellsByPositons tac postions []
+getCellsByPositons _ [] = return []
+getCellsByPositons tac positions = _getCellsByPositons tac positions []
 
 _getCellsByPositons :: TAC.TextAreaContent -> [TAC.Position] -> [(Char,Bool)] -> IO [(Char,Bool)]
 _getCellsByPositons _ [] cells = return cells
 _getCellsByPositons tac (x:xs) cells = do
   cell <- TAC.getCell tac x 
-  let (content,_) = fromJust cell
-  _getCellsByPositons tac xs (content:cells)
+  if isJust cell then do 
+    let (content,_) = fromJust cell
+    _getCellsByPositons tac xs (content:cells)
+  else _getCellsByPositons tac xs cells
 
 getSelectedEntries :: [TAC.Position] -> TAC.Position -> TAC.Position -> [TAC.Position]
 getSelectedEntries positions (x1,y1) (x2,y2)
@@ -110,16 +116,6 @@ getSelectedEntries positions (x1,y1) (x2,y2)
   -- up
   | otherwise = List.filter (\(x,y) -> x < x1 && y == y1 || y < y1 && y > y2 || x >= x2 && y == y2) positions
 
-{-
-selectAll :: DrawingArea -> ContentRef -> IO ()
-selectAll drawingArea contentRef = do
-  content <- readIORef contentRef
-  let unSelectedContentEntries = Map.filter (\contentEntry -> isSelected contentEntry == False) content
-  when (Map.size unSelectedContentEntries > 0) $ do
-    selectEntries drawingArea $ Map.toList unSelectedContentEntries
-    modifyIORef' contentRef $ Map.map $ \(Content ch co _) -> (Content ch co True)
--}
-
 getMaximumY :: [TAC.Position] -> TAC.Coord
 getMaximumY = Prelude.foldl (\y1 (_,y2) -> max y1 y2) 0
 
@@ -127,12 +123,15 @@ getMaximumX :: [TAC.Position] -> TAC.Coord
 getMaximumX = Prelude.foldl (\x1 (x2,_) -> max x1 x2) 0
 
 getMinimumY :: [TAC.Position] -> TAC.Coord
+getMinimumY [] = 0
 getMinimumY positions = fst $ minimum $ Prelude.map (\(x,y) -> (y,x)) positions
 
 getMinimumX :: [TAC.Position] -> TAC.Coord
-getMinimumX = fst.minimum
+getMinimumX [] = 0
+getMinimumX positions = fst $ minimum positions
 
 getTopLeft :: [TAC.Position] -> TAC.Position
+getTopLeft [] = (0,0)
 getTopLeft positions = (getMinimumX positions, getMinimumY positions)
 
 getBottomRight :: [TAC.Position] -> TAC.Position
@@ -141,12 +140,15 @@ getBottomRight positions = (x+1,y)
   where (y,x) = maximum $ Prelude.map (\(x1,y1) -> (y1,x1)) positions
   
 getMinimum :: [TAC.Position] -> TAC.Position
+getMinimum [] = (0,0)
 getMinimum positions = (x,y) 
   where (y,x) = minimum $ Prelude.map (\(x1,y1) -> (y1,x1)) positions
 
 getMaximum :: [TAC.Position] -> TAC.Position
+getMaximum [] = (0,0)
 getMaximum positions = (x,y) 
   where (y,x) = maximum $ Prelude.map (\(x1,y1) -> (y1,x1)) positions
 
 getFirstPositions :: [TAC.Position] -> [TAC.Position]
+getFirstPositions [] = []
 getFirstPositions positions = List.map minimum $ List.groupBy (\(x1,y1) (x2,y2) -> y1 == y2) positions
