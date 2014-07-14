@@ -145,21 +145,21 @@ handlePrintKeySpec tac pos@(x,y) key val = do
   let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
   cell <- TAC.getCell tac pos
   dir@(dx,dy) <- TAC.getDirection tac
-  if char `elem` "*+x^v><-|/@"
+  if char `elem` "*+x^v><-|/\\@"
   then do
     let
       newDir@(nx,ny) = getNewDirection char dir
       (content@(curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
-    History.action tac pos (TAC.Replace [content] [(char,False)])
-    TAC.putCell tac pos ((char,False),TAC.defaultColor)
-    return (x+nx,y+ny)
+      newChar = buildJunction curchar char
+    History.action tac pos (TAC.Replace [content] [(newChar,False)])
+    TAC.putCell tac pos ((newChar,False),TAC.defaultColor)
+    TAC.putDirection tac newDir
+    return (max 0 (x+nx),max 0 (y+ny))
   else do
-    let
-      newDir@(nx,ny) = dir
-      (content@(curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
+    let (content@(curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
     History.action tac pos (TAC.Replace [content] [(char,False)])
     TAC.putCell tac pos ((char,False),TAC.defaultColor)
-    return (x+nx,y+ny)
+    return (max 0 (x+dx),max 0 (y+dy))
 
 -- | handling of printable keys in Insert-mode
 handlePrintKeyIns :: TAC.TextAreaContent
@@ -332,7 +332,7 @@ dNO = (1,-1)
 dW :: TAC.Direction
 dW = (-1,0)
 dD :: TAC.Direction
-dD = (0,0)
+dD = (1,0)
 dO :: TAC.Direction
 dO = (1,0)
 dSW :: TAC.Direction
@@ -389,3 +389,14 @@ getNewDirection '^' dir
   | dir == dNO = dSO
   | dir == dNW = dN
   | otherwise  = dD
+
+buildJunction :: Char -> Char -> Char
+buildJunction content char
+  | content == '|' && char == '-' || content == '-' && char == '|' = '+'
+  | content == '\\' && char == '/' || content == '/' && char == '\\' = 'x'
+  | content `elem` "+*" && (char == '-' || char == '|') = content
+  | content `elem` "x*" && (char == '/' || char == '\\') = content
+  | content == '+' && (char == '/' || char == '\\') = '*'
+  | content == 'x' && (char == '-' || char == '|') = '*'
+  | content == '*' && char `elem` "-|/\\+x*" = content
+  | otherwise = char

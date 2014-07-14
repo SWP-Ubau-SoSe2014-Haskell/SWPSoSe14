@@ -244,8 +244,8 @@ renderScene textArea (x,y) char (TAC.RGBColor r g b) breakpoint isIP = do
     CAIRO.showText [char]
   gc <- GC.gcNew drawWindow
   GC.gcSetValues gc $ GC.newGCValues { GC.foreground = defaultCursorColor }
-  when breakpoint $ GTK.drawRectangle drawWindow gc False ((curX x*bef)-2) (curY y*hef) bef hef
-  when isIP $ GTK.drawArc drawWindow gc False ((curX x*bef)-2) ((curY y*hef)+2) bef hef 0 23040
+  when breakpoint $ GTK.drawRectangle drawWindow gc False ((xCoord x)-2) (yCoord (y-1)) (bef-2) (hef-2)
+  when isIP $ GTK.drawArc drawWindow gc False ((xCoord x)-2) (yCoord (y-1)) (bef-2) (hef-2) 0 23040
 
 --This function returns the y coord in relation to drawingArea    
 yCoord :: TAC.Coord -> TAC.Coord
