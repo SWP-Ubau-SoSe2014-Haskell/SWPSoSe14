@@ -113,14 +113,15 @@ handleKeySpec :: TAC.TextAreaContent
 handleKeySpec tac pos@(x,y) modif key val
   | elemNumBlock key = handleNumBlock tac pos key
   | isJust (keyToChar val) || key=="dead_circumflex" = handlePrintKeySpec tac pos key val
+  | isArrow key && Control `elem` modif = arrowDirectionSetter tac key >> return pos
   | isArrow key = handleArrowsSpec key pos tac
   | otherwise = do
       case key of
-        "BackSpace" -> handleBackSpace tac pos
+        "BackSpace" -> handleBackSpaceSpec tac pos
         "Return" -> handleReturnRail tac pos
         "Tab" -> handleTab tac pos modif
         "ISO_Left_Tab" -> handleTab tac pos modif
-        "Delete" -> handleDelete tac pos
+        "Delete" -> TAC.deleteCell tac pos >> return pos
         "Home" -> return (0,y)
         "End" -> do
           finX <- TAC.findLastChar tac y
@@ -159,7 +160,6 @@ handlePrintKeySpec tac pos@(x,y) key val = do
       newDir@(nx,ny) = getNewDirection char dir 
       (content@(curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
       newChar = buildJunction curchar char
-    putStrLn [newChar,char]
     History.action tac pos (TAC.Replace [content] [(newChar,False)])
     TAC.putCell tac pos ((newChar,False),TAC.defaultColor)
     TAC.putDirection tac newDir
@@ -254,6 +254,18 @@ handleArrowsSpec key pos@(x,y) tac = do
     "Up" -> return $ if y==0 then (x,y) else (x,y-1)
     "Down" -> return $ if y==maxY then (x,y) else (x,y+1)
 
+-- |sets direction after setting new cursor focus
+arrowDirectionSetter :: TAC.TextAreaContent
+  -> String
+  -> IO()
+arrowDirectionSetter tac key = do
+  dir@(x,y)<- TAC.getDirection tac
+  case key of
+    "Left" -> TAC.putDirection tac (-1,y)
+    "Right" -> TAC.putDirection tac (1,y)
+    "Up" -> TAC.putDirection tac (x,-1)
+    "Down" -> TAC.putDirection tac (x,1)
+
 -- | handles Backspace-key
 handleBackSpace :: TAC.TextAreaContent
   -> TAC.Position
@@ -294,6 +306,29 @@ mvLinesUp _ _ 0 = return ()
 mvLinesUp tac y diff = do 
   TACU.moveLinesUp tac y
   mvLinesUp tac (y-1) (diff-1)
+
+-- | handles Backspace-key in smart mode
+handleBackSpaceSpec :: TAC.TextAreaContent
+  -> TAC.Position
+  -> IO TAC.Position 
+handleBackSpaceSpec tac pos@(x,y) = do
+  selectedPositions <- TAC.getSelectedPositons tac
+  cell <- TAC.getCell tac pos
+  if selectedPositions/=[] || isNothing cell
+  then handleBackSpace tac pos
+  else do
+    let (content@(char,_), col) = fromJust cell
+    dir@(dx,dy) <- TAC.getDirection tac
+    if char `elem` "x+*"
+    then do
+      oldChar <- findOldChar tac pos dir char
+      TAC.putCell tac pos ((oldChar,False), col)
+      return (max 0 (x-dx),max 0 (y-dy))
+    else do
+      oldDir@(nx,ny) <- findOldDir tac pos dir
+      TAC.deleteCell tac pos
+      TAC.putDirection tac oldDir
+      return (max 0 (x-nx),max 0 (y-ny))
 
 -- | handles Return-key in Smart-mode
 handleReturnRail :: TAC.TextAreaContent
@@ -390,7 +425,7 @@ dNO = (1,-1)
 dW :: TAC.Direction
 dW = (-1,0)
 dD :: TAC.Direction
-dD = (1,0)
+dD = (0,0)
 dO :: TAC.Direction
 dO = (1,0)
 dSW :: TAC.Direction
@@ -462,6 +497,91 @@ buildJunction content char
   | content == TAC.defaultChar = char
   | otherwise = content
 
+-- | finds old char, when one Rail is deleted
+findOldChar :: TAC.TextAreaContent
+  -> TAC.Position
+  -> TAC.Direction
+  -> Char
+  -> IO Char
+findOldChar tac pos@(x,y) dir char
+  |(dir==dN || dir==dS) && char=='+' = return '-'
+  |(dir==dO || dir==dW) && char=='+' = return '|'
+  |(dir==dNO || dir==dSW) && char=='x' = return '\\'
+  |(dir==dSO || dir==dNW) && char=='x' = return '/'
+  |(dir==dN || dir==dS) && char=='*' = do
+    (nb1,nb2,nb3) <- findNeighbours tac (x-1,y-1) (x-1,y) (x-1,y+1)
+    case (nb1,nb2,nb3) of
+      ( _ , Just _, _ ) -> return '*'
+      (Just _ , _ , Just _) -> return 'x'
+      (_,_,Just _) -> return '/'
+      (Just _, _, _) -> return '\\'
+      otherwise -> return ' '
+  |(dir==dO || dir==dW) && char=='*' = do
+    (nb1,nb2,nb3) <- findNeighbours tac (x-1,y-1) (x,y-1) (x+1,y-1)
+    case (nb1,nb2,nb3) of
+      ( _ , Just _, _ ) -> return '*'
+      (Just _ , _ , Just _) -> return 'x'
+      (_,_,Just _) -> return '/'
+      (Just _, _, _) -> return '\\'
+      otherwise -> return ' '
+  |(dir==dNO || dir==dSW) && char=='*' = do
+    (nb1,nb2,nb3) <- findNeighbours tac (x,y-1) (x-1,y-1) (x-1,y)
+    case (nb1,nb2,nb3) of
+      ( _ , Just _, _ ) -> return '*'
+      (Just _ , _ , Just _) -> return '+'
+      (_,_,Just _) -> return '-'
+      (Just _, _, _) -> return '|'
+      otherwise -> return ' '
+  |(dir==dSO || dir==dNW) && char=='*' = do
+    (nb1,nb2,nb3) <- findNeighbours tac (x,y-1) (x+1,y-1) (x+1,y)
+    case (nb1,nb2,nb3) of
+      ( _ , Just _, _ ) -> return '*'
+      (Just _ , _ , Just _) -> return '+'
+      (_,_,Just _) -> return '-'
+      (Just _, _, _) -> return '|'
+      otherwise -> return ' '
+
+findOldDir :: TAC.TextAreaContent
+  -> TAC.Position
+  -> TAC.Direction
+  -> IO TAC.Direction
+findOldDir tac pos@(x,y) dir@(dx,dy)
+  |dir `elem` [dSO,dNO,dSW,dNW] = do
+    (nb1,nb2,nb3) <- findNeighbours tac (x-dx,y) (x-dx,y-dy) (x,y-dy)
+    case (nb1,nb2,nb3) of
+      ( _ , Just _, _ ) -> return dir
+      (_,_,Just _) -> return (0,dy)
+      (Just _, _, _) -> return (dx,0)
+      otherwise -> return (0,0)
+  |dir `elem` [dS,dN] = do
+    (nb1,nb2,nb3) <- findNeighbours tac (x-1,y-dy) (x,y-dy) (x+1,y-dy)
+    case (nb1,nb2,nb3) of
+      ( _ , Just _, _ ) -> return dir
+      (_,_,Just _) -> return (-1,dy)
+      (Just _, _, _) -> return (1,dy)
+      otherwise -> return (0,0)
+  |dir `elem` [dO,dW] = do
+    (nb1,nb2,nb3) <- findNeighbours tac (x-dx,y-1) (x-dx,y) (x-dx,y+1)
+    case (nb1,nb2,nb3) of
+      ( _ , Just _, _ ) -> return dir
+      (_,_,Just _) -> return (dx,-1)
+      (Just _, _, _) -> return (dx,1)
+      otherwise -> return (0,0)
+
+-- | neighbours of position depending on direction
+findNeighbours :: TAC.TextAreaContent
+  -> TAC.Position
+  -> TAC.Position
+  -> TAC.Position
+  -> IO(Maybe ((Char,Bool),TAC.RGBColor),
+      Maybe ((Char,Bool),TAC.RGBColor),
+      Maybe ((Char,Bool),TAC.RGBColor))
+findNeighbours tac (x1,y1) (x2,y2) (x3,y3) = do
+  n1<-TAC.getCell tac (x1,y1)
+  n2<-TAC.getCell tac (x2,y2)
+  n3<-TAC.getCell tac (x3,y3)
+  return(n1,n2,n3)
+
 -- | inserts matching character and sets new position
 handleNumBlock :: TAC.TextAreaContent
   -> TAC.Position
@@ -469,7 +589,6 @@ handleNumBlock :: TAC.TextAreaContent
   -> IO TAC.Position
 handleNumBlock tac pos@(x,y) key = do
   cell <- TAC.getCell tac pos
-  
   let
     (char,(dx,dy)) = getDirAndCharFromNumKey key
     (content@(curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
