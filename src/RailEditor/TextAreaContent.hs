@@ -361,8 +361,13 @@ getPositionedGrid areaContent = do
   s@(xMax,yMax) <- readIORef hSize
   hmap <- readIORef hMap
   pGrid <- buildPosGrid ([],0) (assocs hmap)
-  return $ IDT.IPL (fst pGrid)
+  return $ IDT.IPL (Prelude.map (maximize (max xMax yMax)) $ fst pGrid)
   where
+    maximize :: Int -> IDT.PositionedGrid -> IDT.PositionedGrid
+    maximize msize (grid, offset) = (Map.update updatefirst 0 grid, offset)
+      where
+        updatefirst line = Just $ Map.union emptymap line
+        emptymap = fromList $ zip [0..msize] (repeat ' ')
     buildPosGrid :: ([IDT.PositionedGrid],Int) -> [(Int,Map.Map Int (Char,Bool))] -> IO ([IDT.PositionedGrid],Int)
     buildPosGrid = foldM  
       (\(grids,offset) (y,line) -> do
