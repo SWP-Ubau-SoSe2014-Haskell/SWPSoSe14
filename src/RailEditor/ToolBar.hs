@@ -120,18 +120,17 @@ create area footer interDT= do
       return True
 
     -- set mode action
-    Gtk.onButtonPress insertMode $ \event -> do
+    Gtk.on insertMode Gtk.menuItemActivate$ do
       TA.setInputMode area KH.Insert
       FB.setMode footer KH.Insert
-      return True
-    Gtk.onButtonPress replaceMode $ \event -> do
+
+    Gtk.on replaceMode Gtk.menuItemActivate $ do
       TA.setInputMode area KH.Replace
       FB.setMode footer KH.Replace
-      return True
-    Gtk.onButtonPress smartMode $ \event -> do
+
+    Gtk.on smartMode Gtk.menuItemActivate$ do
       TA.setInputMode area KH.Smart
       FB.setMode footer KH.Smart
-      return True
 
     Gtk.on highlightCheck Gtk.menuItemActivate$ do
       isActive <- Gtk.checkMenuItemGetActive highlightCheck
