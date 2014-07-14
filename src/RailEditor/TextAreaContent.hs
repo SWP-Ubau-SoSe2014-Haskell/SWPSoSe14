@@ -366,7 +366,7 @@ getPositionedGrid areaContent = do
     maximize :: Int -> IDT.PositionedGrid -> IDT.PositionedGrid
     maximize msize (grid, offset) = (Map.update updatefirst 0 grid, offset)
       where
-        updatefirst line = Just $ Map.union emptymap line
+        updatefirst line = Just $ Map.union line emptymap
         emptymap = fromList $ zip [0..msize] (repeat ' ')
     buildPosGrid :: ([IDT.PositionedGrid],Int) -> [(Int,Map.Map Int (Char,Bool))] -> IO ([IDT.PositionedGrid],Int)
     buildPosGrid = foldM  
