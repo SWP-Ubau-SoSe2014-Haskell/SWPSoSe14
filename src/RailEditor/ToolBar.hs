@@ -12,7 +12,7 @@ module ToolBar (
   create
                )
   where
-    
+
     -- imports --
 
 import Data.IORef
@@ -71,13 +71,13 @@ create area footer interDT= do
       Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
       Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
       let fS = TAC.funcStack intCtxt
-      if ((length fS) > 0) 
+      if not (null fS)
       then do
         let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
-        putStrLn $ show ip
+        print ip
       else do
         let ip = (0,0)
-        putStrLn $ show ip
+        print ip
       return True
 
     Gtk.onButtonPress step $ \event -> do
@@ -89,13 +89,13 @@ create area footer interDT= do
       Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
       Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
       let fS = TAC.funcStack intCtxt
-      if ((length fS) > 0) 
+      if not (null fS)
       then do
         let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
-        putStrLn $ show ip
+        print ip
       else do
         let ip = (0,0)
-        putStrLn $ show ip
+        print ip
       return True
 
     bufferVariables <- Gtk.textBufferNew Nothing
@@ -104,8 +104,8 @@ create area footer interDT= do
       tac <- readIORef $ TA.textAreaContent area
       intCtxt <- readIORef $ TAC.context tac
       let list = TAC.funcStack intCtxt
-      when (length list /= 0) $ do
-        let vars = unlines $ map (\(x,y)-> x ++ " = " ++ (show y)) $ Map.toList $ (\(_,_,x) -> x)$ head $ list
+      unless (null list) $ do
+        let vars = unlines $ map (\(x,y)-> x ++ " = " ++ show y) $ Map.toList $ (\(_,_,x) -> x)$ head list
         Gtk.textBufferSetText bufferVariables vars
         Gtk.postGUIAsync $ IDF.textViewWindowShow bufferVariables "Variables"
       return True
@@ -135,9 +135,7 @@ create area footer interDT= do
 
     Gtk.onButtonPress highlightCheck $ \event -> do
       isActive <- Gtk.checkMenuItemGetActive highlightCheck
-      if isActive
-      then TA.setHighlighting area False
-      else TA.setHighlighting area True
+      TA.setHighlighting area $ not isActive
       return True
 
     -- configure mode-menu

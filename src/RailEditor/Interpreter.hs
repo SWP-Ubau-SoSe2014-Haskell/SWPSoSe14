@@ -12,6 +12,7 @@ module Interpreter (
   import Data.IORef
   import Data.Maybe
   import Data.List
+  import qualified Data.Foldable
 
   type Funcmap = Map.Map String IDT.PositionedGrid
 
@@ -96,7 +97,7 @@ module Interpreter (
         unless isBlocked $ do
           putStrLn "unblock"
           inputAfterBlock tac
-          writeIORef (TAC.context tac) cnt{TAC.railFlags = delete TAC.Blocked flag}
+          writeIORef (TAC.context tac) cnt{TAC.railFlags = delete TAC.Blocked flags}
       else do
         putStrLn "noBlock"
         funcmap <- getFunctions tac
@@ -116,12 +117,10 @@ module Interpreter (
       if TAC.Blocked `elem` flags
       then do
         putStrLn "is blocked"
-        if not isBlocked
-        then do
+        unless isBlocked $ do
           putStrLn "unblock"
           inputAfterBlock tac
           writeIORef (TAC.context tac) cnt{TAC.railFlags = delete TAC.Blocked flags}
-        else return ()
       else do
         funcmap <- getFunctions tac
         dostep tac funcmap
@@ -154,7 +153,7 @@ module Interpreter (
           tmpip = Lexer.step grid ip
           (maylex, newip) = Lexer.parse grid tmpip
       writeIORef (TAC.context tac) cnt{TAC.funcStack = (fname, newip, vars):xs}
-      when (isJust maylex) $ perform tac funcmap (fromJust maylex)
+      Data.Foldable.forM_ maylex (perform tac funcmap)
 
   perform :: TAC.TextAreaContent -> Funcmap -> IDT.Lexeme -> IO ()
   perform tac _ IDT.Boom = do
@@ -190,30 +189,30 @@ module Interpreter (
   perform tac _ IDT.Output = do
     cnt <- readIORef (TAC.context tac)
     let dataSt = TAC.dataStack cnt
-    if dataSt == []
+    if null dataSt
     then showError tac "Empty Stack"
-    else if (\((TAC.RailString _):_) -> True) dataSt
+    else if (\(TAC.RailString _:_) -> True) dataSt
          then do 
-            showRawMessage ((\((TAC.RailString t):_) -> t) dataSt) (snd $ TAC.buffer tac)
+            showRawMessage ((\(TAC.RailString t:_) -> t) dataSt) (snd $ TAC.buffer tac)
             writeIORef (TAC.context tac) cnt{TAC.dataStack = tail (TAC.dataStack cnt)}
          else showError tac "Element on top of the stack is no String"
   perform tac _ IDT.Underflow = do
     cnt <- readIORef (TAC.context tac)
-    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString $ show $ length $ TAC.dataStack cnt):(TAC.dataStack cnt)}
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString $ show $ length $ TAC.dataStack cnt):TAC.dataStack cnt}
   perform tac _ IDT.RType = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt)
     then showError tac "Empty stack"
-    else writeIORef (TAC.context tac) cnt{TAC.dataStack = (typeOf $ head $ TAC.dataStack cnt):(tail $ TAC.dataStack cnt)}
+    else writeIORef (TAC.context tac) cnt{TAC.dataStack = typeOf (head $ TAC.dataStack cnt):tail (TAC.dataStack cnt)}
   perform tac _ (IDT.Constant string) = do
     cnt <- readIORef (TAC.context tac)
-    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString string):(TAC.dataStack cnt)}
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = TAC.RailString string:TAC.dataStack cnt}
   perform tac _ (IDT.Push string) = do
     cnt <- readIORef (TAC.context tac)
     let res = searchVar string (TAC.funcStack cnt)
     if isNothing res
     then showError tac ("Variable '" ++ string ++ "' not found")
-    else writeIORef (TAC.context tac) cnt{TAC.dataStack = (fromJust res):(TAC.dataStack cnt)}
+    else writeIORef (TAC.context tac) cnt{TAC.dataStack = fromJust res:TAC.dataStack cnt}
   perform tac _ (IDT.Pop string) = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt)
@@ -221,24 +220,24 @@ module Interpreter (
     else do
       let ((fname, ip, vars):xs) = TAC.funcStack cnt
           nvars = Map.insert string (head $ TAC.dataStack cnt) vars
-      writeIORef (TAC.context tac) cnt{TAC.dataStack = (tail $ TAC.dataStack cnt), TAC.funcStack = (fname, ip, nvars):xs}
+      writeIORef (TAC.context tac) cnt{TAC.dataStack = tail $ TAC.dataStack cnt, TAC.funcStack = (fname, ip, nvars):xs}
   perform tac _ (IDT.Call string) = do
     cnt <- readIORef (TAC.context tac)
     if null string
-    then do
+    then
       if null (TAC.dataStack cnt)
       then showError tac "Empty stack"
-      else do
+      else
         if not $ isLambda $ head $ TAC.dataStack cnt
         then showError tac "Wrong type on stack, string expected"
         else do
-          let ((TAC.RailLambda fn ip map):xs) = TAC.dataStack cnt
-          writeIORef (TAC.context tac) cnt{TAC.funcStack = (fn, ip, map):(TAC.funcStack cnt), TAC.dataStack = xs}
-    else writeIORef (TAC.context tac) cnt{TAC.funcStack = (string, Lexer.start, Map.empty):(TAC.funcStack cnt)}
+          let (TAC.RailLambda fn ip map:xs) = TAC.dataStack cnt
+          writeIORef (TAC.context tac) cnt{TAC.funcStack = (fn, ip, map):TAC.funcStack cnt, TAC.dataStack = xs}
+    else writeIORef (TAC.context tac) cnt{TAC.funcStack = (string, Lexer.start, Map.empty):TAC.funcStack cnt}
   perform tac _ IDT.Add1 = performMath tac (+)
-  perform tac _ IDT.Divide = performMath tac (div) -- may be needed to adjust according to compiler
+  perform tac _ IDT.Divide = performMath tac div -- may be needed to adjust according to compiler
   perform tac _ IDT.Multiply = performMath tac (*)
-  perform tac _ IDT.Remainder = performMath tac (rem)
+  perform tac _ IDT.Remainder = performMath tac rem
   perform tac _ IDT.Subtract = performMath tac (-)
   perform tac _ IDT.Cut = do
     cnt <- readIORef (TAC.context tac)
@@ -254,7 +253,7 @@ module Interpreter (
         then showError tac "Cut number bigger than string length"
         else do
           let (lres, rres) = splitAt (read s1 :: Int) s2
-          writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailString rres):(TAC.RailString lres):xs}
+          writeIORef (TAC.context tac) cnt{TAC.dataStack = TAC.RailString rres:TAC.RailString lres:xs}
   perform tac _ IDT.Append = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt) || null (tail $ TAC.dataStack cnt)
@@ -271,40 +270,40 @@ module Interpreter (
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt)
     then showError tac "Empty stack"
-    else do
+    else
       if not $ isString $ head $ TAC.dataStack cnt
       then showError tac "Wrong type on stack, string expected"
       else do
-        let ((TAC.RailString str):xs) = TAC.dataStack cnt
+        let (TAC.RailString str:xs) = TAC.dataStack cnt
             res = TAC.RailString $ show $ length str
         writeIORef (TAC.context tac) cnt{TAC.dataStack = res:xs}
   perform tac _ IDT.Nil = do
     cnt <- readIORef (TAC.context tac)
-    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailList []):(TAC.dataStack cnt)}
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = TAC.RailList []:TAC.dataStack cnt}
   perform tac _ IDT.Cons = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt) || null (tail $ TAC.dataStack cnt)
     then showError tac "Not enough elements on stack"
-    else do
+    else
       if not $ isList $ head $ tail $ TAC.dataStack cnt
       then showError tac "Wrong type on second position of stack, list expected"
       else do
-        let (x:(TAC.RailList lst):xs) = TAC.dataStack cnt
-        writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailList (x:lst)):xs}
+        let (x:TAC.RailList lst:xs) = TAC.dataStack cnt
+        writeIORef (TAC.context tac) cnt{TAC.dataStack = TAC.RailList (x:lst):xs}
   perform tac _ IDT.Breakup = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.dataStack cnt)
     then showError tac "Empty stack"
-    else do
+    else
       if not $ isList $ head $ TAC.dataStack cnt
       then showError tac "Wrong type on stack, list expected"
       else do
-        let ((TAC.RailList lst):xs) = TAC.dataStack cnt
+        let (TAC.RailList lst:xs) = TAC.dataStack cnt
         if null lst
         then showError tac "Empty list cannot be splitted"
         else do
           let (y:ys) = lst
-          writeIORef (TAC.context tac) cnt{TAC.dataStack = y:(TAC.RailList ys):xs}
+          writeIORef (TAC.context tac) cnt{TAC.dataStack = y:TAC.RailList ys:xs}
   perform tac _ IDT.Greater = performMath tac (\x y -> if x > y then 1 else 0)
   perform tac _ IDT.Equal = do
     cnt <- readIORef (TAC.context tac)
@@ -312,7 +311,7 @@ module Interpreter (
     then showError tac "Not enough elements on stack"
     else do
       let (e1:e2:xs) = TAC.dataStack cnt
-          res = if e1 == e2 then TAC.RailString "1" else TAC.RailString "2"
+          res = TAC.RailString (if e1 == e2 then "1" else "2")
       writeIORef (TAC.context tac) cnt{TAC.dataStack = res:xs}
   perform tac _ IDT.Finish = do
     cnt <- readIORef (TAC.context tac)
@@ -328,12 +327,12 @@ module Interpreter (
         let ((fname, ip, vars):xs) = TAC.funcStack cnt
             (fip, tip) = Lexer.junctionturns (fst $ fromJust $ Map.lookup fname fmap) ip
             nip = if head (TAC.dataStack cnt) == TAC.RailString "0" then fip else tip
-        writeIORef (TAC.context tac) cnt{TAC.dataStack = (tail $ TAC.dataStack cnt), TAC.funcStack = (fname, nip, vars):xs}
+        writeIORef (TAC.context tac) cnt{TAC.dataStack = tail $ TAC.dataStack cnt, TAC.funcStack = (fname, nip, vars):xs}
   perform tac _ (IDT.Lambda _) = do
     cnt <- readIORef (TAC.context tac)
     let ((fname, ip, vars):xs) = TAC.funcStack cnt
         (lip, nip) = Lexer.lambdadirs ip
-    writeIORef (TAC.context tac) cnt{TAC.dataStack = (TAC.RailLambda fname lip vars):(TAC.dataStack cnt), TAC.funcStack = (fname, nip, vars):xs}
+    writeIORef (TAC.context tac) cnt{TAC.dataStack = TAC.RailLambda fname lip vars:TAC.dataStack cnt, TAC.funcStack = (fname, nip, vars):xs}
 
   performMath :: TAC.TextAreaContent -> (Int -> Int -> Int) -> IO ()
   performMath tac op = do
@@ -359,26 +358,26 @@ module Interpreter (
   getFunctions tac = do
     pGrid <- TAC.getPositionedGrid tac
     let (IDT.IPL funcs) = pGrid
-    resmap <- return Map.empty
+    let resmap = Map.empty
     addnames resmap funcs
    where
     addnames resmap [] = return resmap
     addnames resmap (x:xs) = do
       fname <- funcname tac (fst x)
-      newmap <- return $ Map.insert fname x resmap
+      let newmap = Map.insert fname x resmap
       addnames newmap xs
 
   getFunctionWith :: TAC.TextAreaContent -> TAC.Position -> IO (String, IDT.Grid2D)
   getFunctionWith tac position = do
     pGrid <- TAC.getPositionedGrid tac
     let (IDT.IPL funcs) = pGrid
-        funclist = filter isJust $ map (\(f, y) -> if y <= (snd position) then Just f else Nothing) funcs
+        funclist = filter isJust $ map (\(f, y) -> if y <= snd position then Just f else Nothing) funcs
     if null funclist
     then return ("", Map.empty)
     else do
       let res = fromJust $ last funclist
       fname <- funcname tac res
-      return $ (fname, res)
+      return (fname, res)
 
   funcname :: TAC.TextAreaContent -> IDT.Grid2D -> IO String
   funcname tac code = case Lexer.funcname code of
@@ -387,7 +386,7 @@ module Interpreter (
       showError tac "No function name"
       return ""
 
-  needsHalt :: TAC.TextAreaContent -> Funcmap -> IO (Bool)
+  needsHalt :: TAC.TextAreaContent -> Funcmap -> IO Bool
   needsHalt tac fmap = do
     cnt <- readIORef (TAC.context tac)
     if null (TAC.funcStack cnt)
@@ -395,12 +394,12 @@ module Interpreter (
     else do
       putStrLn "check"
       let (fname, ip, _) = head $ TAC.funcStack cnt
-      pos <- return (Lexer.posx ip, Lexer.posy ip + (snd $ fromJust $ Map.lookup fname fmap))
-      putStrLn $ show $Map.findWithDefault False pos (TAC.breakMap cnt)
+      let pos = (Lexer.posx ip, Lexer.posy ip + snd (fromJust $ Map.lookup fname fmap))
+      print (Map.findWithDefault False pos (TAC.breakMap cnt))
       return $ Map.findWithDefault False pos (TAC.breakMap cnt)
 
   isNumeric :: TAC.RailType -> Bool
-  isNumeric (TAC.RailString string) = and $ map (\c -> c `elem` "0123456789") string
+  isNumeric (TAC.RailString string) = all (`elem` "0123456789") string
   isNumeric _ = False
 
   isList :: TAC.RailType -> Bool
@@ -420,7 +419,7 @@ module Interpreter (
   isBool _ = False
 
   isLambda :: TAC.RailType -> Bool
-  isLambda (TAC.RailLambda _ _ _) = True
+  isLambda TAC.RailLambda{} = True
   isLambda _ = False
 
   typeOf :: TAC.RailType -> TAC.RailType
