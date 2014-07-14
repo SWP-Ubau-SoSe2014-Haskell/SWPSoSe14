@@ -8,7 +8,6 @@ import qualified TLexer
 import qualified TSynAna
 import qualified TSemAna
 import qualified TInterCode
-import qualified TCodeOpt
 import qualified TBackend
 
 import System.Exit
@@ -27,7 +26,6 @@ main = do
     TSynAna.testModule ++
     TSemAna.testModule ++
     TInterCode.testModule ++
-    TCodeOpt.testModule ++
     TBackend.testModule
     )
   testexit <- system "tests/integration_tests"

@@ -26,7 +26,6 @@ import qualified Lexer
 import qualified SyntacticalAnalysis as SynAna
 import qualified SemanticalAnalysis  as SemAna
 import qualified IntermediateCode    as InterCode
-import qualified CodeOptimization    as CodeOpt
 import qualified Backend
 
 -- defining the option settings for the main-function
@@ -103,13 +102,13 @@ main = do args <- getArgs
                          then do let transform (IBO x) = x
                                  -- compile an imported AST to a LLVM-file
                                  if imp
-                                 then transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO) >>= output
+                                 then transform (Backend.process . InterCode.process . SemAna.process . SynAna.process . Lexer.toAST $ inputWithoutIO) >>= output
                                  -- compile a RAIL-file to an AST as an export-file
                                  else if exp
                                       then do outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)
-                                              transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
+                                              transform (Backend.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
                                       -- compile a RAIL-file to a LLVM-file
-                                      else transform (Backend.process . CodeOpt.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
+                                      else transform (Backend.process . InterCode.process . SemAna.process . SynAna.process . Lexer.process . PreProc.process $ IIP inputWithoutIO) >>= output
                          -- exportAST (without compiling it to llvm)
                          else if exp
                               then outputAST (Lexer.fromAST . Lexer.process . PreProc.process $ IIP inputWithoutIO)

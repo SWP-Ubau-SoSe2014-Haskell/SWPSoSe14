@@ -27,13 +27,13 @@ import qualified LLVM.General.AST as AST
 
 -- functions --
 -- |Converts the internal LLVM representation into textual LLVM IR.
-process :: IDT.CodeOpt2Backend -> IDT.Backend2Output
+process :: IDT.InterCode2Backend -> IDT.Backend2Output
 process input = IDT.IBO $ generateOutput input
 
 -- |Uses the Haskell LLVM bindings to convert the internal LLVM
 -- representation into textual LLVM IR.
-generateOutput :: IDT.CodeOpt2Backend -> IO String
-generateOutput (IDT.ICB mod) = do
+generateOutput :: IDT.InterCode2Backend -> IO String
+generateOutput (IDT.IIB mod) = do
   s <- withContext $ \context ->
     runErrorT $ withModuleFromAST context mod $ \m -> moduleLLVMAssembly m
   either error return s
