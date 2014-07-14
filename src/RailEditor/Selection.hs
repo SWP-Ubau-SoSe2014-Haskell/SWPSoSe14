@@ -14,6 +14,8 @@ module Selection (
                     updateCells,
                     relocateCells,
                     clear,
+                    getFirstPositions,
+                    getBottomRight,
                     getCellsByPositons
                  )
   where
@@ -71,15 +73,15 @@ relocateCell tac pos@(x,y) (newX,newY) (offsetX,offsetY) = do
   --TAC.deleteCell tac oldPos   -- for cut and paste
   TAC.putCell tac (newX+x-offsetX,newY+y-offsetY) ((char,False),TAC.defaultColor)
 
-clear :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position
+clear :: TAC.TextAreaContent -> TAC.Position -> IO (TAC.Position,TAC.Position)
 clear tac pos@(x,y) = do
   positions <- TAC.getSelectedPositons tac
   if not (null positions) then do
     cells <- Selection.getCellsByPositons tac positions
     History.action tac (getMinimum positions) (TAC.Remove cells)
     Selection.clearCells tac positions
-    return $ getMinimum positions
-  else return (x-1,y)
+    return (getMinimum positions,getMaximum positions)
+  else return ((x-1,y),(x-1,y))
 
 clearCells :: TAC.TextAreaContent -> [TAC.Position] -> IO ()
 clearCells tac [] = return ()
@@ -134,9 +136,17 @@ getTopLeft :: [TAC.Position] -> TAC.Position
 getTopLeft positions = (getMinimumX positions, getMinimumY positions)
 
 getBottomRight :: [TAC.Position] -> TAC.Position
+getBottomRight [] = (0,0)
 getBottomRight positions = (x+1,y)
   where (y,x) = maximum $ Prelude.map (\(x1,y1) -> (y1,x1)) positions
   
 getMinimum :: [TAC.Position] -> TAC.Position
 getMinimum positions = (x,y) 
   where (y,x) = minimum $ Prelude.map (\(x1,y1) -> (y1,x1)) positions
+
+getMaximum :: [TAC.Position] -> TAC.Position
+getMaximum positions = (x,y) 
+  where (y,x) = maximum $ Prelude.map (\(x1,y1) -> (y1,x1)) positions
+
+getFirstPositions :: [TAC.Position] -> [TAC.Position]
+getFirstPositions positions = List.map minimum $ List.groupBy (\(x1,y1) (x2,y2) -> y1 == y2) positions
