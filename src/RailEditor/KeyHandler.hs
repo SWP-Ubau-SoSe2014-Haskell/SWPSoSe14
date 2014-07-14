@@ -128,6 +128,7 @@ handlePrintKeyRP :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handlePrintKeyRP tac pos@(x,y) key val = do
+  Selection.clear tac pos
   let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
   cell <- TAC.getCell tac pos
   let ((curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
@@ -142,6 +143,7 @@ handlePrintKeySpec :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handlePrintKeySpec tac pos@(x,y) key val = do
+  Selection.clear tac pos
   let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
   cell <- TAC.getCell tac pos
   dir@(dx,dy) <- TAC.getDirection tac
@@ -168,6 +170,7 @@ handlePrintKeyIns :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handlePrintKeyIns tac pos@(x,y) key val = do
+  Selection.clear tac pos
   let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
   History.action tac pos (TAC.Insert [(char,False)])
   TACU.moveChars tac pos (1,0)
@@ -184,6 +187,8 @@ handleArrowsIns :: String
   -> TAC.TextAreaContent
   -> IO TAC.Position
 handleArrowsIns key pos@(x,y) tac = do
+  selectedPositions <- TAC.getSelectedPositons tac
+  Selection.updateCells tac selectedPositions False
   (maxX,maxY) <- TAC.size tac
   case key of
     "Left" 
@@ -214,6 +219,8 @@ handleArrowsSpec :: String
   -> TAC.TextAreaContent
   -> IO TAC.Position
 handleArrowsSpec key pos@(x,y) tac = do
+  selectedPositions <- TAC.getSelectedPositons tac
+  Selection.updateCells tac selectedPositions False
   (maxX,maxY) <- TAC.size tac
   case key of
     "Left" -> return $
@@ -237,25 +244,41 @@ handleArrowsSpec key pos@(x,y) tac = do
 handleBackSpace :: TAC.TextAreaContent
   -> TAC.Position
   -> IO TAC.Position 
-handleBackSpace tac (x,y) = 
+handleBackSpace tac (x,y) = do
+  (xLeft,yTop) <- Selection.clear tac (x,y)
   case (x,y) of
     (0,0) -> return (0,0)
     (0,_) -> do
-      finXPrev <- TAC.findLastChar tac (y-1)
-      History.action tac (finXPrev+1,y-1) TAC.RemoveLine
-      TACU.moveLinesUp tac y
-      return(finXPrev+1,y-1)
+      if yTop == y then do -- no previous selection
+        finXPrev <- TAC.findLastChar tac (y-1)
+        History.action tac (finXPrev+1,y-1) TAC.RemoveLine
+        TACU.moveLinesUp tac y
+        return (finXPrev+1,y-1)
+      else do 
+        mvLinesUp tac y (abs (yTop-y))
+        return (xLeft,yTop)
     (_,_) -> do
       empty <- TAC.isEmptyLine tac y
       if empty
       then return(0,y)
       else do
-        maybeCell <- TAC.getCell tac (x-1,y)
-        let cell = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) maybeCell
-        History.action tac (x-1,y) (TAC.Remove [fst cell])
-        TAC.deleteCell tac (x-1,y)
-        TACU.moveChars tac (x,y) (-1,0)
-        return (x-1,y)
+        if yTop == y && xLeft == x then do -- no previous selection
+          maybeCell <- TAC.getCell tac (x-1,y)
+          let cell = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) maybeCell
+          History.action tac (x-1,y) (TAC.Remove [fst cell])
+          TAC.deleteCell tac (x-1,y)
+          TACU.moveChars tac (x,y) (x-1,y)
+          return (x-1,y)
+        else do
+          TACU.moveChars tac (x,y) (xLeft-x,yTop-y)
+          mvLinesUp tac y (abs (yTop-y))
+          return (xLeft,yTop)
+
+mvLinesUp :: TAC.TextAreaContent -> TAC.Coord -> Int -> IO ()
+mvLinesUp _ _ 0 = return ()
+mvLinesUp tac y diff = do 
+  TACU.moveLinesUp tac y
+  mvLinesUp tac (y-1) (diff-1)
 
 -- | handles Return-key in Smart-mode
 handleReturnRail :: TAC.TextAreaContent
@@ -271,6 +294,7 @@ handleReturn :: TAC.TextAreaContent
   -> TAC.Position
   -> IO TAC.Position
 handleReturn tac pos@(x,y) = do
+  Selection.clear tac pos
   History.action tac pos TAC.InsertLine
   TACU.moveLinesDownXShift tac pos True
   return (0,y+1)
@@ -307,6 +331,7 @@ handleDelete :: TAC.TextAreaContent
   -> TAC.Position
   -> IO TAC.Position
 handleDelete tac pos@(x,y) = do
+  Selection.clear tac pos
   finX <- TAC.findLastChar tac y
   if x==finX+1
   then do

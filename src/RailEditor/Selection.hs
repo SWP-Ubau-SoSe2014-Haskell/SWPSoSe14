@@ -13,6 +13,7 @@ module Selection (
                     handleSelection,
                     updateCells,
                     relocateCells,
+                    clear,
                     getCellsByPositons
                  )
   where
@@ -23,6 +24,7 @@ import Control.Monad
 import Data.Maybe
 import qualified TextAreaContent as TAC
 import qualified Data.List as List
+import qualified RedoUndo as History
 
 handleSelection :: TAC.TextAreaContent -> TAC.Position -> TAC.Position -> IO (Bool,[TAC.Position])
 handleSelection tac currentPos newPos = do
@@ -68,6 +70,22 @@ relocateCell tac pos@(x,y) (newX,newY) (offsetX,offsetY) = do
   let char = fst $ fst $ fromJust cell
   --TAC.deleteCell tac oldPos   -- for cut and paste
   TAC.putCell tac (newX+x-offsetX,newY+y-offsetY) ((char,False),TAC.defaultColor)
+
+clear :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position
+clear tac pos@(x,y) = do
+  positions <- TAC.getSelectedPositons tac
+  if not (null positions) then do
+    cells <- Selection.getCellsByPositons tac positions
+    History.action tac (getMinimum positions) (TAC.Remove cells)
+    Selection.clearCells tac positions
+    return $ getMinimum positions
+  else return (x-1,y)
+
+clearCells :: TAC.TextAreaContent -> [TAC.Position] -> IO ()
+clearCells tac [] = return ()
+clearCells tac (x:xs) = do
+  TAC.deleteCell tac x
+  clearCells tac xs
 
 getCellsByPositons :: TAC.TextAreaContent -> [TAC.Position] -> IO [(Char,Bool)]
 getCellsByPositons tac postions = _getCellsByPositons tac postions []
@@ -118,3 +136,7 @@ getTopLeft positions = (getMinimumX positions, getMinimumY positions)
 getBottomRight :: [TAC.Position] -> TAC.Position
 getBottomRight positions = (x+1,y)
   where (y,x) = maximum $ Prelude.map (\(x1,y1) -> (y1,x1)) positions
+  
+getMinimum :: [TAC.Position] -> TAC.Position
+getMinimum positions = (x,y) 
+  where (y,x) = minimum $ Prelude.map (\(x1,y1) -> (y1,x1)) positions
