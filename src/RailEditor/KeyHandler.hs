@@ -107,19 +107,21 @@ handleKeySpec :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handleKeySpec tac pos@(x,y) modif key val
+  | elemNumBlock key = handleNumBlock tac pos key
   | isJust (keyToChar val) || key=="dead_circumflex" = handlePrintKeySpec tac pos key val
   | isArrow key = handleArrowsSpec key pos tac
-  | otherwise = case key of
-    "BackSpace" -> handleBackSpace tac pos
-    "Return" -> handleReturnRail tac pos
-    "Tab" -> handleTab tac pos modif
-    "ISO_Left_Tab" -> handleTab tac pos modif
-    "Delete" -> handleDelete tac pos
-    "Home" -> return (0,y)
-    "End" -> do
-      finX <- TAC.findLastChar tac y
-      return (finX+1,y)
-    _ -> return pos
+  | otherwise = do
+      case key of
+        "BackSpace" -> handleBackSpace tac pos
+        "Return" -> handleReturnRail tac pos
+        "Tab" -> handleTab tac pos modif
+        "ISO_Left_Tab" -> handleTab tac pos modif
+        "Delete" -> handleDelete tac pos
+        "Home" -> return (0,y)
+        "End" -> do
+          finX <- TAC.findLastChar tac y
+          return (finX+1,y)
+        _ -> return pos
 
 -- | handling of printable keys in Replace-mode (overwriting)
 handlePrintKeyRP :: TAC.TextAreaContent
@@ -150,9 +152,10 @@ handlePrintKeySpec tac pos@(x,y) key val = do
   if char `elem` "*+x^v><-|/\\@"
   then do
     let
-      newDir@(nx,ny) = getNewDirection char dir
+      newDir@(nx,ny) = getNewDirection char dir 
       (content@(curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
       newChar = buildJunction curchar char
+    putStrLn [newChar,char]
     History.action tac pos (TAC.Replace [content] [(newChar,False)])
     TAC.putCell tac pos ((newChar,False),TAC.defaultColor)
     TAC.putDirection tac newDir
@@ -176,6 +179,13 @@ handlePrintKeyIns tac pos@(x,y) key val = do
   TACU.moveChars tac pos (1,0)
   TAC.putCell tac pos ((char,False),TAC.defaultColor)
   return (x+1,y)
+
+-- | checking if key is numblock key
+elemNumBlock :: String
+  -> Bool
+elemNumBlock key = key `elem` ["KP_End", "KP_Down",
+  "KP_Page_Down", "KP_Right", "KP_Page_Up",
+  "KP_Up", "KP_Home", "KP_Left"]
 
 -- | checking if key is an arrow 
 isArrow :: String -> Bool
@@ -367,7 +377,7 @@ dS = (0,1)
 dSO :: TAC.Direction
 dSO = (1,1)
 
--- | find new direction, sets (0,0) if input isundefined
+-- | find new direction, sets (1,0) if input is undefined
 getNewDirection :: Char -> TAC.Direction -> TAC.Direction
 getNewDirection _ (0,0) = (1,0)
 getNewDirection '*' x = x
@@ -415,13 +425,47 @@ getNewDirection '^' dir
   | dir == dNW = dN
   | otherwise  = dD
 
+-- | builds a junction in case of crossing rails
 buildJunction :: Char -> Char -> Char
 buildJunction content char
   | content == '|' && char == '-' || content == '-' && char == '|' = '+'
   | content == '\\' && char == '/' || content == '/' && char == '\\' = 'x'
+  | content `elem` "/\\" && char `elem` "-|" || content `elem` "-|" && char `elem` "/\\" = '*'
   | content `elem` "+*" && (char == '-' || char == '|') = content
   | content `elem` "x*" && (char == '/' || char == '\\') = content
   | content == '+' && (char == '/' || char == '\\') = '*'
   | content == 'x' && (char == '-' || char == '|') = '*'
   | content == '*' && char `elem` "-|/\\+x*" = content
-  | otherwise = char
+  | content == TAC.defaultChar = char
+  | otherwise = content
+
+-- | inserts matching character and sets new position
+handleNumBlock :: TAC.TextAreaContent
+  -> TAC.Position
+  -> String
+  -> IO TAC.Position
+handleNumBlock tac pos@(x,y) key = do
+  cell <- TAC.getCell tac pos
+  
+  let
+    (char,(dx,dy)) = getDirAndCharFromNumKey key
+    (content@(curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
+    newChar = buildJunction curchar char
+  History.action tac pos (TAC.Replace [content] [(newChar,False)])
+  TAC.putCell tac pos ((newChar,False),TAC.defaultColor)
+  TAC.putDirection tac (dx,dy)
+  return (max 0 (x+dx),max 0 (y+dy))
+
+-- | analysng which character and direction equals key
+getDirAndCharFromNumKey :: String
+  -> (Char,TAC.Direction)
+getDirAndCharFromNumKey key =
+  case key of
+    "KP_End"       -> ('/',dSW)
+    "KP_Down"      -> ('|',dS)
+    "KP_Page_Down" -> ('\\',dSO)
+    "KP_Right"     -> ('-',dO)
+    "KP_Page_Up"   -> ('/',dNO)
+    "KP_Up"        -> ('|',dN)
+    "KP_Home"      -> ('\\',dNW)
+    "KP_Left"      -> ('-',dW)
