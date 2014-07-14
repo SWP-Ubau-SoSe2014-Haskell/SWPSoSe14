@@ -21,7 +21,7 @@ import TextArea
 import TextAreaContent
 import qualified Highlighter as HIGH
 import qualified Execute as EXE
-import Graphics.UI.Gtk
+import Graphics.UI.Gtk as Gtk
 import qualified Control.Exception as Exc
 import System.Exit
 import Data.Maybe
@@ -37,8 +37,10 @@ fileChooserEventHandler :: Window
   -> FileChooserDialog 
   -> ResponseId
   -> String
+  -> Gtk.TextBuffer
+  -> Gtk.TextBuffer
   -> IO()
-fileChooserEventHandler window area fileChooser response mode
+fileChooserEventHandler window area fileChooser response mode inputB outputB
   |response == ResponseOk = do
     dir <- fileChooserGetFilename fileChooser
     let path = fromJust dir
@@ -48,7 +50,7 @@ fileChooserEventHandler window area fileChooser response mode
     case mode of
       "OpenFile" -> do
         content <- readFile path
-        newAreaContent <- deserialize content
+        newAreaContent <- deserialize content inputB outputB
         setTextAreaContent area newAreaContent
         widgetDestroy fileChooser
         return()
@@ -63,8 +65,8 @@ fileChooserEventHandler window area fileChooser response mode
   |otherwise = return ()
   
 --checking for a legal path in window title to save whitout dialog
-saveFile :: Window -> TextArea -> IO Bool
-saveFile window area = do
+saveFile :: Window -> TextArea -> Gtk.TextBuffer -> Gtk.TextBuffer -> IO Bool
+saveFile window area inputB outputB = do
   let contRef = textAreaContent area
   areaContent <- readIORef contRef
   code <- serialize areaContent
@@ -73,7 +75,7 @@ saveFile window area = do
   then do
     writeFile dir code
     return True
-  else fileDialog window area "SaveFile" >> return True
+  else fileDialog window area "SaveFile" inputB outputB >> return True
 
 {-
 TODO Refactor text to an 'link' to the entry text
@@ -84,13 +86,15 @@ runFileChooser :: Window
   -> TextArea
   -> FileChooserDialog
   -> String
+  -> Gtk.TextBuffer
+  -> Gtk.TextBuffer
   -> IO()
-runFileChooser window area fileChooser mode = do
+runFileChooser window area fileChooser mode inputB outputB= do
   on fileChooser response hand
   dialogRun fileChooser
   return()
   where 
-    hand resp = fileChooserEventHandler window area fileChooser resp mode
+    hand resp = fileChooserEventHandler window area fileChooser resp mode inputB outputB
 
 {-
 Setup a file chooser with modes OpenFile and SaveFile
@@ -100,8 +104,10 @@ for the ability to save files
 fileDialog :: Window
   -> TextArea
   -> String
+  -> Gtk.TextBuffer
+  -> Gtk.TextBuffer
   -> IO()
-fileDialog window area mode = do
+fileDialog window area mode inputB outputB= do
   case mode of
     "OpenFile" -> do
       fileChooser <- fileChooserDialogNew 
@@ -109,7 +115,7 @@ fileDialog window area mode = do
         (Just window)
         FileChooserActionOpen
         [("open",ResponseOk),("cancel",ResponseCancel)]
-      runFileChooser window area fileChooser mode
+      runFileChooser window area fileChooser mode inputB outputB
     "SaveFile" -> do
       fileChooser <- fileChooserDialogNew
         (Just mode)
@@ -117,7 +123,7 @@ fileDialog window area mode = do
         FileChooserActionSave
         [("save",ResponseOk),("cancel",ResponseCancel)]
       fileChooserSetDoOverwriteConfirmation fileChooser True
-      runFileChooser window area fileChooser mode
+      runFileChooser window area fileChooser mode inputB outputB
   return ()
   
 
@@ -162,10 +168,15 @@ create window area output input= do
   on menuOpenItem menuItemActivate (fileDialog 
     window 
     area
-    "OpenFile")
+    "OpenFile"
+    input
+    output
+    )
   on menuSaveItem menuItemActivate (saveFile
     window
-    area >> return())
+    area
+    input
+    output >> return())
   on menuCloseItem menuItemActivate mainQuit
   on menuCompileItem menuItemActivate 
     (compileOpenFile window output input >> return ())
@@ -178,11 +189,13 @@ create window area output input= do
     liftIO $ case modi of
       [Control] -> case key of
         "q" -> mainQuit >> return True
-        "s" -> saveFile window area  >> return True
+        "s" -> saveFile window area input output >> return True
         "o" -> fileDialog
           window
           area
-          "OpenFile" >> return True
+          "OpenFile"
+          input
+          output >> return True
         "F5" -> compileAndRun window output input >> return True
         _ -> return False
       [Shift,Control] -> case key of

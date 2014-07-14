@@ -22,7 +22,7 @@ import qualified TextArea         as TA
 import TextAreaContent as TAC
 import qualified InteractionField as IAF
 import Data.IORef
-import qualified Interpreter
+import qualified Interpreter as IN
 import qualified Paths_rail_compiler_editor as Path
 
     -- functions --
@@ -38,15 +38,15 @@ create = do
   Gtk.windowSetIcon window (Just pb)
   Gtk.onDestroy window Gtk.mainQuit
 
-  -- create TextArea with TextAreaContent
-  tac <- TAC.init 100 100
-  ta <- TA.initTextAreaWithContent tac
-  lwin <- TA.getTextAreaContainer ta
-
   interDT <- IAF.create
   let boxView = IAF.getContainer interDT
   footer <- FB.create
   let hboxInfoLine = FB.getContainer footer
+
+  -- create TextArea with TextAreaContent
+  tac <- TAC.init 100 100 (IAF.getInputBuffer interDT) (IAF.getOutputBuffer interDT)
+  ta <- TA.initTextAreaWithContent tac
+  lwin <- TA.getTextAreaContainer ta
 
   -- reset label with current position
   Gtk.afterKeyPress (TA.drawingArea ta) $ \event -> do
@@ -73,8 +73,19 @@ create = do
   let bufferOut = IAF.getOutputBuffer interDT
   let bufferIn  = IAF.getInputBuffer interDT
 
+  Gtk.on bufferIn Gtk.bufferInsertText $ \iter string ->  do
+    putStrLn "In"
+    tac <- readIORef (TA.textAreaContent ta)
+    cnt <- readIORef (TAC.context tac)
+    let flags = TAC.railFlags cnt
+    if (elem TAC.Interpret flags)
+    then IN.interpret tac
+    else if (elem TAC.Step flags)
+         then IN.step tac
+         else return ()
+
   menuBar <- MB.create window ta bufferOut bufferIn
-  extraBar <- TB.create ta footer
+  extraBar <- TB.create ta footer interDT
 
   vSepa <- Gtk.hSeparatorNew
 
