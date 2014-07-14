@@ -24,6 +24,7 @@ import qualified InteractionField as IAF
 import Data.IORef
 import qualified Interpreter as IN
 import qualified Paths_rail_compiler_editor as Path
+import Control.Monad
 
     -- functions --
 
@@ -78,11 +79,9 @@ create = do
     tac <- readIORef (TA.textAreaContent ta)
     cnt <- readIORef (TAC.context tac)
     let flags = TAC.railFlags cnt
-    if (elem TAC.Interpret flags)
+    if TAC.Interpret `elem` flags
     then IN.interpret tac
-    else if (elem TAC.Step flags)
-         then IN.step tac
-         else return ()
+    else when (TAC.Step `elem` flags) $ IN.step tac
 
   menuBar <- MB.create window ta bufferOut bufferIn
   extraBar <- TB.create ta footer interDT
