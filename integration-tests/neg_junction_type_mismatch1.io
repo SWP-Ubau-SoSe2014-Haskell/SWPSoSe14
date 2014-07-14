@@ -1,9 +1,9 @@
 a
 #
 %
-Type mismatch!\n
+Stack value was not 0 or 1!\n
 #
 2
 #
 %
-Type mismatch!\n
+Stack value was not 0 or 1!\n
