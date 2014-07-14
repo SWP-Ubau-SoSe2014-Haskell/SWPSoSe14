@@ -133,12 +133,11 @@ create area footer interDT= do
       FB.setMode footer KH.Smart
       return True
 
-    Gtk.onButtonPress highlightCheck $ \event -> do
+    Gtk.on highlightCheck Gtk.menuItemActivate$ do
       isActive <- Gtk.checkMenuItemGetActive highlightCheck
       if isActive
-      then TA.setHighlighting area False
-      else TA.setHighlighting area True
-      return True
+      then TA.setHighlighting area True
+      else TA.setHighlighting area False
 
     -- configure mode-menu
     modeItem <- Gtk.menuItemNewWithLabel "mode"
