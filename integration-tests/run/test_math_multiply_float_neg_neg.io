@@ -1,1 +1,0 @@
-../test_math_multiply_float_neg_neg.io
