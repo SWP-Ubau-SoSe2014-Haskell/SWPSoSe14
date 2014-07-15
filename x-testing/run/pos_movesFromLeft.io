@@ -1,1 +1,0 @@
-../pos_movesFromLeft.io

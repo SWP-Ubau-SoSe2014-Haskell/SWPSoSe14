@@ -1,1 +1,0 @@
-../neg_string_append_no_argument.io

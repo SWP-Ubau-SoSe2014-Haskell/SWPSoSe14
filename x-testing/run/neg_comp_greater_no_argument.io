@@ -1,1 +1,0 @@
-../neg_comp_greater_no_argument.io

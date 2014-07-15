@@ -1,1 +1,0 @@
-../test_math_multiply_int_pos_neg.io

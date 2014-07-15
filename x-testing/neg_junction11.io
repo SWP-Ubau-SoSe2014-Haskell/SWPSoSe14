@@ -1,6 +1,6 @@
 $0
 ---
-1
+t
 #
 %
-RailCompiler: Disallowed entry into junction.
+RailCompiler: Invalid movement.
