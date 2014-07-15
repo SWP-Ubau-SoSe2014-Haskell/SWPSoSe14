@@ -682,84 +682,87 @@ generateBasicBlocks lexemes name = mapM generateBasicBlock (appendName lexemes n
 generateFunction :: AST -> GlobalCodegen Definition
 generateFunction (name, lexemes) = do
   dict <- gets dict
-  if "!" `isInfixOf` name then
-    return $ GlobalDefinition $ Global.functionDefaults {
-    Global.name = Name name,
-    Global.returnType = IntegerType 32,
-    Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name  
-      "struct.table") (AddrSpace 0)) (Name "t") [] ], False ),
-    Global.basicBlocks = concat ( 
-    return ( BasicBlock (Name "entry")  [ 
-    Name "table_alloc" := LLVM.General.AST.Call {
-    isTailCall = False,
-    callingConvention = C,
-    returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "malloc",
-    arguments = [(ConstantOperand $ Int 64 24, [])],
-    functionAttributes = [],
-    metadata = []
-  },
-    Name "table" := LLVM.General.AST.BitCast {
-    Instruction.operand0 = LocalReference $ Name "table_alloc",
-    Instruction.type' = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
-    metadata = []
-  },
-    Name "" := LLVM.General.AST.Call {
-    isTailCall = False,
-    callingConvention = C,
-    returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "initialise",
-    arguments = [(LocalReference $ Name "table", [])],
-    functionAttributes = [],
-    metadata = []
-  },
-  Name "" := LLVM.General.AST.Call {
-    isTailCall = False,
-    callingConvention = C,
-    returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "copy_symbol_table",
-    arguments = [(LocalReference $ Name "t", []), (LocalReference $ Name "table", [])],
-    functionAttributes = [],
-    metadata = []
-  }]
-    ( Do Br {
-    dest = Name "l_1", 
-    metadata' = []} ))
-   : [execCodegen dict $ generateBasicBlocks lexemes name])
-  }
-    else return $ GlobalDefinition $ Global.functionDefaults {
-    Global.name = Name name,
-    Global.returnType = IntegerType 32,
-    Global.basicBlocks = concat ( 
-    return ( BasicBlock (Name "entry")  [ 
-    Name "table_alloc" := LLVM.General.AST.Call {
-    isTailCall = False,
-    callingConvention = C,
-    returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "malloc",
-    arguments = [(ConstantOperand $ Int 64 24, [])],
-    functionAttributes = [],
-    metadata = []
-  },
-    Name "table" := LLVM.General.AST.BitCast {
-    Instruction.operand0 = LocalReference $ Name "table_alloc",
-    Instruction.type' = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
-    metadata = []
-  },
-    Name "" := LLVM.General.AST.Call {
-    isTailCall = False,
-    callingConvention = C,
-    returnAttributes = [],
-    function = Right $ ConstantOperand $ GlobalReference $ Name "initialise",
-    arguments = [(LocalReference $ Name "table", [])],
-    functionAttributes = [],
-    metadata = []
-  }]   
-    ( Do Br {
-    dest = Name "l_1", 
-    metadata' = []} ))
-   : [execCodegen dict $ generateBasicBlocks lexemes name])
-  }
+  return $ GlobalDefinition
+    (if "!" `isInfixOf` name then
+    Global.functionDefaults {
+        Global.name = Name name,
+        Global.returnType = IntegerType 32,
+        Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name  
+          "struct.table") (AddrSpace 0)) (Name "t") [] ], False ),
+        Global.basicBlocks = concat ( 
+        return ( BasicBlock (Name "entry")  [ 
+        Name "table_alloc" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "malloc",
+        arguments = [(ConstantOperand $ Int 64 24, [])],
+        functionAttributes = [],
+        metadata = []
+      },
+        Name "table" := LLVM.General.AST.BitCast {
+        Instruction.operand0 = LocalReference $ Name "table_alloc",
+        Instruction.type' = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
+        metadata = []
+      },
+        Name "" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "initialise",
+        arguments = [(LocalReference $ Name "table", [])],
+        functionAttributes = [],
+        metadata = []
+      },
+      Name "" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "copy_symbol_table",
+        arguments = [(LocalReference $ Name "t", []), (LocalReference $ Name "table", [])],
+        functionAttributes = [],
+        metadata = []
+      }]
+        ( Do Br {
+        dest = Name "l_1", 
+        metadata' = []} ))
+       : [execCodegen dict $ generateBasicBlocks lexemes name])
+      }
+    else 
+    Global.functionDefaults {
+        Global.name = Name name,
+        Global.returnType = IntegerType 32,
+        Global.basicBlocks = concat ( 
+        return ( BasicBlock (Name "entry")  [ 
+        Name "table_alloc" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "malloc",
+        arguments = [(ConstantOperand $ Int 64 24, [])],
+        functionAttributes = [],
+        metadata = []
+      },
+        Name "table" := LLVM.General.AST.BitCast {
+        Instruction.operand0 = LocalReference $ Name "table_alloc",
+        Instruction.type' = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
+        metadata = []
+      },
+        Name "" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "initialise",
+        arguments = [(LocalReference $ Name "table", [])],
+        functionAttributes = [],
+        metadata = []
+      }]   
+        ( Do Br {
+        dest = Name "l_1", 
+        metadata' = []} ))
+       : [execCodegen dict $ generateBasicBlocks lexemes name])
+      })
+
 
 -- |Create a new local variable (?).
 fresh :: Codegen Word
