@@ -481,17 +481,22 @@ define %stack_element* @push_string_cpy(i8* %str) {
 }
 
 ; pops element from stack and converts to integer
-; returns the element, in case of error returns undefined
-define i64 @pop_int(){
-  ; pop
-  %top = call i8* @pop_string()
+; returns the element, in case of error crashes the program
+define i64 @pop_int() {
+  ; Get top element of stack and make sure it is a string (type 0).
+  %top = call %stack_element* @pop_struct()
+  call void @stack_element_assert_type(%stack_element* %top, i8 0)
 
-  ; convert to int, check for error
-  %top_int0 = call i32 @atol(i8* %top)
-  %top_int1 = sext i32 %top_int0 to i64
+  ; Now get the string and convert it.
+  %str = call i8* @stack_element_get_data(%stack_element* %top)
+  ; FIXME Error checking here! Use strtol() instead and check if
+  ;       endptr points to a null byte.
+  %int0 = call i32 @atol(i8* %str)
+  %int1 = sext i32 %int0 to i64
 
-  ; return
-  ret i64 %top_int1
+  ; Decrement refcount and return
+  call void @stack_element_unref(%stack_element* %top)
+  ret i64 %int1
 }
 
 define i64 @pop_bool(){
