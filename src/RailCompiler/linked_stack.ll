@@ -600,7 +600,10 @@ define void @push_lambda(i32 (%struct.table*)** %function_ptr, %struct.table* %t
 define %lambda_element* @pop_lambda()
 {
   %l_elem = call %stack_element* @pop_struct()
-  ;; TODO check type
+  
+  ; check if struct is a lambda, if not crash
+  call void @stack_element_assert_type(%stack_element* %l_elem, i8 2)
+
   %l_ptr = call i8* @stack_element_get_data(%stack_element* %l_elem)
   %l_ptr_bitcast = bitcast i8* %l_ptr to %lambda_element*
   ret %lambda_element* %l_ptr_bitcast
