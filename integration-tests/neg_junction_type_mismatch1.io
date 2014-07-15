@@ -1,7 +1,7 @@
 a
 #
 %
-Stack value was not 0 or 1!\n
+Cannot convert stack element to integer!\n
 #
 2
 #
