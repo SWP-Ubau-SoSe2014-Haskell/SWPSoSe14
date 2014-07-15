@@ -50,9 +50,8 @@ handleKey tac pos modus modif key val
     cells <- Selection.getCellsByPositons tac clipboard
     History.action tac pos (TAC.Insert cells)
     positions <- TAC.getSelectedPositons tac
-    newPos <- if not (null positions) 
-                 then Selection.relocateCells tac clipboard (Selection.getMinimum positions)
-                 else Selection.relocateCells tac clipboard pos
+    newPos <- Selection.relocateCells tac clipboard
+                (if not (null positions) then Selection.getMinimum positions else pos)
     Selection.clear tac newPos
     return newPos
   | otherwise =
@@ -120,7 +119,7 @@ handleKeySpec tac pos@(x,y) modif key val
   | isJust (keyToChar val) || key=="dead_circumflex" = handlePrintKeySpec tac pos key val
   | isArrow key && Control `elem` modif = arrowDirectionSetter tac key >> return pos
   | isArrow key = handleArrowsSpec key pos tac
-  | otherwise = do
+  | otherwise =
       case key of
         "BackSpace" -> handleBackSpaceSpec tac pos
         "Return" -> handleReturnRail tac pos
@@ -280,7 +279,7 @@ handleBackSpace tac (x,y) = do
   (topLeft@(xLeft,yTop),bottomRight@(xRight,yBottom)) <- Selection.clear tac (x,y)
   case (x,y) of
     (0,0) -> return (0,0)
-    (0,_) -> do
+    (0,_) ->
       if null selectedPositions then do -- no previous selection
         finXPrev <- TAC.findLastChar tac (y-1)
         History.action tac (finXPrev+1,y-1) TAC.RemoveLine
@@ -293,7 +292,7 @@ handleBackSpace tac (x,y) = do
       empty <- TAC.isEmptyLine tac y
       if empty
       then return(0,y)
-      else do
+      else
         if null selectedPositions then do -- no previous selection
           maybeCell <- TAC.getCell tac (x-1,y)
           let cell = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) maybeCell
@@ -302,7 +301,8 @@ handleBackSpace tac (x,y) = do
           TACU.moveChars tac (x,y) (-1,0)
           return (x-1,y)
         else do
-          if (x,y) == topLeft then TACU.moveChars tac bottomRight (x-xRight-1,y-yBottom) else TACU.moveChars tac bottomRight (xLeft-x,yTop-y)
+          TACU.moveChars tac bottomRight
+            (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
           mvLinesUp tac y (abs (yTop-y))
           return (xLeft,yTop)
 
@@ -318,22 +318,28 @@ handleBackSpaceSpec :: TAC.TextAreaContent
   -> IO TAC.Position 
 handleBackSpaceSpec tac pos@(x,y) = do
   selectedPositions <- TAC.getSelectedPositons tac
-  cell <- TAC.getCell tac pos
-  if selectedPositions/=[] || isNothing cell
+  if selectedPositions/=[]
   then handleBackSpace tac pos
   else do
-    let (content@(char,_), col) = fromJust cell
     dir@(dx,dy) <- TAC.getDirection tac
-    if char `elem` "x+*"
-    then do
-      oldChar <- findOldChar tac pos dir char
-      TAC.putCell tac pos ((oldChar,False), col)
-      return (max 0 (x-dx),max 0 (y-dy))
+    cell <- TAC.getCell tac pos
+    prevCell <- TAC.getCell tac (x-dx,y-dy)
+    if isNothing cell
+    then
+      handleBackSpace tac
+        (if isNothing prevCell then pos else (x - dx, y - dy))
     else do
-      oldDir@(nx,ny) <- findOldDir tac pos dir
-      TAC.deleteCell tac pos
-      TAC.putDirection tac oldDir
-      return (max 0 (x-nx),max 0 (y-ny))
+      let (content@(char,_), col) = fromJust cell
+      if char `elem` "x+*"
+      then do
+        oldChar <- findOldChar tac pos dir char
+        TAC.putCell tac pos ((oldChar,False), col)
+        return (max 0 (x-dx),max 0 (y-dy))
+      else do
+        oldDir@(nx,ny) <- findOldDir tac pos dir
+        TAC.deleteCell tac pos
+        TAC.putDirection tac oldDir
+        return (max 0 (x-nx),max 0 (y-ny))
 
 -- | handles Return-key in Smart-mode
 handleReturnRail :: TAC.TextAreaContent
@@ -406,7 +412,7 @@ handleDelete tac pos@(x,y) = do
     History.action tac pos TAC.RemoveLine
     TACU.moveLinesUp tac (y+1)
     return (x,y)
-  else do
+  else
     if null selectedPositions then do -- no previous selection
       maybeCell <- TAC.getCell tac pos
       let cell = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) maybeCell
@@ -415,10 +421,11 @@ handleDelete tac pos@(x,y) = do
       TACU.moveChars tac (x+1,y) (-1,0)
       return pos
     else do
-      if (x,y) == topLeft then TACU.moveChars tac bottomRight (x-xRight-1,y-yBottom) else TACU.moveChars tac bottomRight (xLeft-x,yTop-y)
+      TACU.moveChars tac bottomRight
+        (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
       mvLinesUp tac y (abs (yTop-y))
-      return (xLeft,yTop)      
-      
+      return (xLeft,yTop)
+
 -- Rail Smart-mode setting of Cursor-Position
 -- directions
 dNW :: TAC.Direction
