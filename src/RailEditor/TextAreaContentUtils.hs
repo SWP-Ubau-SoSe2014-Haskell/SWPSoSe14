@@ -42,9 +42,9 @@ moveChar area from dir = do
   x <- TAC.getCell area from
   unless (isNothing x) $ do
     let
-      (char,col) = fromJust x
+      cell = fromJust x
       to = calculateDest from dir
-    TAC.putCell area to (char,col)
+    TAC.putCell area to cell
     TAC.deleteCell area from
     return ()
 

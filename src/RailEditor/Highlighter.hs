@@ -24,6 +24,7 @@ import Graphics.UI.Gtk.Abstract.Widget
 import System.IO
 import Data.IORef
 import Data.Maybe
+import qualified Data.Map as Map
 
 --returns the grid2D from a IDT.IPL grid2D
 getGrid2dFromPreProc2Lexer(IDT.IPL grid2D) = grid2D
@@ -72,7 +73,10 @@ highlightFct :: Grid2D
 highlightFct grid2D ip yOffset textAC
   | ip == crash = return crash
   |otherwise =
-  case lex of
+  if Lexer.count ip > 8 * Map.size (fromJust (Map.lookup 0 grid2D)) * Map.size (fromJust (Map.lookup 0 grid2D))
+  then return crash
+  else
+   case lex of
     Nothing -> do
       TAC.putColor textAC (xC,yC) TAC.black
       highlightFct grid2D nextIP yOffset textAC
@@ -81,6 +85,11 @@ highlightFct grid2D ip yOffset textAC
       let (falseIP,trueIP) = junctionturns grid2D parseIP
       highlightFct grid2D falseIP yOffset textAC
       highlightFct grid2D trueIP yOffset textAC
+    Just (Lambda _) -> do
+      TAC.putColor textAC (xC,yC) TAC.gold
+      let (lip,bip) = lambdadirs parseIP
+      highlightFct grid2D (step grid2D lip) yOffset textAC
+      highlightFct grid2D (step grid2D bip) yOffset textAC
     Just (Constant str)   ->
       if [current grid2D parseIP] == "]" || 
          [current grid2D parseIP] == "["
