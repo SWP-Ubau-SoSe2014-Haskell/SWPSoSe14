@@ -63,6 +63,7 @@
 @err_unhandled_type = private unnamed_addr constant [30 x i8] c"Cannot unref unhandled type!\0A\00"
 @err_not_bool = private unnamed_addr constant [29 x i8] c"Stack value was not 0 or 1!\0A\00"
 @err_empty_list = private unnamed_addr constant [13 x i8] c"Empty list!\0A\00"
+@err_num_conv = constant [42 x i8] c"Cannot convert stack element to integer!\0A\00"
 @type_string = unnamed_addr constant [7 x i8] c"string\00"
 @type_lambda = unnamed_addr constant [7 x i8] c"lambda\00"
 @type_list = unnamed_addr constant [5 x i8] c"list\00"
@@ -75,6 +76,7 @@ declare signext i32 @atol(i8*)
 declare void @free(i8*)
 declare i8* @malloc(i16 zeroext) ; void *malloc(size_t) and size_t is 16 bits long (SIZE_MAX)
 declare signext i32 @snprintf(i8*, ...)
+declare signext i32 @strtol(i8*, i8**, i32 signext)
 declare i8* @xcalloc(i16 zeroext, i16 zeroext)
 declare i8* @xstrdup(i8*)
 
@@ -487,13 +489,36 @@ define i64 @pop_int() {
   %top = call %stack_element* @pop_struct()
   call void @stack_element_assert_type(%stack_element* %top, i8 0)
 
-  ; Now get the string and convert it.
+  ; Now get the string...
   %str = call i8* @stack_element_get_data(%stack_element* %top)
-  ; FIXME Error checking here! Use strtol() instead and check if
-  ;       endptr points to a null byte.
-  %int0 = call i32 @atol(i8* %str)
+
+  ; ...and convert it.
+  %endptrptr = alloca i8*
+  store i8* null, i8** %endptrptr
+  %int0 = call i32 @strtol(i8* %str, i8** %endptrptr, i32 10)
   %int1 = sext i32 %int0 to i64
 
+  ; Was everything converted?
+  %endptr = load i8** %endptrptr
+  %not_null0 = icmp ne i8* %endptr, null
+  br i1 %not_null0, label %error_check, label %okay
+
+error_check:
+  ; Need to check if the first byte is 0, i. e. if everything
+  ; up to the terminating null byte has been converted.
+  %first_byte = load i8* %endptr
+  %not_null1 = icmp ne i8 %first_byte, 0
+  br i1 %not_null1, label %bail_out, label %okay
+
+bail_out:
+  ; Error -- crash!
+  %msg = getelementptr [42 x i8]* @err_num_conv, i8 0, i8 0
+  call %stack_element* @push_string_cpy(i8* %msg)
+  call void @crash(i1 0)
+
+  ret i64 -1
+
+okay:
   ; Decrement refcount and return
   call void @stack_element_unref(%stack_element* %top)
   ret i64 %int1
