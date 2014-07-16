@@ -28,6 +28,12 @@ import Control.Monad
 
     -- functions --
 
+afterEvent evt = 
+  evt (TA.drawingArea ta) $ \event -> do
+    let posRef = TA.currentPosition ta
+    readIORef posRef >>= FB.setPosition footer
+    return True
+
 -- | creates a mainWindow
 create :: IO ()
 create = do
@@ -50,15 +56,9 @@ create = do
   lwin <- TA.getTextAreaContainer ta
 
   -- reset label with current position
-  Gtk.afterKeyPress (TA.drawingArea ta) $ \event -> do
-    let posRef = TA.currentPosition ta
-    readIORef posRef >>= FB.setPosition footer
-    return True
+  afterEvent Gtk.afterKeyPress
 
-  Gtk.afterButtonPress (TA.drawingArea ta) $ \event -> do
-    let posRef = TA.currentPosition ta
-    readIORef posRef >>= FB.setPosition footer
-    return True
+  afterEvent Gtk.afterButtonPress
 
   -- pack TextArea and InteractionField
   boxLay <- Gtk.hBoxNew False 0

@@ -122,7 +122,7 @@ handleKeySpec tac pos@(x,y) modif key val
   | isJust (keyToChar val) || key=="dead_circumflex" = handlePrintKeySpec tac pos key val
   | isArrow key && Control `elem` modif = arrowDirectionSetter tac key >> return pos
   | isArrow key = handleArrowsSpec key pos tac
-  | otherwise = do
+  | otherwise = 
       case key of
         "BackSpace" -> handleBackSpaceSpec tac pos
         "Return" -> handleReturnRail tac pos
