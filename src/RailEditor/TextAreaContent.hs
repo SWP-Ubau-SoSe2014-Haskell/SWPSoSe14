@@ -22,7 +22,7 @@ module TextAreaContent (
   Direction,
   Coord,
   RGBColor(RGBColor),
-  TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
+  TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat, DoNothing),
   ActionQueue,
   RailType(RailString, RailList, RailLambda),
   InterpreterContext(IC), dataStack, funcStack, breakMap, inputOffset, curIPPos, railFlags,
@@ -63,6 +63,7 @@ module TextAreaContent (
   buffer,
   getSelectedPositons,
   getPositons,
+  getPositonsFrom,
   setClipboard,
   getClipboard
   ) where
@@ -82,7 +83,7 @@ data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
 data CharMap  = ChMap  (IORef (Map Coord (Map Coord (Char,Bool)))) (IORef (Coord,Coord))
 
 -- types for undoredo
-data Action = Remove [(Char,Bool)] | Insert [(Char,Bool)] | Replace [(Char,Bool)] [(Char,Bool)] | RemoveLine | InsertLine | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
+data Action = Remove [(Char,Bool)] | Insert [(Char,Bool)] | Replace [(Char,Bool)] [(Char,Bool)] | RemoveLine | InsertLine | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) | DoNothing deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
 -- types for interpreter
@@ -114,7 +115,7 @@ data TextAreaContent =
     railDirection :: IORef Direction,
     context :: IORef InterpreterContext,
     buffer :: (Gtk.TextBuffer,Gtk.TextBuffer),
-    clipboard :: IORef [Position]
+    clipboard :: IORef [(Position,(Char,Bool))]
   }
   
 type Coord = Int
@@ -416,6 +417,11 @@ getPositons areaContent = do
   (xMax,yMax) <- TextAreaContent.size areaContent
   filterM (isOccupied areaContent) [ (x,y) | y <- [0..yMax], x <- [0..xMax]]
 
+getPositonsFrom :: TextAreaContent -> Position -> IO [Position]
+getPositonsFrom areaContent (_,y) = do
+  (xMax,yMax) <- TextAreaContent.size areaContent
+  filterM (isOccupied areaContent) [ (x1,y1) | y1 <- [0..yMax], x1 <- [0..xMax], y1 > y]
+
 isOccupied :: TextAreaContent -> Position -> IO Bool
 isOccupied tac pos = do
   cell <- getCell tac pos
@@ -424,8 +430,21 @@ isOccupied tac pos = do
 setClipboard :: TextAreaContent -> IO ()
 setClipboard tac = do
   positions <- getSelectedPositons tac
-  --chars <- mapM (getContent tac) positions
-  writeIORef (clipboard tac) positions --(List.zip positions chars)
+  cells <- getCellsByPositions tac positions
+  writeIORef (clipboard tac) (List.zip positions cells)
 
-getClipboard :: TextAreaContent -> IO [Position]
+getClipboard :: TextAreaContent -> IO [(Position,(Char,Bool))]
 getClipboard tac = readIORef (clipboard tac)
+
+getCellsByPositions :: TextAreaContent -> [Position] -> IO [(Char,Bool)]
+getCellsByPositions _ [] = return []
+getCellsByPositions tac positions = _getCellsByPositions tac positions []
+
+_getCellsByPositions :: TextAreaContent -> [Position] -> [(Char,Bool)] -> IO [(Char,Bool)]
+_getCellsByPositions _ [] cells = return cells
+_getCellsByPositions tac (x:xs) cells = do
+  cell <- getCell tac x
+  _getCellsByPositions tac xs $
+    if isJust cell 
+    then cells ++ [fst $ fromJust cell]
+    else cells
