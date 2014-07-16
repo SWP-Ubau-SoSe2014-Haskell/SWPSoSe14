@@ -136,7 +136,7 @@ printableKeyInit tac pos key val = do
   Selection.clear tac pos
   let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
   cell <- TAC.getCell tac pos
-  return (char, cell)
+  return (cell, char)
 
 -- | handling of printable keys in Replace-mode (overwriting)
 handlePrintKeyRP :: TAC.TextAreaContent
