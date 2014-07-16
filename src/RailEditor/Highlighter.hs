@@ -74,13 +74,13 @@ highlightFct :: Grid2D
 highlightFct grid2D ip yOffset textAC mOCPos
   | ip == crash = return crash
   |otherwise =
-  if isPosColored mOCPos (posx nextIP,(posy nextIP))
+  if isPosColored mOCPos (posx ip,(posy ip))
   then return crash
-  else
+  else do
    case lex of
     Nothing -> do
       TAC.putColor textAC (xC,yC) TAC.black
-      highlightFct grid2D nextIP yOffset textAC mOCPos
+      highlightFct grid2D nextIP yOffset textAC inMap
     Just (Junction _) -> do
       TAC.putColor textAC (xC,yC) TAC.gold
       let (falseIP,trueIP) = junctionturns grid2D parseIP
