@@ -1,1 +1,1 @@
-../neg_forbiddenMove5.io
+/home/chris/SWPSoSe14/integration-tests/neg_forbiddenMove5.io

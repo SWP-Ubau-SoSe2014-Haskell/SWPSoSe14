@@ -17,7 +17,10 @@ module Selection (
                     getFirstPositions,
                     getBottomRight,
                     getMinimum,
-                    getCellsByPositons
+                    pasteReplace,
+                    pasteInsert,
+                    getCellsByPositons,
+                    deselect
                  )
   where
 
@@ -26,6 +29,7 @@ import Data.IORef
 import Control.Monad
 import Data.Maybe
 import qualified TextAreaContent as TAC
+import qualified TextAreaContentUtils as TACU
 import qualified Data.List as List
 import qualified RedoUndo as History
 
@@ -40,40 +44,43 @@ handleSelection tac currentPos newPos = do
     return (isAlreadySelected,selectedEntries)
   else return (False,[])
   
-updateCells :: TAC.TextAreaContent -> [TAC.Position] -> Bool -> IO ()
-updateCells _ [] _ = return ()
-updateCells tac (pos:xs) value = do
+updateCells :: TAC.TextAreaContent -> [TAC.Position] -> Bool -> IO TAC.Position
+updateCells tac positions value = do 
+  _updateCells tac positions value
+  return $ getBottomRight positions
+  
+_updateCells :: TAC.TextAreaContent -> [TAC.Position] -> Bool -> IO ()
+_updateCells _ [] _ = return ()
+_updateCells tac (pos:xs) value = do
   updateCell tac pos value
-  updateCells tac xs value
-
+  _updateCells tac xs value  
+  
 updateCell :: TAC.TextAreaContent -> TAC.Position -> Bool -> IO ()  
 updateCell tac pos value = do
   cell <- TAC.getCell tac pos
   when (isJust cell) $ do
-    let char = fst $ fst $ fromJust cell
+    let ((char,_),color) = fromJust cell
     TAC.deleteCell tac pos
-    TAC.putCell tac pos ((char,value),TAC.defaultColor)
+    TAC.putCell tac pos ((char,value),color)
 
-relocateCells :: TAC.TextAreaContent -> [TAC.Position] -> TAC.Position -> IO TAC.Position
+relocateCells :: TAC.TextAreaContent -> [(TAC.Position,(Char,Bool))] -> TAC.Position -> IO TAC.Position
 relocateCells tac [] pos = return pos
-relocateCells tac positions (x,y) = do
-  let (x1,y1) =  getTopLeft positions
+relocateCells tac content (x,y) = do
+  let (positions,cells) = List.unzip content
+      (x1,y1) = getMinimum positions
       (x2,y2) = getBottomRight positions
-  _relocateCells tac positions (x,y) (x1,y1)
+  _relocateCells tac positions (List.map fst cells) (x,y) (x1,y1)
   return (x+x2-x1,y+y2-y1)
 
-_relocateCells :: TAC.TextAreaContent -> [TAC.Position] -> TAC.Position -> TAC.Position -> IO ()
-_relocateCells _ [] _ _ = return ()
-_relocateCells tac (pos:xs) newPos offset = do
-  relocateCell tac pos newPos offset
-  _relocateCells tac xs newPos offset
+_relocateCells :: TAC.TextAreaContent -> [TAC.Position] -> String -> TAC.Position -> TAC.Position -> IO ()
+_relocateCells _ [] _ _ _ = return ()
+_relocateCells tac (position:positions) (char:chars) newPos offset = do
+  relocateCell tac position char newPos offset
+  _relocateCells tac positions chars newPos offset
   
-relocateCell :: TAC.TextAreaContent -> TAC.Position -> TAC.Position -> TAC.Position -> IO ()  
-relocateCell tac pos@(x,y) (newX,newY) (offsetX,offsetY) = do
-  cell <- TAC.getCell tac pos
-  when (isJust cell) $ do
-    let char = fst $ fst $ fromJust cell
-    TAC.putCell tac (newX+x-offsetX,newY+y-offsetY) ((char,False),TAC.defaultColor)
+relocateCell :: TAC.TextAreaContent -> TAC.Position -> Char -> TAC.Position -> TAC.Position -> IO ()  
+relocateCell tac pos@(x,y) char (newX,newY) (offsetX,offsetY) =
+  TAC.putCell tac (newX+x-offsetX,newY+y-offsetY) ((char,False),TAC.defaultColor)
 
 -- | clears a selection and removes all selected characters
 clear :: TAC.TextAreaContent -> TAC.Position -> IO (TAC.Position,TAC.Position)
@@ -152,3 +159,50 @@ getMaximum positions = (x,y)
 getFirstPositions :: [TAC.Position] -> [TAC.Position]
 getFirstPositions [] = []
 getFirstPositions positions = List.map minimum $ List.groupBy (\(x1,y1) (x2,y2) -> y1 == y2) positions
+
+paste :: TAC.TextAreaContent -> TAC.Position -> Bool -> IO TAC.Position
+paste tac pos replace = do
+  clipboard <- TAC.getClipboard tac
+  let (clipboardPositions,cells) = List.unzip clipboard
+  when replace $ shiftSubsequentLines tac pos clipboardPositions
+  History.action tac pos (TAC.Insert cells)
+  selectedPositions <- TAC.getSelectedPositons tac
+  newPos <- relocateCells tac clipboard $
+    if not (null selectedPositions)
+    then getMinimum selectedPositions
+    else pos
+  clear tac newPos
+  return newPos
+
+-- | pastes content from clipboard to position in override mode
+pasteReplace :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position
+pasteReplace tac pos = paste tac pos True
+
+-- | pastes content from clipboard to position in insert mode
+pasteInsert :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position
+pasteInsert tac pos = paste tac pos False
+
+shiftSubsequentLines :: TAC.TextAreaContent -> TAC.Position -> [TAC.Position] -> IO ()
+shiftSubsequentLines tac pos clipboardPositions = do
+  let (x1,y1) = getMinimum clipboardPositions
+      (x2,y2) = getMaximum clipboardPositions
+      (xShift,yShift) = (abs (x1-x2), abs (y1-y2))
+  positionsToShiftDown <- TAC.getPositonsFrom tac pos
+  shiftDownLines tac positionsToShiftDown yShift    
+  TACU.moveChars tac pos (xShift+1,yShift)    
+
+shiftDownLines :: TAC.TextAreaContent -> [TAC.Position] -> TAC.Coord -> IO ()
+shiftDownLines tac positionsToShiftDown yShift = do
+  let firsts = getFirstPositions positionsToShiftDown
+  _shiftDownLines tac firsts yShift
+  
+_shiftDownLines tac [] _ = return ()
+_shiftDownLines _ _ 0 = return ()
+_shiftDownLines tac (x:xs) shift = do
+  _shiftDownLines tac xs shift
+  TACU.moveChars tac x (0,shift)
+
+deselect :: TAC.TextAreaContent -> IO TAC.Position
+deselect tac = do
+  selectedPositions <- TAC.getSelectedPositons tac
+  updateCells tac selectedPositions False

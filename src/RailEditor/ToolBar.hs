@@ -12,7 +12,7 @@ module ToolBar (
   create
                )
   where
-    
+
     -- imports --
 
 import Data.IORef
@@ -27,6 +27,24 @@ import qualified TextAreaContent as TAC
 import qualified Data.Map as Map
 import Control.Monad
     -- functions --
+
+processWith area dataBuffer funcBuffer fn = do
+      tac <- readIORef $ TA.textAreaContent area
+      intCtxt <- readIORef $ TAC.context tac
+      fn tac
+      intCtxt <- readIORef $ TAC.context tac
+      TA.redrawContent area
+      Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
+      Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
+      let fS = TAC.funcStack intCtxt
+      if not (null fS)
+      then do
+        let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
+        print ip
+      else do
+        let ip = (0,0)
+        print ip
+      return True
 
 -- | creates a toolbar
 create area footer interDT= do
@@ -62,41 +80,9 @@ create area footer interDT= do
     let dataBuffer = IDF.getDataStackBuffer interDT
     let funcBuffer = IDF.getFunctionStackBuffer interDT
 
-    Gtk.onButtonPress run  $ \event -> do
-      tac <- readIORef $ TA.textAreaContent area
-      intCtxt <- readIORef $ TAC.context tac
-      IN.interpret tac
-      intCtxt <- readIORef $ TAC.context tac
-      TA.redrawContent area
-      Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
-      Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
-      let fS = TAC.funcStack intCtxt
-      if ((length fS) > 0) 
-      then do
-        let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
-        putStrLn $ show ip
-      else do
-        let ip = (0,0)
-        putStrLn $ show ip
-      return True
+    Gtk.onButtonPress run  $ \event -> processWith area dataBuffer funcBuffer IN.interpret
 
-    Gtk.onButtonPress step $ \event -> do
-      tac <- readIORef $ TA.textAreaContent area
-      intCtxt <- readIORef $ TAC.context tac
-      IN.step tac
-      intCtxt <- readIORef $ TAC.context tac
-      TA.redrawContent area
-      Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
-      Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
-      let fS = TAC.funcStack intCtxt
-      if ((length fS) > 0) 
-      then do
-        let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
-        putStrLn $ show ip
-      else do
-        let ip = (0,0)
-        putStrLn $ show ip
-      return True
+    Gtk.onButtonPress step $ \event -> processWith area dataBuffer funcBuffer IN.step
 
     bufferVariables <- Gtk.textBufferNew Nothing
 
@@ -104,8 +90,8 @@ create area footer interDT= do
       tac <- readIORef $ TA.textAreaContent area
       intCtxt <- readIORef $ TAC.context tac
       let list = TAC.funcStack intCtxt
-      when (length list /= 0) $ do
-        let vars = unlines $ map (\(x,y)-> x ++ " = " ++ (show y)) $ Map.toList $ (\(_,_,x) -> x)$ head $ list
+      unless (null list) $ do
+        let vars = unlines $ map (\(x,y)-> x ++ " = " ++ show y) $ Map.toList $ (\(_,_,x) -> x)$ head list
         Gtk.textBufferSetText bufferVariables vars
         Gtk.postGUIAsync $ IDF.textViewWindowShow bufferVariables "Variables"
       return True
@@ -134,9 +120,7 @@ create area footer interDT= do
 
     Gtk.on highlightCheck Gtk.menuItemActivate$ do
       isActive <- Gtk.checkMenuItemGetActive highlightCheck
-      if isActive
-      then TA.setHighlighting area True
-      else TA.setHighlighting area False
+      TA.setHighlighting area isActive
 
     -- configure mode-menu
     modeItem <- Gtk.menuItemNewWithLabel "mode"

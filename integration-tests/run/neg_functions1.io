@@ -1,1 +1,1 @@
-../neg_functions1.io
+/home/chris/SWPSoSe14/integration-tests/neg_functions1.io

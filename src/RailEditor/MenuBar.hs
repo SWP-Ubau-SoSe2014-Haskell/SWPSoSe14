@@ -26,6 +26,7 @@ import qualified Control.Exception as Exc
 import System.Exit
 import Data.Maybe
 import Control.Monad.IO.Class
+import Control.Monad
 import Data.List
 import Data.IORef
 
@@ -55,7 +56,7 @@ fileChooserEventHandler window area fileChooser response mode inputB outputB
         widgetDestroy fileChooser
         return()
       "SaveFile" -> do
-        code <- (serialize areaContent)
+        code <- serialize areaContent
         writeFile path code
         widgetDestroy fileChooser
         return()
@@ -172,14 +173,14 @@ create window area output input= do
     input
     output
     )
-  on menuSaveItem menuItemActivate (saveFile
+  on menuSaveItem menuItemActivate $ void (saveFile
     window
     area
     input
-    output >> return())
+    output)
   on menuCloseItem menuItemActivate mainQuit
-  on menuCompileItem menuItemActivate 
-    (compileOpenFile window output input >> return ())
+  on menuCompileItem menuItemActivate $
+    void (compileOpenFile window output input)
   on menuCompileAndRunItem menuItemActivate $ compileAndRun window output input
     
   --setting shortcuts in relation to menuBar
@@ -214,9 +215,8 @@ compileAndRun window output input = do
   (exeName,msg) <- compileOpenFile window output input
   inP <- get input textBufferText
   (exitCode,out,err) <- EXE.executeRail exeName inP
-  if exitCode == (ExitSuccess)
-  then textBufferSetText output out
-  else textBufferSetText output (msg++"\n"++out++"\n"++err)
+  textBufferSetText output 
+    (if exitCode == ExitSuccess then out else msg++"\n"++out++"\n"++err)
 
 -- | This Function invokes the compilation and linking of the open rail source.
 -- It also puts stdout and sterr from linking and compiling to bufferOut.
@@ -226,25 +226,25 @@ compileOpenFile ::Window
   -> IO (String,String) --name of linked file and msg from compiler and llvm-link
 compileOpenFile window output input = do
   path <- get window windowTitle
-  let compiledPath = ((((takeWhile(/='.')).reverse.(takeWhile(/='/')).reverse)path)++".ll")
+  let compiledPath = (takeWhile(/='.').reverse.takeWhile(/='/').reverse)path++".ll"
   textBufferSetText output "Compiling Execute"
   (exitCode,out,err) <- EXE.compile path compiledPath
-  if exitCode == (ExitSuccess)
+  if exitCode == ExitSuccess
   then do
     let exeName = takeWhile (/='.') compiledPath
     textBufferSetText output "Compiling succsessful"
     (exitCode,out,err) <- EXE.linkLlvm compiledPath exeName
-    if exitCode == (ExitSuccess)
+    if exitCode == ExitSuccess
     then do
       let msg = "Compiling succsessful\n"++out++"\n"++err
-      textBufferSetText output (msg)
+      textBufferSetText output msg
       return (exeName,msg)
     else do
-      let msg = ("llvm-link failed:\n"++out++"\n"++err)
+      let msg = "llvm-link failed:\n"++out++"\n"++err
       textBufferSetText output msg
       return (exeName,msg)
   else do 
-    let msg = "Compiling failed: "++['\n']++out++err
+    let msg = "Compiling failed: "++"\n"++out++err
     textBufferSetText output msg
     return ("",msg)
 

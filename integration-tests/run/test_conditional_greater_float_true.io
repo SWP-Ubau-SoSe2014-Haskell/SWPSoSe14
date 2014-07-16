@@ -1,1 +1,1 @@
-../test_conditional_greater_float_true.io
+/home/chris/SWPSoSe14/integration-tests/test_conditional_greater_float_true.io

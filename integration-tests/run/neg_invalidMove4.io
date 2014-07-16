@@ -1,1 +1,1 @@
-../neg_invalidMove4.io
+/home/chris/SWPSoSe14/integration-tests/neg_invalidMove4.io

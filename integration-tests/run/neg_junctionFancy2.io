@@ -1,1 +1,1 @@
-../neg_junctionFancy2.io
+/home/chris/SWPSoSe14/integration-tests/neg_junctionFancy2.io

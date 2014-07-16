@@ -1,1 +1,1 @@
-../neg_invalidCommand1.io
+/home/chris/SWPSoSe14/integration-tests/neg_invalidCommand1.io

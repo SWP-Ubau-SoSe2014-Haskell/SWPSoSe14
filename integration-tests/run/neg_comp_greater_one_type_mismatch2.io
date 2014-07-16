@@ -1,1 +1,1 @@
-../neg_comp_greater_one_type_mismatch2.io
+/home/chris/SWPSoSe14/integration-tests/neg_comp_greater_one_type_mismatch2.io

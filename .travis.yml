@@ -9,6 +9,6 @@ before_install:
 install:
         - sudo apt-get install libghc-llvm-general-dev libghc-gtk-dev libghc-hunit-dev hlint
         - sudo cabal install --package-db=/var/lib/ghc/package.conf.d --only-dependencies --enable-tests
-before_script: hlint src/RailCompiler
+before_script: hlint src
 script:
         - cabal configure --with-compiler=/usr/bin/ghc --package-db=/var/lib/ghc/package.conf.d --enable-tests && cabal build && cabal test

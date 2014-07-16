@@ -1,1 +1,1 @@
-../test_math_multiply_int_neg_neg.io
+/home/chris/SWPSoSe14/integration-tests/test_math_multiply_int_neg_neg.io

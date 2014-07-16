@@ -1,1 +1,1 @@
-../neg_string_size.io
+/home/chris/SWPSoSe14/integration-tests/neg_string_size.io

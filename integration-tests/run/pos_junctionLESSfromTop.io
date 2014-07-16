@@ -1,1 +1,1 @@
-../pos_junctionLESSfromTop.io
+/home/chris/SWPSoSe14/integration-tests/pos_junctionLESSfromTop.io

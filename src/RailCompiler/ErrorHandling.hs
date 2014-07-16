@@ -41,6 +41,4 @@ strDuplicateFunctions   = "Duplicate Functions found."
 
 -- IntermediateCode-Errors
 
--- CodeOptimization-Errors
-
 -- Backend

@@ -23,7 +23,7 @@ import qualified RedoUndo as History
 import qualified Interpreter
 import qualified Selection
 
-data InputMode = Replace | Insert | Smart
+data InputMode = Replace | Insert | Smart deriving (Eq)
 
 -- | handleKey passes key depending on Entrymode and handles RedoUndo Shortcuts.
 handleKey :: TAC.TextAreaContent
@@ -33,36 +33,39 @@ handleKey :: TAC.TextAreaContent
   -> String
   -> KeyVal
   -> IO TAC.Position
-handleKey tac pos modus modif key val
-  | elem Control modif && (keyToChar val == Just 'z' || keyToChar val == Just 'Z') =
+handleKey tac pos modus modif key val =
+  if Control `elem` modif then
+    handleControlKeys tac pos modus modif (keyToChar val)
+  else
+    case modus of
+      Insert -> handleKeyIns tac pos modif key val
+      Replace -> handleKeyRP tac pos modif key val
+      Smart -> handleKeySpec tac pos modif key val
+
+handleControlKeys :: TAC.TextAreaContent
+  -> TAC.Position
+  -> InputMode
+  -> [Modifier]
+  -> Maybe Char
+  -> IO TAC.Position
+handleControlKeys tac pos modus modif char 
+  | char `elem` [Just 'z', Just 'Z'] = 
     if Shift `elem` modif
     then History.redo tac pos
     else History.undo tac pos
-  | Control `elem` modif && (keyToChar val == Just 'a' || keyToChar val == Just 'A') = do -- select all
+  | char `elem` [Just 'a', Just 'A'] = do
     positions <- TAC.getPositons tac
     Selection.updateCells tac positions True
-    return $ Selection.getBottomRight positions
-  | Control `elem` modif && (keyToChar val == Just 'c' || keyToChar val == Just 'C') = do -- copy 
+  | char `elem` [Just 'c', Just 'C'] = do
     TAC.setClipboard tac
     return pos
-  | Control `elem` modif && (keyToChar val == Just 'v' || keyToChar val == Just 'V') = do -- paste
-    clipboard <- TAC.getClipboard tac
-    cells <- Selection.getCellsByPositons tac clipboard
-    History.action tac pos (TAC.Insert cells)
-    positions <- TAC.getSelectedPositons tac
-    newPos <- Selection.relocateCells tac clipboard
-                (if not (null positions) then Selection.getMinimum positions else pos)
-    Selection.clear tac newPos
-    return newPos
-  | otherwise =
-      if elem Control modif && keyToChar val == Just 'b'  --set breakpoint
-      then Interpreter.toggleBreak tac pos >> return pos
-      else
-        case modus of
-          Insert -> handleKeyIns tac pos modif key val
-          Replace -> handleKeyRP tac pos modif key val
-          Smart -> handleKeySpec tac pos modif key val
-
+  | char `elem` [Just 'v', Just 'V'] =
+    if modus `elem` [Insert,Smart] then Selection.pasteInsert tac pos
+    else Selection.pasteReplace tac pos
+  | char == Just 'b' = 
+    Interpreter.toggleBreak tac pos >> return pos  --set breakpoint
+  | otherwise = return pos
+  
 -- | handles keys in Insert-mode
 handleKeyIns :: TAC.TextAreaContent
   -> TAC.Position
@@ -132,6 +135,12 @@ handleKeySpec tac pos@(x,y) modif key val
           return (finX+1,y)
         _ -> return pos
 
+printableKeyInit tac pos key val = do
+  Selection.clear tac pos
+  let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
+  cell <- TAC.getCell tac pos
+  return (cell, char)
+
 -- | handling of printable keys in Replace-mode (overwriting)
 handlePrintKeyRP :: TAC.TextAreaContent
   -> TAC.Position
@@ -139,9 +148,7 @@ handlePrintKeyRP :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handlePrintKeyRP tac pos@(x,y) key val = do
-  Selection.clear tac pos
-  let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
-  cell <- TAC.getCell tac pos
+  (cell,char) <- printableKeyInit tac pos key val
   let ((curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
   History.action tac pos (TAC.Replace [(curchar,False)] [(char,False)])
   TAC.putCell tac pos ((char,isSelected),TAC.defaultColor)
@@ -154,9 +161,7 @@ handlePrintKeySpec :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handlePrintKeySpec tac pos@(x,y) key val = do
-  Selection.clear tac pos
-  let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
-  cell <- TAC.getCell tac pos
+  (cell,char) <- printableKeyInit tac pos key val
   dir@(dx,dy) <- TAC.getDirection tac
   if char `elem` "*+x^v><-|/\\@"
   then do
@@ -205,8 +210,7 @@ handleArrowsIns :: String
   -> TAC.TextAreaContent
   -> IO TAC.Position
 handleArrowsIns key pos@(x,y) tac = do
-  selectedPositions <- TAC.getSelectedPositons tac
-  Selection.updateCells tac selectedPositions False
+  Selection.deselect tac
   (maxX,maxY) <- TAC.size tac
   case key of
     "Left" 
@@ -237,8 +241,7 @@ handleArrowsSpec :: String
   -> TAC.TextAreaContent
   -> IO TAC.Position
 handleArrowsSpec key pos@(x,y) tac = do
-  selectedPositions <- TAC.getSelectedPositons tac
-  Selection.updateCells tac selectedPositions False
+  Selection.deselect tac
   (maxX,maxY) <- TAC.size tac
   case key of
     "Left" -> return $
@@ -270,6 +273,13 @@ arrowDirectionSetter tac key = do
     "Up" -> TAC.putDirection tac (x,-1)
     "Down" -> TAC.putDirection tac (x,1)
 
+deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop doMove = do
+  when doMove $ TACU.moveChars tac bottomRight
+    (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
+  action <- TACU.mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
+  History.action tac (x, y) (fst action)
+  return (xLeft,yTop)
+
 -- | handles Backspace-key
 handleBackSpace :: TAC.TextAreaContent
   -> TAC.Position
@@ -285,9 +295,7 @@ handleBackSpace tac (x,y) = do
         History.action tac (finXPrev+1,y-1) TAC.RemoveLine
         TACU.moveLinesUp tac y
         return (finXPrev+1,y-1)
-      else do 
-        mvLinesUp tac y (abs (yTop-y))
-        return (xLeft,yTop)
+      else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop False
     (_,_) -> do
       empty <- TAC.isEmptyLine tac y
       if empty
@@ -300,17 +308,8 @@ handleBackSpace tac (x,y) = do
           TAC.deleteCell tac (x-1,y)
           TACU.moveChars tac (x,y) (-1,0)
           return (x-1,y)
-        else do
-          TACU.moveChars tac bottomRight
-            (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
-          mvLinesUp tac y (abs (yTop-y))
-          return (xLeft,yTop)
+        else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop True
 
-mvLinesUp :: TAC.TextAreaContent -> TAC.Coord -> Int -> IO ()
-mvLinesUp _ _ 0 = return ()
-mvLinesUp tac y diff = do 
-  TACU.moveLinesUp tac y
-  mvLinesUp tac (y-1) (diff-1)
 
 -- | handles Backspace-key in smart mode
 handleBackSpaceSpec :: TAC.TextAreaContent
@@ -421,11 +420,7 @@ handleDelete tac pos@(x,y) = do
       TAC.deleteCell tac (x,y)
       TACU.moveChars tac (x+1,y) (-1,0)
       return pos
-    else do
-      TACU.moveChars tac bottomRight
-        (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
-      mvLinesUp tac y (abs (yTop-y))
-      return (xLeft,yTop)
+    else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop True
 
 -- Rail Smart-mode setting of Cursor-Position
 -- directions

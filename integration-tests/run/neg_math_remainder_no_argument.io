@@ -1,1 +1,1 @@
-../neg_math_remainder_no_argument.io
+/home/chris/SWPSoSe14/integration-tests/neg_math_remainder_no_argument.io

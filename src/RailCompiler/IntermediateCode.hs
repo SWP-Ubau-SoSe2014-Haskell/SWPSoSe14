@@ -150,17 +150,9 @@ generateVariables = map createGlobalVariable . getAllVars
 
 --------------------------------------------------------------------------------
 
--- |Struct declaration for the symbol table
-structTable :: Definition
-structTable = TypeDefinition (Name "struct.table")
-      (Just $ StructureType False
-                [ PointerType (IntegerType 8) (AddrSpace 0), 
-                  PointerType (IntegerType 8) (AddrSpace 0), 
-                  PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0)])
-
 -- |Generate an instruction for the 'u'nderflow check command.
-generateInstruction :: Lexeme -> Codegen [Named Instruction]
-generateInstruction Underflow =
+generateInstruction :: (Lexeme, String) -> Codegen [Named Instruction]
+generateInstruction (Underflow, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -172,7 +164,7 @@ generateInstruction Underflow =
   }]
 
 -- |Generate instructions for junctions.
-generateInstruction (Junction label) = do
+generateInstruction (Junction label, funcName) = do
   index <- fresh
   index2 <- fresh
   return [ UnName index := LLVM.General.AST.Call {
@@ -191,7 +183,7 @@ generateInstruction (Junction label) = do
   }]
 
 -- |Generate instruction for pop into a variable
-generateInstruction (Pop name) = do
+generateInstruction (Pop name, funcName) = do
   index <- fresh
   return [ UnName index := LLVM.General.AST.Call {
     isTailCall = False,
@@ -211,7 +203,7 @@ generateInstruction (Pop name) = do
   }]
 
 -- |Generate instruction for push from a variable
-generateInstruction (Push name) = do
+generateInstruction (Push name, funcName) = do
   index <- fresh
   return [ UnName index := LLVM.General.AST.Call {
     isTailCall = False,
@@ -234,7 +226,7 @@ generateInstruction (Push name) = do
 -- |Generate instruction for push of a constant.
 -- access to our push function definied in stack.ll??
 -- http://llvm.org/docs/LangRef.html#call-instruction
-generateInstruction (Constant value) = do
+generateInstruction (Constant value, funcName) = do
   index <- fresh
   dict <- gets localDict
   return [UnName index := LLVM.General.AST.Call {
@@ -280,7 +272,7 @@ generateInstruction (Constant value) = do
 -- a list of Instructions that we can insert in the BasicBlock
 
 -- |Generate instruction for printing strings to stdout.
-generateInstruction Output =
+generateInstruction (Output, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -292,7 +284,7 @@ generateInstruction Output =
   }]
 
 -- |Generate instruction for the Boom lexeme (crashes program).
-generateInstruction Boom =
+generateInstruction (Boom, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -304,7 +296,7 @@ generateInstruction Boom =
   }]
 
 -- |Generate instruction for the Input lexeme.
-generateInstruction Input =
+generateInstruction (Input, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -316,7 +308,7 @@ generateInstruction Input =
   }]
 
 -- |Generate instruction for the EOF lexeme.
-generateInstruction EOF =
+generateInstruction (EOF, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -328,7 +320,7 @@ generateInstruction EOF =
   }]
 
 -- |Generate instruction for the add instruction.
-generateInstruction Add1 =
+generateInstruction (Add1, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -340,7 +332,7 @@ generateInstruction Add1 =
   }]
 
 -- |Generate instruction for the remainder instruction.
-generateInstruction Remainder =
+generateInstruction (Remainder, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -351,8 +343,20 @@ generateInstruction Remainder =
     metadata = []
   }]
 
+-- |Generate instruction for the type instruction.
+generateInstruction (RType, funcName) =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "type",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
 -- |Generate instruction for the sub instruction.
-generateInstruction Subtract =
+generateInstruction (Subtract, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -364,7 +368,7 @@ generateInstruction Subtract =
   }]
 
 -- |Generate instruction for the mul instruction.
-generateInstruction Multiply =
+generateInstruction (Multiply, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -376,7 +380,7 @@ generateInstruction Multiply =
   }]
 
 -- |Generate instruction for the div instruction.
-generateInstruction Divide =
+generateInstruction (Divide, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -388,7 +392,7 @@ generateInstruction Divide =
   }]
 
 -- |Generate instruction for the strlen instruction.
-generateInstruction Size =
+generateInstruction (Size, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -400,7 +404,7 @@ generateInstruction Size =
   }]
 
 -- |Generate instruction for the strapp instruction.
-generateInstruction Append =
+generateInstruction (Append, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -412,7 +416,7 @@ generateInstruction Append =
   }]
 
 -- |Generate instruction for the strcut instruction.
-generateInstruction Cut =
+generateInstruction (Cut, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -424,7 +428,7 @@ generateInstruction Cut =
   }]
 
 -- |Generate instruction for the equal instruction.
-generateInstruction Equal =
+generateInstruction (Equal, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -436,7 +440,7 @@ generateInstruction Equal =
   }]
 
 -- |Generate instruction for the greater instruction.
-generateInstruction Greater =
+generateInstruction (Greater, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -448,7 +452,7 @@ generateInstruction Greater =
   }]
 
 -- |Generate instruction for start instruction
-generateInstruction Start = do
+generateInstruction (Start, funcName) = do
   index <- fresh
   index2 <- fresh
   return [ UnName index := LLVM.General.AST.Call {
@@ -459,25 +463,74 @@ generateInstruction Start = do
     arguments = [],
     functionAttributes = [],
     metadata = []
-  },
-    Name "table" := Instruction.Alloca {
-    allocatedType = NamedTypeReference $ Name "struct.table",
-    numElements = Nothing,
-    alignment = 4,
+  }]  
+
+-- |Generate instructions for lambda push
+generateInstruction (Lambda label, funcName) = do
+  index <- fresh
+  index2 <- fresh
+  index3 <- fresh
+  index4 <- fresh
+  index5 <- fresh
+  index6 <- fresh
+  return [ UnName index := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "malloc",
+    arguments = [(ConstantOperand $ Int 64 24, [])],
+    functionAttributes = [],
     metadata = []
   },
-    UnName index2 := LLVM.General.AST.Call {
+    UnName index2 := LLVM.General.AST.BitCast {
+    Instruction.operand0 = LocalReference $ UnName index,
+    Instruction.type' = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
+    metadata = []
+  },
+    UnName index3 := LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
     returnAttributes = [],
     function = Right $ ConstantOperand $ GlobalReference $ Name "initialise",
-    arguments = [(LocalReference $ Name "table", [])],
+    arguments = [(LocalReference $ UnName index2, [])],
+    functionAttributes = [],
+    metadata = []
+  },
+    UnName index4 := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "copy_symbol_table",
+    arguments = [(LocalReference $ Name "table", []), (LocalReference $ UnName index2, [])],
+    functionAttributes = [],
+    metadata = []
+  },
+    UnName index5 := LLVM.General.AST.Alloca {
+    allocatedType = PointerType functionReturnLambda (AddrSpace 0),
+    numElements = Nothing,
+    alignment = 8,
+    metadata = []
+  },
+    Do LLVM.General.AST.Store {
+    volatile = False,
+    Instruction.address = LocalReference $ UnName index5,
+    value = ConstantOperand $ GlobalReference $ Name (funcName ++ "!" ++ show label),
+    maybeAtomicity = Nothing,
+    alignment = 8,
+    metadata = []
+  },
+    UnName index6 := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "push_lambda",
+    arguments = [(LocalReference $ UnName index5, []), (LocalReference $ UnName index2, [])],
     functionAttributes = [],
     metadata = []
   }]
 
 -- |Generate instruction for finish instruction
-generateInstruction Finish =
+generateInstruction (Finish, funcName) =
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -488,8 +541,49 @@ generateInstruction Finish =
     metadata = []
   }]
 
+
 -- |Generate instruction for function call
-generateInstruction (IDT.Call functionName) =
+generateInstruction (IDT.Call "", funcName) = do
+  index <- fresh
+  index2 <- fresh
+  index6 <- fresh
+  return [ UnName index := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "pop_lambda",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  },
+    UnName index2 := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "get_lambda_pointer",
+    arguments = [(LocalReference $ UnName index, [])],
+    functionAttributes = [],
+    metadata = []
+  },
+    UnName index6 := LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "get_lambda_table",
+    arguments = [(LocalReference $ UnName index, [])],
+    functionAttributes = [],
+    metadata = []
+  },
+    Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ LocalReference $ UnName index2,
+    arguments = [(LocalReference $ UnName index6, [])],
+    functionAttributes = [],
+    metadata = []
+  }]
+generateInstruction (IDT.Call functionName, funcName) = 
   return [Do LLVM.General.AST.Call {
     isTailCall = False,
     callingConvention = C,
@@ -500,16 +594,63 @@ generateInstruction (IDT.Call functionName) =
     metadata = []
   }]
 
+-- |Generate instruction for pushing nil.
+generateInstruction (Nil, funcName) =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "gen_list_push_nil",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for list cons.
+generateInstruction (Cons, funcName) =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "gen_list_cons",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+-- |Generate instruction for list breakup.
+generateInstruction (Breakup, funcName) =
+  return [Do LLVM.General.AST.Call {
+    isTailCall = False,
+    callingConvention = C,
+    returnAttributes = [],
+    function = Right $ ConstantOperand $ GlobalReference $ Name "gen_list_breakup",
+    arguments = [],
+    functionAttributes = [],
+    metadata = []
+  }]
+
+
 -- |Fallback for unhandled lexemes (generates no-op).
 generateInstruction _ = return [ Do $ Instruction.FAdd (ConstantOperand $ Float $ Single 1.0) (ConstantOperand $ Float $ Single 1.0) [] ]
 
+-- |Appends the function name to the lexemes/instructions.
+--
+-- The function name is only relevant for the Lambda instruction, because we use
+-- "functionName"!"jumpLable" as name for the Lambda functions.
+appendName :: [a] -> String -> [(a, String)]
+appendName [] name = []
+appendName (x:[]) name = [(x, name)]
+appendName (x:xs) name = (x, name):rest
+  where rest = appendName xs name
+
 -- |Generate the instructions making up one basic block.
-generateBasicBlock :: (Int, [Lexeme], Int) -> Codegen BasicBlock
-generateBasicBlock (label, instructions, 0) = do
-  tmp <- mapM generateInstruction instructions
+generateBasicBlock :: ((Int, [Lexeme], Int), String) -> Codegen BasicBlock
+generateBasicBlock ((label, instructions, 0), name) = do
+  tmp <- mapM generateInstruction (appendName instructions name)
   return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ terminator 0
-generateBasicBlock (label, instructions, jumpLabel) = do
-  tmp <- mapM generateInstruction instructions
+generateBasicBlock ((label, instructions, jumpLabel), name) = do
+  tmp <- mapM generateInstruction (appendName instructions name)
   i <- gets count
   case filter isJunction instructions of
     [Junction junctionLabel] -> return $ BasicBlock (Name $ "l_" ++ show label) (concat tmp) $ condbranch junctionLabel i
@@ -529,18 +670,99 @@ generateBasicBlock (label, instructions, jumpLabel) = do
     }
 
 -- |Generate all basic blocks for a function.
-generateBasicBlocks :: [(Int, [Lexeme], Int)] -> Codegen [BasicBlock]
-generateBasicBlocks = mapM generateBasicBlock
+generateBasicBlocks :: [(Int, [Lexeme], Int)] -> String -> Codegen [BasicBlock]
+generateBasicBlocks lexemes name = mapM generateBasicBlock (appendName lexemes name)
 
 -- |Generate a function definition from an AST.
+-- 
+-- At the beginning of each function, we create a block with lable "entry".
+-- In this block we create the symbol table and jump then to "l_1", the first 
+-- regular block in each function.
+-- The first pattern-matching is for lambda functions
 generateFunction :: AST -> GlobalCodegen Definition
 generateFunction (name, lexemes) = do
   dict <- gets dict
-  return $ GlobalDefinition $ Global.functionDefaults {
-    Global.name = Name name,
-    Global.returnType = IntegerType 32,
-    Global.basicBlocks = execCodegen dict $ generateBasicBlocks lexemes
-  }
+  return $ GlobalDefinition
+    (if "!" `isInfixOf` name then
+    Global.functionDefaults {
+        Global.name = Name name,
+        Global.returnType = IntegerType 32,
+        Global.parameters = ( [ Parameter (PointerType (NamedTypeReference $ Name  
+          "struct.table") (AddrSpace 0)) (Name "t") [] ], False ),
+        Global.basicBlocks = concat ( 
+        return ( BasicBlock (Name "entry")  [ 
+        Name "table_alloc" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "malloc",
+        arguments = [(ConstantOperand $ Int 64 24, [])],
+        functionAttributes = [],
+        metadata = []
+      },
+        Name "table" := LLVM.General.AST.BitCast {
+        Instruction.operand0 = LocalReference $ Name "table_alloc",
+        Instruction.type' = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
+        metadata = []
+      },
+        Name "" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "initialise",
+        arguments = [(LocalReference $ Name "table", [])],
+        functionAttributes = [],
+        metadata = []
+      },
+      Name "" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "copy_symbol_table",
+        arguments = [(LocalReference $ Name "t", []), (LocalReference $ Name "table", [])],
+        functionAttributes = [],
+        metadata = []
+      }]
+        ( Do Br {
+        dest = Name "l_1", 
+        metadata' = []} ))
+       : [execCodegen dict $ generateBasicBlocks lexemes name])
+      }
+    else 
+    Global.functionDefaults {
+        Global.name = Name name,
+        Global.returnType = IntegerType 32,
+        Global.basicBlocks = concat ( 
+        return ( BasicBlock (Name "entry")  [ 
+        Name "table_alloc" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "malloc",
+        arguments = [(ConstantOperand $ Int 64 24, [])],
+        functionAttributes = [],
+        metadata = []
+      },
+        Name "table" := LLVM.General.AST.BitCast {
+        Instruction.operand0 = LocalReference $ Name "table_alloc",
+        Instruction.type' = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
+        metadata = []
+      },
+        Name "" := LLVM.General.AST.Call {
+        isTailCall = False,
+        callingConvention = C,
+        returnAttributes = [],
+        function = Right $ ConstantOperand $ GlobalReference $ Name "initialise",
+        arguments = [(LocalReference $ Name "table", [])],
+        functionAttributes = [],
+        metadata = []
+      }]   
+        ( Do Br {
+        dest = Name "l_1", 
+        metadata' = []} ))
+       : [execCodegen dict $ generateBasicBlocks lexemes name])
+      })
+
 
 -- |Create a new local variable (?).
 fresh :: Codegen Word
@@ -577,11 +799,49 @@ generateGlobalDefinitionVar i def = GlobalDefinition def {
 }
 
 -- |Entry point into module.
-process :: IDT.SemAna2InterCode -> IDT.InterCode2CodeOpt
-process (IDT.ISI input) = IDT.IIC $ generateModule $ constants ++ variables ++ 
-    [ stackElementTypeDef, structTable, underflowCheck, FunctionDeclarations.print, crash, start, finish, inputFunc,
-      eofCheck, pushStringCpy, pop, peek, add, sub, rem1, mul, div1, streq, strlen, strapp, strcut,
-      popInt, equal, greater, popInto, pushFrom, popBool, initialiseSymbolTable ] ++ codegen input
+process :: IDT.SemAna2InterCode -> IDT.InterCode2Backend
+process (IDT.ISI input) = IDT.IIB $ generateModule $ constants ++ variables ++ 
+    [
+      stackElementTypeDef,
+      structTable,
+      lambdaElement,
+      underflowCheck,
+      FunctionDeclarations.print,
+      crash,
+      start,
+      finish,
+      inputFunc,
+      eofCheck,
+      pushStringCpy,
+      pop,
+      peek,
+      add,
+      sub,
+      rem1,
+      mul,
+      div1,
+      streq,
+      strlen,
+      strapp,
+      strcut,
+      popInt,
+      equal,
+      greater,
+      popInto,
+      pushFrom,
+      popBool,
+      initialiseSymbolTable,
+      malloc,
+      type1,
+      copySymbolTable,
+      pushLambda,
+      getLambda,
+      popLambda,
+      getTable,
+      listPushNil,
+      listCons,
+      listBreakup
+    ] ++ codegen input
   where
     constants = zipWith generateGlobalDefinition [0..] $ generateConstants input
     variables = zipWith generateGlobalDefinitionVar [0..] $ generateVariables input

@@ -51,7 +51,7 @@ highlightFcts ::  [PositionedGrid]-- List of funtions in line-representation wit
   -> IO IP
 highlightFcts [] _ = return crash
 highlightFcts (x:xs) textAC = do
-  highlightFct (fst x) start (snd x) textAC
+  highlightFct (fst x) start (snd x) textAC (Map.empty)
   highlightFcts xs textAC
   
   {-
@@ -69,34 +69,35 @@ highlightFct :: Grid2D
   -> IP
   -> Int
   -> TAC.TextAreaContent
+  -> Map.Map (Int,Int) Bool --Map of colored positions
   -> IO IP
-highlightFct grid2D ip yOffset textAC
+highlightFct grid2D ip yOffset textAC mOCPos
   | ip == crash = return crash
   |otherwise =
-  if Lexer.count ip > 8 * Map.size (fromJust (Map.lookup 0 grid2D)) * Map.size (fromJust (Map.lookup 0 grid2D))
+  if isPosColored mOCPos (posx ip,(posy ip))
   then return crash
   else
    case lex of
     Nothing -> do
       TAC.putColor textAC (xC,yC) TAC.black
-      highlightFct grid2D nextIP yOffset textAC
+      highlightFct grid2D nextIP yOffset textAC inMap
     Just (Junction _) -> do
       TAC.putColor textAC (xC,yC) TAC.gold
       let (falseIP,trueIP) = junctionturns grid2D parseIP
-      highlightFct grid2D falseIP yOffset textAC
-      highlightFct grid2D trueIP yOffset textAC
+      highlightFct grid2D falseIP yOffset textAC inMap
+      highlightFct grid2D trueIP yOffset textAC inMap
     Just (Lambda _) -> do
       TAC.putColor textAC (xC,yC) TAC.gold
       let (lip,bip) = lambdadirs parseIP
-      highlightFct grid2D (step grid2D lip) yOffset textAC
-      highlightFct grid2D (step grid2D bip) yOffset textAC
+      highlightFct grid2D (step grid2D lip) yOffset textAC inMap
+      highlightFct grid2D (step grid2D bip) yOffset textAC inMap
     Just (Constant str)   ->
       if [current grid2D parseIP] == "]" || 
          [current grid2D parseIP] == "["
       then colorStrCommand str TAC.green
       else do
         TAC.putColor textAC (xC,yC) TAC.green
-        highlightFct grid2D (step grid2D parseIP)yOffset textAC
+        highlightFct grid2D (step grid2D parseIP)yOffset textAC inMap
     Just (Push str)-> colorStrCommand str TAC.blue
     Just (Pop str) -> colorStrCommand str TAC.green
     Just (Call str) -> colorStrCommand str TAC.green
@@ -105,12 +106,15 @@ highlightFct grid2D ip yOffset textAC
       cGold
       if lex == Just Finish
       then return crash
-      else highlightFct grid2D nextIP yOffset textAC
+      else highlightFct grid2D nextIP yOffset textAC inMap
     where
       (lex, parseIP) = parse grid2D ip
       nextIP = step grid2D parseIP
-      xC = fromIntegral $ posx ip
-      yC = fromIntegral $ posy ip+yOffset
+      x = posx ip
+      y = posy ip
+      xC = fromIntegral $ x
+      yC = fromIntegral $ y+yOffset
+      inMap = Map.insert (x,y) True mOCPos
       -- colors Start and finish gold
       cGold ::IO ()
       cGold | fromJust lex `elem` [Start,Finish] = TAC.putColor textAC (xC,yC) TAC.gold
@@ -126,7 +130,7 @@ highlightFct grid2D ip yOffset textAC
       colorStrCommand str color = do
         colorMoves grid2D (turnaround ip)
           (turnaround parseIP) color textAC
-        highlightFct grid2D (step grid2D parseIP) yOffset textAC
+        highlightFct grid2D (step grid2D parseIP) yOffset textAC inMap
       --steps the IP to the beginning of an constant, call or pop
       colorMoves :: Grid2D -> IP -> IP -> TAC.RGBColor -> TAC.TextAreaContent-> IO IP
       colorMoves grid2D endIP curIP color textAC 
@@ -146,5 +150,10 @@ highlightFct grid2D ip yOffset textAC
 paintItRed :: TAC.TextAreaContent -> IO ()
 paintItRed = TAC.deleteColors
   
-
+-- Is the position colored?
+isPosColored :: Map.Map (Int,Int) Bool
+  -> (Int,Int)
+  -> Bool
+isPosColored mOCPos pos =
+  isJust $ Map.lookup pos mOCPos
   

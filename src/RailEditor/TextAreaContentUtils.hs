@@ -15,7 +15,9 @@ module TextAreaContentUtils (
   moveChars,
   findLastCharBefore,
   moveLinesUp,
-  moveLinesDownXShift
+  moveLinesDownXShift,
+  moveCharsRight,
+  mvLinesUp
   ) where
 
 import Graphics.UI.Gtk
@@ -169,3 +171,15 @@ moveLinesVertDown area line = do
         else do
           moveChars area (0,line) (0,1)
           moveDownHelper area (line-1) stY
+
+moveCharsRight :: TAC.TextAreaContent -> TAC.Position -> TAC.Position -> TAC.Position -> IO TAC.Position
+moveCharsRight tac (x,y) topLeft@(xLeft,yTop) bottomRight@(xRight,yBottom) = do
+  moveChars tac bottomRight $ if (x,y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y)
+  return topLeft
+
+mvLinesUp :: TAC.TextAreaContent -> TAC.Coord -> Int -> (TAC.Action, TAC.Position) -> IO (TAC.Action, TAC.Position)
+mvLinesUp _ _ 0 action = return action
+mvLinesUp tac y diff action = do 
+  moveLinesUp tac y
+  mvLinesUp tac (y-1) (diff-1) (TAC.Concat action (TAC.RemoveLine, (0,y-1)), (0, y))
+
