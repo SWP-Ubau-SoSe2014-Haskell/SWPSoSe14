@@ -273,7 +273,7 @@ arrowDirectionSetter tac key = do
     "Up" -> TAC.putDirection tac (x,-1)
     "Down" -> TAC.putDirection tac (x,1)
 
-deleteSelection tac bottomRight x xRight xLeft y yBottom yTop = do
+deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop = do
   TACU.moveChars tac bottomRight
     (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
   mvLinesUp tac y (abs (yTop-y))
@@ -309,7 +309,7 @@ handleBackSpace tac (x,y) = do
           TAC.deleteCell tac (x-1,y)
           TACU.moveChars tac (x,y) (-1,0)
           return (x-1,y)
-        else deleteSelection tac bottomRight x xRight xLeft y yBottom yTop
+        else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop
 
 mvLinesUp :: TAC.TextAreaContent -> TAC.Coord -> Int -> IO ()
 mvLinesUp _ _ 0 = return ()
@@ -425,7 +425,7 @@ handleDelete tac pos@(x,y) = do
       TAC.deleteCell tac (x,y)
       TACU.moveChars tac (x+1,y) (-1,0)
       return pos
-    else deleteSelection tac bottomRight x xRight xLeft y yBottom yTop
+    else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop
 
 -- Rail Smart-mode setting of Cursor-Position
 -- directions
