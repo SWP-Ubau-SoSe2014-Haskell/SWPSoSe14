@@ -135,7 +135,8 @@ handleKeySpec tac pos@(x,y) modif key val
 printableKeyInit tac pos key val = do
   Selection.clear tac pos
   let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
-  TAC.getCell tac pos
+  cell <- TAC.getCell tac pos
+  return (char, cell)
 
 -- | handling of printable keys in Replace-mode (overwriting)
 handlePrintKeyRP :: TAC.TextAreaContent
@@ -144,7 +145,7 @@ handlePrintKeyRP :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handlePrintKeyRP tac pos@(x,y) key val = do
-  cell <- printableKeyInit tac os key val
+  (cell,char) <- printableKeyInit tac pos key val
   let ((curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
   History.action tac pos (TAC.Replace [(curchar,False)] [(char,False)])
   TAC.putCell tac pos ((char,isSelected),TAC.defaultColor)
@@ -157,7 +158,7 @@ handlePrintKeySpec :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handlePrintKeySpec tac pos@(x,y) key val = do
-  cell <- printableKeyinit tac pos key val
+  (cell,char) <- printableKeyInit tac pos key val
   dir@(dx,dy) <- TAC.getDirection tac
   if char `elem` "*+x^v><-|/\\@"
   then do
@@ -272,7 +273,7 @@ arrowDirectionSetter tac key = do
     "Up" -> TAC.putDirection tac (x,-1)
     "Down" -> TAC.putDirection tac (x,1)
 
-deleteSelection = do
+deleteSelection tac bottomRight x xRight xLeft y yBottom yTop = do
   TACU.moveChars tac bottomRight
     (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
   mvLinesUp tac y (abs (yTop-y))
@@ -308,7 +309,7 @@ handleBackSpace tac (x,y) = do
           TAC.deleteCell tac (x-1,y)
           TACU.moveChars tac (x,y) (-1,0)
           return (x-1,y)
-        else deleteSelection
+        else deleteSelection tac bottomRight x xRight xLeft y yBottom yTop
 
 mvLinesUp :: TAC.TextAreaContent -> TAC.Coord -> Int -> IO ()
 mvLinesUp _ _ 0 = return ()
@@ -424,7 +425,7 @@ handleDelete tac pos@(x,y) = do
       TAC.deleteCell tac (x,y)
       TACU.moveChars tac (x+1,y) (-1,0)
       return pos
-    else deleteSelected
+    else deleteSelection tac bottomRight x xRight xLeft y yBottom yTop
 
 -- Rail Smart-mode setting of Cursor-Position
 -- directions
