@@ -134,9 +134,7 @@ create area footer interDT= do
 
     Gtk.on highlightCheck Gtk.menuItemActivate$ do
       isActive <- Gtk.checkMenuItemGetActive highlightCheck
-      if isActive
-      then TA.setHighlighting area True
-      else TA.setHighlighting area False
+      TA.setHighlighting area isActive
 
     -- configure mode-menu
     modeItem <- Gtk.menuItemNewWithLabel "mode"

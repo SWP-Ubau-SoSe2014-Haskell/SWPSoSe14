@@ -311,7 +311,7 @@ module Interpreter (
     then showError tac "Not enough elements on stack"
     else do
       let (e1:e2:xs) = TAC.dataStack cnt
-          res = if e1 == e2 then TAC.RailString "1" else TAC.RailString "0"
+          res = TAC.RailString (if e1 == e2 then "1" else "0")
       writeIORef (TAC.context tac) cnt{TAC.dataStack = res:xs}
   perform tac _ IDT.Finish = do
     cnt <- readIORef (TAC.context tac)

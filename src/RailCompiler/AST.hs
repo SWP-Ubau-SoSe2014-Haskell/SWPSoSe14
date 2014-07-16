@@ -64,7 +64,7 @@ module AST (fromAST, toAST, parse, adjacent, valids)
    fromLexeme Output = "o"
    fromLexeme Underflow = "u"
    fromLexeme RType = "?"
-   fromLexeme (Constant string) = "["++(escapestring string)++"]"
+   fromLexeme (Constant string) = "["++escapestring string++"]"
    fromLexeme (Push string) = "("++string++")"
    fromLexeme (Pop string) = "(!"++string++"!)"
    fromLexeme (Call string) = "{"++string++"}"
