@@ -28,7 +28,7 @@ import Control.Monad
 
     -- functions --
 
-afterEvent evt = 
+afterEvent evt ta footer = 
   evt (TA.drawingArea ta) $ \event -> do
     let posRef = TA.currentPosition ta
     readIORef posRef >>= FB.setPosition footer
@@ -56,9 +56,9 @@ create = do
   lwin <- TA.getTextAreaContainer ta
 
   -- reset label with current position
-  afterEvent Gtk.afterKeyPress
+  afterEvent Gtk.afterKeyPress ta footer
 
-  afterEvent Gtk.afterButtonPress
+  afterEvent Gtk.afterButtonPress ta footer
 
   -- pack TextArea and InteractionField
   boxLay <- Gtk.hBoxNew False 0

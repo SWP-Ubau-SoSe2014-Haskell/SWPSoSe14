@@ -279,7 +279,7 @@ arrowDirectionSetter tac key = do
 deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop = do
   TACU.moveChars tac bottomRight
     (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
-  action <- mvLinesUp tac y (abs (yTop-y))
+  action <- mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
   History.action tac (x, y) (fst action)
   return (xLeft,yTop)
 
