@@ -23,7 +23,7 @@ import qualified RedoUndo as History
 import qualified Interpreter
 import qualified Selection
 
-data InputMode = Replace | Insert | Smart
+data InputMode = Replace | Insert | Smart deriving (Eq)
 
 -- | handleKey passes key depending on Entrymode and handles RedoUndo Shortcuts.
 handleKey :: TAC.TextAreaContent
@@ -33,35 +33,39 @@ handleKey :: TAC.TextAreaContent
   -> String
   -> KeyVal
   -> IO TAC.Position
-handleKey tac pos modus modif key val
-  | elem Control modif && (keyToChar val == Just 'z' || keyToChar val == Just 'Z') =
-    if Shift `elem` modif
-    then History.redo tac pos
-    else History.undo tac pos
-  | Control `elem` modif && (keyToChar val == Just 'a' || keyToChar val == Just 'A') = do -- select all
-    positions <- TAC.getPositons tac
-    Selection.updateCells tac positions True
-    return $ Selection.getBottomRight positions
-  | Control `elem` modif && (keyToChar val == Just 'c' || keyToChar val == Just 'C') = do -- copy 
-    TAC.setClipboard tac
-    return pos
-  | Control `elem` modif && (keyToChar val == Just 'v' || keyToChar val == Just 'V') = do -- paste
-    clipboard <- TAC.getClipboard tac
-    cells <- Selection.getCellsByPositons tac clipboard
-    History.action tac pos (TAC.Insert cells)
-    positions <- TAC.getSelectedPositons tac
-    newPos <- Selection.relocateCells tac clipboard
-                (if not (null positions) then Selection.getMinimum positions else pos)
-    Selection.clear tac newPos
-    return newPos
-  | Control `elem` modif && keyToChar val == Just 'b' = --toggle breakpoint
-    Interpreter.toggleBreak tac pos >> return pos
-  | otherwise =
+handleKey tac pos modus modif key val =
+  if Control `elem` modif then
+    handleControlKeys tac pos modus modif (keyToChar val)
+  else
     case modus of
       Insert -> handleKeyIns tac pos modif key val
       Replace -> handleKeyRP tac pos modif key val
       Smart -> handleKeySpec tac pos modif key val
 
+handleControlKeys :: TAC.TextAreaContent
+  -> TAC.Position
+  -> InputMode
+  -> [Modifier]
+  -> Maybe Char
+  -> IO TAC.Position
+handleControlKeys tac pos modus modif char 
+  | char `elem` [Just 'z', Just 'Z'] = 
+    if Shift `elem` modif
+    then History.redo tac pos
+    else History.undo tac pos
+  | char `elem` [Just 'a', Just 'A'] = do
+    positions <- TAC.getPositons tac
+    Selection.updateCells tac positions True
+  | char `elem` [Just 'c', Just 'C'] = do
+    TAC.setClipboard tac
+    return pos
+  | char `elem` [Just 'v', Just 'V'] =
+    if modus `elem` [Insert,Smart] then Selection.pasteInsert tac pos
+    else Selection.pasteReplace tac pos
+  | char == Just 'b' = 
+    Interpreter.toggleBreak tac pos >> return pos  --set breakpoint
+  | otherwise = return pos
+  
 -- | handles keys in Insert-mode
 handleKeyIns :: TAC.TextAreaContent
   -> TAC.Position
@@ -118,7 +122,7 @@ handleKeySpec tac pos@(x,y) modif key val
   | isJust (keyToChar val) || key=="dead_circumflex" = handlePrintKeySpec tac pos key val
   | isArrow key && Control `elem` modif = arrowDirectionSetter tac key >> return pos
   | isArrow key = handleArrowsSpec key pos tac
-  | otherwise =
+  | otherwise = do
       case key of
         "BackSpace" -> handleBackSpaceSpec tac pos
         "Return" -> handleReturnRail tac pos
