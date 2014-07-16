@@ -134,6 +134,7 @@ free_data:
     [
       i8 0, label %free_string
       i8 1, label %free_list
+      i8 2, label %free_lambda
     ]
 
 unhandled_type:
@@ -148,6 +149,10 @@ free_string:
 
 free_list:
   call void @list_unref_elements(%stack_element* %element)
+  br label %free_element
+
+free_lambda:
+  call void @free(i8* %data)
   br label %free_element
 
 free_element:
