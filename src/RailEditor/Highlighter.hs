@@ -74,7 +74,7 @@ highlightFct :: Grid2D
 highlightFct grid2D ip yOffset textAC mOCPos
   | ip == crash = return crash
   |otherwise =
-  if (isPosColored mOCPos ((posx nextIP),(posy nextIP)) )
+  if isPosColored mOCPos (posx nextIP,(posy nextIP))
   then return crash
   else
    case lex of
@@ -114,7 +114,7 @@ highlightFct grid2D ip yOffset textAC mOCPos
       y = posy ip
       xC = fromIntegral $ x
       yC = fromIntegral $ y+yOffset
-      inMap = (Map.insert (x,y) True mOCPos)
+      inMap = Map.insert (x,y) True mOCPos
       -- colors Start and finish gold
       cGold ::IO ()
       cGold | fromJust lex `elem` [Start,Finish] = TAC.putColor textAC (xC,yC) TAC.gold
