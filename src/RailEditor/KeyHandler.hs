@@ -132,6 +132,11 @@ handleKeySpec tac pos@(x,y) modif key val
           return (finX+1,y)
         _ -> return pos
 
+printableKeyInit tac pos key val = do
+  Selection.clear tac pos
+  let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
+  TAC.getCell tac pos
+
 -- | handling of printable keys in Replace-mode (overwriting)
 handlePrintKeyRP :: TAC.TextAreaContent
   -> TAC.Position
@@ -139,9 +144,7 @@ handlePrintKeyRP :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handlePrintKeyRP tac pos@(x,y) key val = do
-  Selection.clear tac pos
-  let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
-  cell <- TAC.getCell tac pos
+  cell <- printableKeyInit tac os key val
   let ((curchar,isSelected), _) = fromMaybe ((TAC.defaultChar, False), TAC.defaultColor) cell
   History.action tac pos (TAC.Replace [(curchar,False)] [(char,False)])
   TAC.putCell tac pos ((char,isSelected),TAC.defaultColor)
@@ -154,9 +157,7 @@ handlePrintKeySpec :: TAC.TextAreaContent
   -> KeyVal
   -> IO TAC.Position
 handlePrintKeySpec tac pos@(x,y) key val = do
-  Selection.clear tac pos
-  let char = if key=="dead_circumflex" then '^' else fromJust $ keyToChar val
-  cell <- TAC.getCell tac pos
+  cell <- printableKeyinit tac pos key val
   dir@(dx,dy) <- TAC.getDirection tac
   if char `elem` "*+x^v><-|/\\@"
   then do
@@ -199,15 +200,18 @@ elemNumBlock key = key `elem` ["KP_End", "KP_Down",
 isArrow :: String -> Bool
 isArrow key = key `elem` ["Left", "Right", "Up", "Down"]
 
+arrowInit tac = do
+  selectedPositions <- TAC.getSelectedPositons tac
+  Selection.updateCells tac selectedPositions False
+  TAC.size tac
+
 -- | handles arrows in Insert-mode and Replace-mode
 handleArrowsIns :: String
   -> TAC.Position
   -> TAC.TextAreaContent
   -> IO TAC.Position
 handleArrowsIns key pos@(x,y) tac = do
-  selectedPositions <- TAC.getSelectedPositons tac
-  Selection.updateCells tac selectedPositions False
-  (maxX,maxY) <- TAC.size tac
+  (maxX, maxY) <- arrowInit tac
   case key of
     "Left" 
       | x==0 && y==0 -> return (x,y)
@@ -237,9 +241,7 @@ handleArrowsSpec :: String
   -> TAC.TextAreaContent
   -> IO TAC.Position
 handleArrowsSpec key pos@(x,y) tac = do
-  selectedPositions <- TAC.getSelectedPositons tac
-  Selection.updateCells tac selectedPositions False
-  (maxX,maxY) <- TAC.size tac
+  (maxX,maxY) <- arrowInit tac
   case key of
     "Left" -> return $
       if x==0 && y==0
@@ -269,6 +271,12 @@ arrowDirectionSetter tac key = do
     "Right" -> TAC.putDirection tac (1,y)
     "Up" -> TAC.putDirection tac (x,-1)
     "Down" -> TAC.putDirection tac (x,1)
+
+deleteSelection = do
+  TACU.moveChars tac bottomRight
+    (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
+  mvLinesUp tac y (abs (yTop-y))
+  return (xLeft,yTop)
 
 -- | handles Backspace-key
 handleBackSpace :: TAC.TextAreaContent
@@ -300,11 +308,7 @@ handleBackSpace tac (x,y) = do
           TAC.deleteCell tac (x-1,y)
           TACU.moveChars tac (x,y) (-1,0)
           return (x-1,y)
-        else do
-          TACU.moveChars tac bottomRight
-            (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
-          mvLinesUp tac y (abs (yTop-y))
-          return (xLeft,yTop)
+        else deleteSelection
 
 mvLinesUp :: TAC.TextAreaContent -> TAC.Coord -> Int -> IO ()
 mvLinesUp _ _ 0 = return ()
@@ -420,11 +424,7 @@ handleDelete tac pos@(x,y) = do
       TAC.deleteCell tac (x,y)
       TACU.moveChars tac (x+1,y) (-1,0)
       return pos
-    else do
-      TACU.moveChars tac bottomRight
-        (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
-      mvLinesUp tac y (abs (yTop-y))
-      return (xLeft,yTop)
+    else deleteSelected
 
 -- Rail Smart-mode setting of Cursor-Position
 -- directions

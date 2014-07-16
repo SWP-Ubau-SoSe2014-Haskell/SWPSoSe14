@@ -36,7 +36,7 @@ module Interpreter (
           putStrLn "unblock"
           inputAfterBlock tac
           writeIORef (TAC.context tac) cnt{TAC.railFlags = delete TAC.Blocked flags}
-      else action tac
+      else action
 
   addBreak :: TAC.TextAreaContent -> TAC.Position -> IO ()
   addBreak tac position = do
@@ -101,15 +101,19 @@ module Interpreter (
       let ((fname, ip, _):_) = TAC.funcStack cnt
           offset = snd $ fromJust $ Map.lookup fname fmap
       writeIORef (TAC.context tac) cnt{TAC.curIPPos = (Lexer.posx ip, Lexer.posy ip + offset)}
+  
+  interpret' :: TAC.TextAreaContent -> Funcmap -> IO ()
+  interpret' tac funcmap = do
+    dostep tac funcmap
+    updateCurIPPos tac funcmap
+    stop <- needsHalt tac funcmap
+    unless stop $ interpret' tac funcmap
 
   interpret :: TAC.TextAreaContent -> IO ()
   interpret tac = checkStep tac TAC.Step $ do
     putStrLn "noBlock"
     funcmap <- getFunctions tac
-    dostep tac funcmap
-    updateCurIPPos tac funcmap
-    stop <- needsHalt tac funcmap
-    unless stop $ interpret tac
+    interpret' tac funcmap
 
   step tac = checkStep tac TAC.Interpret $ do
     funcmap <- getFunctions tac
