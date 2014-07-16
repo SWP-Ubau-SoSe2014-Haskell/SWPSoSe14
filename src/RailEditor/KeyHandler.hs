@@ -54,14 +54,13 @@ handleKey tac pos modus modif key val
                 (if not (null positions) then Selection.getMinimum positions else pos)
     Selection.clear tac newPos
     return newPos
+  | Control `elem` modif && keyToChar val == Just 'b' = --toggle breakpoint
+    Interpreter.toggleBreak tac pos >> return pos
   | otherwise =
-      if elem Control modif && keyToChar val == Just 'b'  --set breakpoint
-      then Interpreter.toggleBreak tac pos >> return pos
-      else
-        case modus of
-          Insert -> handleKeyIns tac pos modif key val
-          Replace -> handleKeyRP tac pos modif key val
-          Smart -> handleKeySpec tac pos modif key val
+    case modus of
+      Insert -> handleKeyIns tac pos modif key val
+      Replace -> handleKeyRP tac pos modif key val
+      Smart -> handleKeySpec tac pos modif key val
 
 -- | handles keys in Insert-mode
 handleKeyIns :: TAC.TextAreaContent
@@ -286,7 +285,8 @@ handleBackSpace tac (x,y) = do
         TACU.moveLinesUp tac y
         return (finXPrev+1,y-1)
       else do 
-        mvLinesUp tac y (abs (yTop-y))
+        action <- mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
+        History.action tac (x, y) (fst action)
         return (xLeft,yTop)
     (_,_) -> do
       empty <- TAC.isEmptyLine tac y
@@ -303,14 +303,15 @@ handleBackSpace tac (x,y) = do
         else do
           TACU.moveChars tac bottomRight
             (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
-          mvLinesUp tac y (abs (yTop-y))
+          action <- mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
+          History.action tac (x, y) (fst action)
           return (xLeft,yTop)
 
-mvLinesUp :: TAC.TextAreaContent -> TAC.Coord -> Int -> IO ()
-mvLinesUp _ _ 0 = return ()
-mvLinesUp tac y diff = do 
+mvLinesUp :: TAC.TextAreaContent -> TAC.Coord -> Int -> (TAC.Action, TAC.Position) -> IO (TAC.Action, TAC.Position)
+mvLinesUp _ _ 0 action = return action
+mvLinesUp tac y diff action = do 
   TACU.moveLinesUp tac y
-  mvLinesUp tac (y-1) (diff-1)
+  mvLinesUp tac (y-1) (diff-1) (TAC.Concat action (TAC.RemoveLine, (0,y-1)), (0, y))
 
 -- | handles Backspace-key in smart mode
 handleBackSpaceSpec :: TAC.TextAreaContent
@@ -423,7 +424,8 @@ handleDelete tac pos@(x,y) = do
     else do
       TACU.moveChars tac bottomRight
         (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
-      mvLinesUp tac y (abs (yTop-y))
+      action <- mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
+      History.action tac (x, y) (fst action)
       return (xLeft,yTop)
 
 -- Rail Smart-mode setting of Cursor-Position

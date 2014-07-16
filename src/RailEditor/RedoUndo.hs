@@ -25,6 +25,7 @@ module RedoUndo (
 
     -- functions --
     invert :: (TAC.Action, TAC.Position) -> (TAC.Action, TAC.Position)
+    invert a@(TAC.DoNothing, pos) = a
     invert (TAC.Concat act1 act2, pos) = (TAC.Concat (invert act1) (invert act2), pos)
     invert (TAC.Remove content, pos) = (TAC.Insert content, pos)
     invert (TAC.Insert content, pos) = (TAC.Remove content, pos)
@@ -46,6 +47,7 @@ module RedoUndo (
 
     -- run whatever action given
     runaction :: TAC.TextAreaContent -> (TAC.Action, TAC.Position) -> IO TAC.Position
+    runaction _ (TAC.DoNothing, actpos) = return actpos
     runaction tac (TAC.Concat act1 act2, actpos) =
       runaction tac act1 >> runaction tac act2
     runaction tac (TAC.Remove [], actpos) = return actpos

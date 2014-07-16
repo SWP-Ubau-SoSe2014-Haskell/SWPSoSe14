@@ -22,7 +22,7 @@ module TextAreaContent (
   Direction,
   Coord,
   RGBColor(RGBColor),
-  TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat),
+  TextAreaContent.Action(Remove, Insert, RemoveLine, InsertLine, Replace, Concat, DoNothing),
   ActionQueue,
   RailType(RailString, RailList, RailLambda),
   InterpreterContext(IC), dataStack, funcStack, breakMap, inputOffset, curIPPos, railFlags,
@@ -82,7 +82,7 @@ data ColorMap = CoMap  (IORef (Map Position RGBColor)) (IORef (Coord,Coord))
 data CharMap  = ChMap  (IORef (Map Coord (Map Coord (Char,Bool)))) (IORef (Coord,Coord))
 
 -- types for undoredo
-data Action = Remove [(Char,Bool)] | Insert [(Char,Bool)] | Replace [(Char,Bool)] [(Char,Bool)] | RemoveLine | InsertLine | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) deriving Show
+data Action = Remove [(Char,Bool)] | Insert [(Char,Bool)] | Replace [(Char,Bool)] [(Char,Bool)] | RemoveLine | InsertLine | Concat (TextAreaContent.Action, Position) (TextAreaContent.Action, Position) | DoNothing deriving Show
 type ActionQueue = [(TextAreaContent.Action, Position)]
 
 -- types for interpreter
