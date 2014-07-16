@@ -50,9 +50,9 @@ updateCell :: TAC.TextAreaContent -> TAC.Position -> Bool -> IO ()
 updateCell tac pos value = do
   cell <- TAC.getCell tac pos
   when (isJust cell) $ do
-    let char = fst $ fst $ fromJust cell
+    let ((char,_),color) = fromJust cell
     TAC.deleteCell tac pos
-    TAC.putCell tac pos ((char,value),TAC.defaultColor)
+    TAC.putCell tac pos ((char,value),color)
 
 relocateCells :: TAC.TextAreaContent -> [TAC.Position] -> TAC.Position -> IO TAC.Position
 relocateCells tac [] pos = return pos
