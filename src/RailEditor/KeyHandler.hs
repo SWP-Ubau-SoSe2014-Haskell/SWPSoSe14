@@ -273,8 +273,8 @@ arrowDirectionSetter tac key = do
     "Up" -> TAC.putDirection tac (x,-1)
     "Down" -> TAC.putDirection tac (x,1)
 
-deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop = do
-  TACU.moveChars tac bottomRight
+deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop doMove = do
+  when doMove $ TACU.moveChars tac bottomRight
     (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
   action <- TACU.mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
   History.action tac (x, y) (fst action)
@@ -295,10 +295,7 @@ handleBackSpace tac (x,y) = do
         History.action tac (finXPrev+1,y-1) TAC.RemoveLine
         TACU.moveLinesUp tac y
         return (finXPrev+1,y-1)
-      else do 
-        action <- TACU.mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
-        History.action tac (x, y) (fst action)
-        return (xLeft,yTop)
+      else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop False
     (_,_) -> do
       empty <- TAC.isEmptyLine tac y
       if empty
@@ -311,7 +308,7 @@ handleBackSpace tac (x,y) = do
           TAC.deleteCell tac (x-1,y)
           TACU.moveChars tac (x,y) (-1,0)
           return (x-1,y)
-        else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop
+        else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop True
 
 
 -- | handles Backspace-key in smart mode
@@ -422,7 +419,7 @@ handleDelete tac pos@(x,y) = do
       TAC.deleteCell tac (x,y)
       TACU.moveChars tac (x+1,y) (-1,0)
       return pos
-    else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop
+    else deleteSelection tac bottomRight topLeft x xRight xLeft y yBottom yTop True
 
 -- Rail Smart-mode setting of Cursor-Position
 -- directions

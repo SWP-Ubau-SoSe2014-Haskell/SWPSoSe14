@@ -160,32 +160,27 @@ getFirstPositions :: [TAC.Position] -> [TAC.Position]
 getFirstPositions [] = []
 getFirstPositions positions = List.map minimum $ List.groupBy (\(x1,y1) (x2,y2) -> y1 == y2) positions
 
--- | pastes content from clipboard to position in override mode
-pasteReplace :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position 
-pasteReplace tac pos = do 
+paste :: TAC.TextAreaContent -> TAC.Position -> Bool -> IO TAC.Position
+paste tac pos replace = do
   clipboard <- TAC.getClipboard tac
-  let cells = snd $ List.unzip clipboard
+  let (clipboardPositions,cells) = List.unzip clipboard
+  when replace $ shiftSubsequentLines tac pos clipboardPositions
   History.action tac pos (TAC.Insert cells)
-  paste tac pos clipboard
-   
-paste :: TAC.TextAreaContent -> TAC.Position -> [(TAC.Position,(Char,Bool))] -> IO TAC.Position 
-paste tac pos clipboard = do
   selectedPositions <- TAC.getSelectedPositons tac
-  newPos <- relocateCells tac clipboard $ 
-    if not (null selectedPositions) 
-    then getMinimum selectedPositions 
+  newPos <- relocateCells tac clipboard $
+    if not (null selectedPositions)
+    then getMinimum selectedPositions
     else pos
   clear tac newPos
   return newPos
 
+-- | pastes content from clipboard to position in override mode
+pasteReplace :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position
+pasteReplace tac pos = paste tac pos True
+
 -- | pastes content from clipboard to position in insert mode
-pasteInsert :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position 
-pasteInsert tac pos = do 
-  clipboard <- TAC.getClipboard tac
-  let cells = snd $ List.unzip clipboard
-  History.action tac pos (TAC.Insert cells)
-  shiftSubsequentLines tac pos (fst $ List.unzip clipboard)
-  paste tac pos clipboard
+pasteInsert :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position
+pasteInsert tac pos = paste tac pos False
 
 shiftSubsequentLines :: TAC.TextAreaContent -> TAC.Position -> [TAC.Position] -> IO ()
 shiftSubsequentLines tac pos clipboardPositions = do
