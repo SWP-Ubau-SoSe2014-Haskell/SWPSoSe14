@@ -76,7 +76,7 @@ highlightFct grid2D ip yOffset textAC mOCPos
   |otherwise =
   if isPosColored mOCPos (posx ip,(posy ip))
   then return crash
-  else do
+  else
    case lex of
     Nothing -> do
       TAC.putColor textAC (xC,yC) TAC.black
