@@ -422,6 +422,7 @@ getPositonsFrom areaContent (_,y) = do
   (xMax,yMax) <- TextAreaContent.size areaContent
   filterM (isOccupied areaContent) [ (x1,y1) | y1 <- [0..yMax], x1 <- [0..xMax], y1 > y]
 
+-- Is a char at pos ?
 isOccupied :: TextAreaContent -> Position -> IO Bool
 isOccupied tac pos = do
   cell <- getCell tac pos
