@@ -28,6 +28,24 @@ import qualified Data.Map as Map
 import Control.Monad
     -- functions --
 
+processWith area dataBuffer funcBuffer fn = do
+      tac <- readIORef $ TA.textAreaContent area
+      intCtxt <- readIORef $ TAC.context tac
+      fn tac
+      intCtxt <- readIORef $ TAC.context tac
+      TA.redrawContent area
+      Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
+      Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
+      let fS = TAC.funcStack intCtxt
+      if not (null fS)
+      then do
+        let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
+        print ip
+      else do
+        let ip = (0,0)
+        print ip
+      return True
+
 -- | creates a toolbar
 create area footer interDT= do
 
@@ -62,41 +80,9 @@ create area footer interDT= do
     let dataBuffer = IDF.getDataStackBuffer interDT
     let funcBuffer = IDF.getFunctionStackBuffer interDT
 
-    Gtk.onButtonPress run  $ \event -> do
-      tac <- readIORef $ TA.textAreaContent area
-      intCtxt <- readIORef $ TAC.context tac
-      IN.interpret tac
-      intCtxt <- readIORef $ TAC.context tac
-      TA.redrawContent area
-      Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
-      Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
-      let fS = TAC.funcStack intCtxt
-      if not (null fS)
-      then do
-        let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
-        print ip
-      else do
-        let ip = (0,0)
-        print ip
-      return True
+    Gtk.onButtonPress run  $ \event -> processWith area dataBuffer funcBuffer IN.interpret
 
-    Gtk.onButtonPress step $ \event -> do
-      tac <- readIORef $ TA.textAreaContent area
-      intCtxt <- readIORef $ TAC.context tac
-      IN.step tac
-      intCtxt <- readIORef $ TAC.context tac
-      TA.redrawContent area
-      Gtk.textBufferSetText dataBuffer $ unlines $ map show $ TAC.dataStack intCtxt
-      Gtk.textBufferSetText funcBuffer $ unlines $ map (\(x,_,_)->x) $ TAC.funcStack intCtxt
-      let fS = TAC.funcStack intCtxt
-      if not (null fS)
-      then do
-        let ip = (\(_,x,_) -> (Lexer.posx x,Lexer.posy x)) $ head fS
-        print ip
-      else do
-        let ip = (0,0)
-        print ip
-      return True
+    Gtk.onButtonPress step $ \event -> processWith area dataBuffer funcBuffer IN.step
 
     bufferVariables <- Gtk.textBufferNew Nothing
 

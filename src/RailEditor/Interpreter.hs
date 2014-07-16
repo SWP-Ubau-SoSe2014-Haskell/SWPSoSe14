@@ -16,6 +16,28 @@ module Interpreter (
 
   type Funcmap = Map.Map String IDT.PositionedGrid
 
+  getCurrentText buffer = do
+    start <- Gtk.textBufferGetStartIter buffer
+    end <- Gtk.textBufferGetEndIter buffer
+    Gtk.textBufferGetText buffer start end True
+
+  checkStep tac flag action = do
+    cnt <- readIORef (TAC.context tac)
+    isBlocked <- blocked tac
+    let flags = TAC.railFlags cnt
+    if flag `elem` flags && null (TAC.funcStack cnt)
+    then showError tac "Please reset, before you change the execution mode"
+    else do
+      unless (TAC.Interpret `elem` flags) $ writeIORef (TAC.context tac) cnt{TAC.railFlags = TAC.Interpret:flags}
+      if TAC.Blocked `elem` flags
+      then do
+        putStrLn "is blocked"
+        unless isBlocked $ do
+          putStrLn "unblock"
+          inputAfterBlock tac
+          writeIORef (TAC.context tac) cnt{TAC.railFlags = delete TAC.Blocked flags}
+      else action tac
+
   addBreak :: TAC.TextAreaContent -> TAC.Position -> IO ()
   addBreak tac position = do
     cnt <- readIORef (TAC.context tac)
@@ -55,9 +77,7 @@ module Interpreter (
     cnt <- readIORef (TAC.context tac)
     let offset = TAC.inputOffset cnt
         buffer = fst $ TAC.buffer tac
-    start <- Gtk.textBufferGetStartIter buffer
-    end <- Gtk.textBufferGetEndIter buffer
-    currentText <- Gtk.textBufferGetText buffer start end True
+    currentText <- getCurrentText buffer
     putStrLn $ "off:" ++ show offset ++ "; "++ show (length currentText)
     return $ offset  > length currentText
 
@@ -84,21 +104,7 @@ module Interpreter (
 
   interpret :: TAC.TextAreaContent -> IO ()
   interpret tac = do
-    cnt <- readIORef (TAC.context tac)
-    isBlocked <- blocked tac
-    let flags = TAC.railFlags cnt
-    if TAC.Step `elem` flags && null (TAC.funcStack cnt)
-    then showError tac "Please reset, before you change the execution mode"
-    else do
-      unless (TAC.Interpret `elem` flags) $ writeIORef (TAC.context tac) cnt{TAC.railFlags = TAC.Interpret:flags}
-      if TAC.Blocked `elem` flags
-      then do
-        putStrLn "is blocked"
-        unless isBlocked $ do
-          putStrLn "unblock"
-          inputAfterBlock tac
-          writeIORef (TAC.context tac) cnt{TAC.railFlags = delete TAC.Blocked flags}
-      else do
+    checkStep tac TAC.Step $ do
         putStrLn "noBlock"
         funcmap <- getFunctions tac
         dostep tac funcmap
@@ -131,9 +137,7 @@ module Interpreter (
     cnt <- readIORef (TAC.context tac)
     let offset = TAC.inputOffset cnt
     let buffer = fst $ TAC.buffer tac
-    start <- Gtk.textBufferGetStartIter buffer
-    end <- Gtk.textBufferGetEndIter buffer
-    currentText <- Gtk.textBufferGetText buffer start end True
+    currentText <- getCurrentText buffer
     putStrLn "read"
     let char = currentText !! offset
     writeIORef (TAC.context tac) cnt{TAC.dataStack = TAC.RailString [char]:TAC.dataStack cnt}
