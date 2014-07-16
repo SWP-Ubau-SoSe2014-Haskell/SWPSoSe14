@@ -64,7 +64,7 @@ module AST (fromAST, toAST, parse, adjacent, valids)
    fromLexeme Output = "o"
    fromLexeme Underflow = "u"
    fromLexeme RType = "?"
-   fromLexeme (Constant string) = "["++string++"]"
+   fromLexeme (Constant string) = "["++escapestring string++"]"
    fromLexeme (Push string) = "("++string++")"
    fromLexeme (Pop string) = "(!"++string++"!)"
    fromLexeme (Call string) = "{"++string++"}"
@@ -277,6 +277,18 @@ module AST (fromAST, toAST, parse, adjacent, valids)
         [escsym, esctrail]  = lookahead code ip 2
         -- Points to the character after the trailing backslash
         escip               = skip code ip 3
+
+ escapestring :: String -> String
+ escapestring [] = []
+ escapestring (x:xs) = newx ++ escapestring xs
+   where
+     newx = case x of
+       '\\' -> "\\\\"
+       '\n' -> "\\n\\"
+       '[' -> "\\[\\"
+       ']' -> "\\]\\"
+       '\t' -> "\\t\\"
+       _ -> [x]
 
  -- |Lookahead n characters in the current direction.
  lookahead :: IDT.Grid2D -- ^Line representation of current function

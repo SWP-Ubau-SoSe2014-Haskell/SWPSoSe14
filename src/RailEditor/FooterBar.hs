@@ -30,7 +30,7 @@ data Footer = Foot {getContainer :: Gtk.HBox,
 -- | sets the label displaying the current position
 setPosition :: Footer -> (Int,Int) -> IO ()
 setPosition footer (x,y) =
-  Gtk.labelSetText (getCurrentPositionLabel footer) ("(" ++ (show x) ++ "," ++ (show y) ++ ")")
+  Gtk.labelSetText (getCurrentPositionLabel footer) ("(" ++ show x ++ "," ++ show y ++ ")")
 
 -- | set the label displaying the current mode
 setMode :: Footer -> KH.InputMode -> IO ()

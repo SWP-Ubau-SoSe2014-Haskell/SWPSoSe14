@@ -106,8 +106,6 @@ with the stack implementation, etc. For each input/output value, it puts the
 input into the llvm-binary and compares the actual output with the current
 output. The result will be printed to stdout.
 
-(TODO: do we have to run cabal first manually?)
-
 ## Dependencies / Building the Compiler
 
 - Install cabal (package cabal-install in most distributions)

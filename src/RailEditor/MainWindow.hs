@@ -24,8 +24,15 @@ import qualified InteractionField as IAF
 import Data.IORef
 import qualified Interpreter as IN
 import qualified Paths_rail_compiler_editor as Path
+import Control.Monad
 
     -- functions --
+
+afterEvent evt ta footer = 
+  evt (TA.drawingArea ta) $ \event -> do
+    let posRef = TA.currentPosition ta
+    readIORef posRef >>= FB.setPosition footer
+    return True
 
 -- | creates a mainWindow
 create :: IO ()
@@ -49,15 +56,9 @@ create = do
   lwin <- TA.getTextAreaContainer ta
 
   -- reset label with current position
-  Gtk.afterKeyPress (TA.drawingArea ta) $ \event -> do
-    let posRef = TA.currentPosition ta
-    readIORef posRef >>= FB.setPosition footer
-    return True
+  afterEvent Gtk.afterKeyPress ta footer
 
-  Gtk.afterButtonPress (TA.drawingArea ta) $ \event -> do
-    let posRef = TA.currentPosition ta
-    readIORef posRef >>= FB.setPosition footer
-    return True
+  afterEvent Gtk.afterButtonPress ta footer
 
   -- pack TextArea and InteractionField
   boxLay <- Gtk.hBoxNew False 0
@@ -78,11 +79,9 @@ create = do
     tac <- readIORef (TA.textAreaContent ta)
     cnt <- readIORef (TAC.context tac)
     let flags = TAC.railFlags cnt
-    if (elem TAC.Interpret flags)
+    if TAC.Interpret `elem` flags
     then IN.interpret tac
-    else if (elem TAC.Step flags)
-         then IN.step tac
-         else return ()
+    else when (TAC.Step `elem` flags) $ IN.step tac
 
   menuBar <- MB.create window ta bufferOut bufferIn
   extraBar <- TB.create ta footer interDT

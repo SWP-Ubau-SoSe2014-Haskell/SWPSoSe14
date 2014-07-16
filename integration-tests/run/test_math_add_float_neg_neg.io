@@ -1,1 +1,1 @@
-../test_math_add_float_neg_neg.io
+/home/chris/SWPSoSe14/integration-tests/test_math_add_float_neg_neg.io

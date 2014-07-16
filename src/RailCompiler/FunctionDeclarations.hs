@@ -114,6 +114,14 @@ div1 = GlobalDefinition $ Global.functionDefaults {
   Global.parameters = ([], False)
 }
 
+-- |Function declaration for 'type'.
+type1 :: Definition
+type1 = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "type",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
 -- |Function declaration for pushing constants.
 pushStringCpy :: Definition
 pushStringCpy = GlobalDefinition $ Global.functionDefaults {
@@ -229,4 +237,84 @@ initialiseSymbolTable = GlobalDefinition $ Global.functionDefaults {
   Global.returnType = VoidType,
   Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
     Name "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
+}
+
+-- |Function declaration for malloc
+malloc :: Definition
+malloc = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "malloc",
+  Global.returnType = bytePointerType,
+  Global.parameters = ([ Parameter (IntegerType 64) (UnName 0) [] ], False)
+}
+
+-- |Function declaration for copying of the symbol table
+copySymbolTable :: Definition
+copySymbolTable = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "copy_symbol_table",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
+    Name "struct.table") (AddrSpace 0)) (UnName 0) [],
+    Parameter (PointerType (NamedTypeReference $ 
+    Name "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
+}
+
+-- |Function declaration for pushing lambda
+pushLambda :: Definition
+pushLambda = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "push_lambda",
+  Global.returnType = VoidType,
+  Global.parameters = ([ Parameter (PointerType (
+    PointerType functionReturnLambda (AddrSpace 0)) (AddrSpace 0)) (UnName 0) [],
+    Parameter (PointerType (NamedTypeReference $ 
+    Name "struct.table") (AddrSpace 0)) (UnName 0) [] ], False)
+}
+
+-- |Function declaration for popping a lambda element
+popLambda :: Definition
+popLambda = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "pop_lambda",
+  Global.returnType = PointerType (NamedTypeReference $ Name "lambda_element") (AddrSpace 0),
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for getting a pointer to a lambda function
+getLambda :: Definition
+getLambda = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "get_lambda_pointer",
+  Global.returnType = PointerType functionReturnLambda (AddrSpace 0),
+  Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
+    Name "lambda_element") (AddrSpace 0)) (UnName 0) [] ], False)
+}
+
+-- |Function declaration for getting lambda symbol table
+getTable :: Definition
+getTable = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "get_lambda_table",
+  Global.returnType = PointerType (NamedTypeReference $ Name "struct.table") (AddrSpace 0),
+  Global.parameters = ([ Parameter (PointerType (NamedTypeReference $ 
+    Name "lambda_element") (AddrSpace 0)) (UnName 0) [] ], False)
+}
+
+-- |Function declaration for pushing nil onto the stack.
+listPushNil :: Definition
+listPushNil = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "gen_list_push_nil",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for list cons.
+listCons :: Definition
+listCons = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "gen_list_cons",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
+}
+
+-- |Function declaration for list breakup.
+listBreakup :: Definition
+listBreakup = GlobalDefinition $ Global.functionDefaults {
+  Global.name = Name "gen_list_breakup",
+  Global.returnType = VoidType,
+  Global.parameters = ([], False)
 }

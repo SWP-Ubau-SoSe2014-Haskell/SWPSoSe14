@@ -1,0 +1,1 @@
+../pos_comp_equal1.io

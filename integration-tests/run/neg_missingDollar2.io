@@ -1,1 +1,1 @@
-../neg_missingDollar2.io
+/home/chris/SWPSoSe14/integration-tests/neg_missingDollar2.io

@@ -1,1 +1,1 @@
-../neg_comp_equal_no_argument.io
+/home/chris/SWPSoSe14/integration-tests/neg_comp_equal_no_argument.io

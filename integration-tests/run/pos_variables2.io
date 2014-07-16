@@ -1,1 +1,1 @@
-../pos_variables2.io
+/home/chris/SWPSoSe14/integration-tests/pos_variables2.io

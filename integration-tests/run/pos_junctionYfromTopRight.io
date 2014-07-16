@@ -1,1 +1,1 @@
-../pos_junctionYfromTopRight.io
+/home/chris/SWPSoSe14/integration-tests/pos_junctionYfromTopRight.io

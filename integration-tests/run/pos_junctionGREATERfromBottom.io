@@ -1,1 +1,1 @@
-../pos_junctionGREATERfromBottom.io
+/home/chris/SWPSoSe14/integration-tests/pos_junctionGREATERfromBottom.io

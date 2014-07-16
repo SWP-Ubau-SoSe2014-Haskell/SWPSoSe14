@@ -41,6 +41,5 @@ module InterfaceDT where
   data Lexer2SynAna      = ILS [Graph]  deriving (Eq, Show)
   data SynAna2SemAna     = ISS [AST]    deriving (Eq, Show)
   data SemAna2InterCode  = ISI [AST]    deriving (Eq, Show)
-  data InterCode2CodeOpt = IIC LAST.Module deriving (Eq, Show)
-  data CodeOpt2Backend   = ICB LAST.Module deriving (Eq, Show)
+  data InterCode2Backend = IIB LAST.Module deriving (Eq, Show)
   data Backend2Output    = IBO (IO String)

@@ -27,6 +27,7 @@ declare %stack_element* @push_string_ptr(i8* %str)
 declare %stack_element* @push_string_cpy(i8* %str)
 declare void @push_int(i64)
 declare %stack_element* @pop_struct()
+declare void @stack_element_assert_type(%stack_element*, i8)
 declare i8* @stack_element_get_data(%stack_element* %element)
 declare i64 @stack_element_get_int_data(%stack_element* %element)
 declare void @stack_element_unref(%stack_element* %element)
@@ -119,8 +120,10 @@ entry:
   call void @underflow_assert()
   %elem2 = call %stack_element*()* @pop_struct()
   %indx = call i64(%stack_element*)* @stack_element_get_int_data(%stack_element* %elem2)
+
   call void @underflow_assert() 
   %elem1 = call %stack_element*()* @pop_struct()
+  call void @stack_element_assert_type(%stack_element* %elem1, i8 0)
   %str = call i8*(%stack_element*)* @stack_element_get_data(%stack_element* %elem1)
 
   ; allocate space for result strings

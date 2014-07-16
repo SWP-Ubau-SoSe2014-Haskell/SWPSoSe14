@@ -1,1 +1,1 @@
-../pos_startStop2.io
+/home/chris/SWPSoSe14/integration-tests/pos_startStop2.io

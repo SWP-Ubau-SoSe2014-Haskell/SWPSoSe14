@@ -1,1 +1,1 @@
-../pos_simpleJunctionSTAR.io
+/home/chris/SWPSoSe14/integration-tests/pos_simpleJunctionSTAR.io
