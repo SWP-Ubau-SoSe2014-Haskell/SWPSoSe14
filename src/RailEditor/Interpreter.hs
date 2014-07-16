@@ -103,34 +103,18 @@ module Interpreter (
       writeIORef (TAC.context tac) cnt{TAC.curIPPos = (Lexer.posx ip, Lexer.posy ip + offset)}
 
   interpret :: TAC.TextAreaContent -> IO ()
-  interpret tac = do
-    checkStep tac TAC.Step $ do
-        putStrLn "noBlock"
-        funcmap <- getFunctions tac
-        dostep tac funcmap
-        updateCurIPPos tac funcmap
-        stop <- needsHalt tac funcmap
-        unless stop $ interpret tac
+  interpret tac = checkStep tac TAC.Step $ do
+    putStrLn "noBlock"
+    funcmap <- getFunctions tac
+    dostep tac funcmap
+    updateCurIPPos tac funcmap
+    stop <- needsHalt tac funcmap
+    unless stop $ interpret tac
 
-  step tac = do
-    cnt <- readIORef (TAC.context tac)
-    isBlocked <- blocked tac
-    let flags = TAC.railFlags cnt
-    if elem TAC.Interpret flags && null (TAC.funcStack cnt)
-    then showError tac "Please reset, before you change the execution mode"
-    else do
-      unless (TAC.Step `elem` flags) $ writeIORef (TAC.context tac) cnt{TAC.railFlags = TAC.Step:flags}
-      if TAC.Blocked `elem` flags
-      then do
-        putStrLn "is blocked"
-        unless isBlocked $ do
-          putStrLn "unblock"
-          inputAfterBlock tac
-          writeIORef (TAC.context tac) cnt{TAC.railFlags = delete TAC.Blocked flags}
-      else do
-        funcmap <- getFunctions tac
-        dostep tac funcmap
-        updateCurIPPos tac funcmap
+  step tac = checkStep tac TAC.Interpret $ do
+    funcmap <- getFunctions tac
+    dostep tac funcmap
+    updateCurIPPos tac funcmap
 
   inputAfterBlock :: TAC.TextAreaContent -> IO ()
   inputAfterBlock tac = do
