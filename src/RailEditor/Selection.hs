@@ -19,7 +19,8 @@ module Selection (
                     getMinimum,
                     pasteReplace,
                     pasteInsert,
-                    getCellsByPositons
+                    getCellsByPositons,
+                    deselect
                  )
   where
 
@@ -71,7 +72,7 @@ relocateCells tac content (x,y) = do
   _relocateCells tac positions (List.map fst cells) (x,y) (x1,y1)
   return (x+x2-x1,y+y2-y1)
 
-_relocateCells :: TAC.TextAreaContent -> [TAC.Position] -> [Char] -> TAC.Position -> TAC.Position -> IO ()
+_relocateCells :: TAC.TextAreaContent -> [TAC.Position] -> String -> TAC.Position -> TAC.Position -> IO ()
 _relocateCells _ [] _ _ _ = return ()
 _relocateCells tac (position:positions) (char:chars) newPos offset = do
   relocateCell tac position char newPos offset
@@ -163,8 +164,12 @@ getFirstPositions positions = List.map minimum $ List.groupBy (\(x1,y1) (x2,y2) 
 pasteReplace :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position 
 pasteReplace tac pos = do 
   clipboard <- TAC.getClipboard tac
-  let (clipboardPositions,cells) = List.unzip clipboard
+  let cells = snd $ List.unzip clipboard
   History.action tac pos (TAC.Insert cells)
+  paste tac pos clipboard
+   
+paste :: TAC.TextAreaContent -> TAC.Position -> [(TAC.Position,(Char,Bool))] -> IO TAC.Position 
+paste tac pos clipboard = do
   selectedPositions <- TAC.getSelectedPositons tac
   newPos <- relocateCells tac clipboard $ 
     if not (null selectedPositions) 
@@ -177,16 +182,10 @@ pasteReplace tac pos = do
 pasteInsert :: TAC.TextAreaContent -> TAC.Position -> IO TAC.Position 
 pasteInsert tac pos = do 
   clipboard <- TAC.getClipboard tac
-  let (clipboardPositions,cells) = List.unzip clipboard
-  shiftSubsequentLines tac pos clipboardPositions 
+  let cells = snd $ List.unzip clipboard
   History.action tac pos (TAC.Insert cells)
-  selectedPositions <- TAC.getSelectedPositons tac
-  newPos <- relocateCells tac clipboard $ 
-    if not (null selectedPositions) 
-    then getMinimum selectedPositions 
-    else pos
-  clear tac newPos
-  return newPos
+  shiftSubsequentLines tac pos (fst $ List.unzip clipboard)
+  paste tac pos clipboard
 
 shiftSubsequentLines :: TAC.TextAreaContent -> TAC.Position -> [TAC.Position] -> IO ()
 shiftSubsequentLines tac pos clipboardPositions = do
@@ -207,3 +206,8 @@ _shiftDownLines _ _ 0 = return ()
 _shiftDownLines tac (x:xs) shift = do
   _shiftDownLines tac xs shift
   TACU.moveChars tac x (0,shift)
+
+deselect :: TAC.TextAreaContent -> IO TAC.Position
+deselect tac = do
+  selectedPositions <- TAC.getSelectedPositons tac
+  updateCells tac selectedPositions False

@@ -122,7 +122,7 @@ handleKeySpec tac pos@(x,y) modif key val
   | isJust (keyToChar val) || key=="dead_circumflex" = handlePrintKeySpec tac pos key val
   | isArrow key && Control `elem` modif = arrowDirectionSetter tac key >> return pos
   | isArrow key = handleArrowsSpec key pos tac
-  | otherwise = do
+  | otherwise =
       case key of
         "BackSpace" -> handleBackSpaceSpec tac pos
         "Return" -> handleReturnRail tac pos
@@ -208,8 +208,7 @@ handleArrowsIns :: String
   -> TAC.TextAreaContent
   -> IO TAC.Position
 handleArrowsIns key pos@(x,y) tac = do
-  selectedPositions <- TAC.getSelectedPositons tac
-  Selection.updateCells tac selectedPositions False
+  Selection.deselect tac
   (maxX,maxY) <- TAC.size tac
   case key of
     "Left" 
@@ -240,8 +239,7 @@ handleArrowsSpec :: String
   -> TAC.TextAreaContent
   -> IO TAC.Position
 handleArrowsSpec key pos@(x,y) tac = do
-  selectedPositions <- TAC.getSelectedPositons tac
-  Selection.updateCells tac selectedPositions False
+  Selection.deselect tac
   (maxX,maxY) <- TAC.size tac
   case key of
     "Left" -> return $
@@ -289,7 +287,7 @@ handleBackSpace tac (x,y) = do
         TACU.moveLinesUp tac y
         return (finXPrev+1,y-1)
       else do 
-        action <- mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
+        action <- TACU.mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
         History.action tac (x, y) (fst action)
         return (xLeft,yTop)
     (_,_) -> do
@@ -304,18 +302,11 @@ handleBackSpace tac (x,y) = do
           TAC.deleteCell tac (x-1,y)
           TACU.moveChars tac (x,y) (-1,0)
           return (x-1,y)
-        else do
-          TACU.moveChars tac bottomRight
-            (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
-          action <- mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
+        else do 
+          newPos <- TACU.moveCharsRight tac (x,y) topLeft bottomRight
+          action <- TACU.mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
           History.action tac (x, y) (fst action)
-          return (xLeft,yTop)
-
-mvLinesUp :: TAC.TextAreaContent -> TAC.Coord -> Int -> (TAC.Action, TAC.Position) -> IO (TAC.Action, TAC.Position)
-mvLinesUp _ _ 0 action = return action
-mvLinesUp tac y diff action = do 
-  TACU.moveLinesUp tac y
-  mvLinesUp tac (y-1) (diff-1) (TAC.Concat action (TAC.RemoveLine, (0,y-1)), (0, y))
+          return newPos
 
 -- | handles Backspace-key in smart mode
 handleBackSpaceSpec :: TAC.TextAreaContent
@@ -425,12 +416,11 @@ handleDelete tac pos@(x,y) = do
       TAC.deleteCell tac (x,y)
       TACU.moveChars tac (x+1,y) (-1,0)
       return pos
-    else do
-      TACU.moveChars tac bottomRight
-        (if (x, y) == topLeft then (x - xRight - 1, y - yBottom) else (xLeft - x, yTop - y))
-      action <- mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
+    else do 
+      newPos <- TACU.moveCharsRight tac (x,y) topLeft bottomRight
+      action <- TACU.mvLinesUp tac y (abs (yTop-y)) (TAC.DoNothing, (xLeft, yTop))
       History.action tac (x, y) (fst action)
-      return (xLeft,yTop)
+      return newPos
 
 -- Rail Smart-mode setting of Cursor-Position
 -- directions
