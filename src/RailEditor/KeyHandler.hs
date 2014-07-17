@@ -325,8 +325,9 @@ handleBackSpaceSpec tac pos@(x,y) = do
     prevCell <- TAC.getCell tac (x-dx,y-dy)
     if isNothing cell
     then
-      handleBackSpace tac
-        (if isNothing prevCell then pos else (x - dx, y - dy))
+      if isNothing prevCell
+      then handleBackSpace tac pos
+      else handleBackSpaceSpec tac (x-dx,y-dy)
     else do
       let (content@(char,_), col) = fromJust cell
       if char `elem` "x+*"
