@@ -51,7 +51,7 @@ highlightFcts ::  [PositionedGrid]-- List of funtions in line-representation wit
   -> IO IP
 highlightFcts [] _ = return crash
 highlightFcts (x:xs) textAC = do
-  highlightFct (fst x) start (snd x) textAC (Map.empty)
+  highlightFct (fst x) start (snd x) textAC Map.empty
   highlightFcts xs textAC
   
   {-
@@ -74,7 +74,7 @@ highlightFct :: Grid2D
 highlightFct grid2D ip yOffset textAC mOCPos
   | ip == crash = return crash
   |otherwise =
-  if isPosColored mOCPos (posx ip,(posy ip))
+  if isPosColored mOCPos (posx ip, posy ip)
   then return crash
   else
    case lex of
@@ -112,7 +112,7 @@ highlightFct grid2D ip yOffset textAC mOCPos
       nextIP = step grid2D parseIP
       x = posx ip
       y = posy ip
-      xC = fromIntegral $ x
+      xC = fromIntegral x
       yC = fromIntegral $ y+yOffset
       inMap = Map.insert (x,y) True mOCPos
       -- colors Start and finish gold
