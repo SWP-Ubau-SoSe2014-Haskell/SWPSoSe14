@@ -51,7 +51,7 @@ highlightFcts ::  [PositionedGrid]-- List of funtions in line-representation wit
   -> IO IP
 highlightFcts [] _ = return crash
 highlightFcts (x:xs) textAC = do
-  highlightFct (fst x) start (snd x) textAC (Map.empty)
+  highlightFct (fst x) start (snd x) textAC Map.empty
   highlightFcts xs textAC
   
   {-
@@ -112,9 +112,9 @@ highlightFct grid2D ip yOffset textAC mOCPos
       nextIP = step grid2D parseIP
       x = posx ip
       y = posy ip
-      xC = fromIntegral $ x
+      xC = fromIntegral x
       yC = fromIntegral $ y+yOffset
-      inMap = Map.alter (\x -> if isNothing x then Just [dir ip] else Just $ (dir ip):(fromJust x)) (x,y) mOCPos
+      inMap = Map.alter (Just . maybe [dir ip] ((:) (dir ip))) (x,y) mOCPos
       -- colors Start and finish gold
       cGold ::IO ()
       cGold | fromJust lex `elem` [Start,Finish] = TAC.putColor textAC (xC,yC) TAC.gold
