@@ -19,7 +19,8 @@ linkLlvm compiledCode exe =
 --src/RailCompiler/*.ll dose not work.
   readProcessWithExitCode "llvm-link" [compiledCode,"src/RailCompiler/cmp.ll",
     "src/RailCompiler/linked_stack.ll","src/RailCompiler/math.ll",
-    "src/RailCompiler/stack.ll","src/RailCompiler/string.ll","-o",exe] ""
+    "src/RailCompiler/list.ll","src/RailCompiler/stack.ll",
+    "src/RailCompiler/string.ll","-o",exe] ""
 
 --executes the executable
 executeRail :: String

@@ -1,0 +1,409 @@
+#!/bin/bash
+
+### Usage info
+function show_help {
+cat << EOF
+Usage: ${0##*/} [-hvl] [-e/d TEST] [TEST/TESTDIR]
+Without arguments the script runs all enabled tests.
+When a test name is given then run this test.
+When a directory is given it runs all tests in that directory.
+
+-h         Display this help and exit
+-e/d TEST  Enable/Diasble the specified test.
+-l         List all tests and their status.
+-r         Run all not enabled tests.
+-v         Verbose mode. Can be used multiple times for increased
+           verbotisty.
+-c         Use C++ compiler/runtime system.
+-i         Use the rail interpreter.
+-a         Generate an AST file with the c++ rail compiler and read
+           it into the haskell compiler. When using -ca the haskell
+           compiler generates the AST and the cpp-compiler reads that AST.
+-o FILE    Write expected outputs and actual outputs to FILE.exp, 
+           FILE.exp.err, FILE and FILE.err.
+           Don't do the actual output comparision here.
+EOF
+}
+
+### Function for reading in-/output files
+function readtest {
+  unset STDIN
+  unset STDOUT
+  unset STDERR
+
+  FILE=$1
+  i=0
+  # 0=STDIN, 1=STDOUT, 2=STDERR
+  mode=0
+
+  while read -r line; do
+    if [ "$line" = "#" ]; then
+      # Next test case OR the stdout/stderr section of a test case.
+      if [ $mode -gt 0 ]; then
+        # Next test case.
+        i=$(($i + 1))
+        mode=0
+        continue
+      fi
+
+      # Else $mode is 0. This means we are now reading the
+      # stdout/stderr section of a test case. It consists
+      # of two sections (for stdout and stderr), delimited
+      # by a line containg a single percent symbol (%). The second
+      # section (for stderr) and its leading "percent symbol line"
+      # are optional for backward compatibility.
+      mode=1
+      continue
+    elif [ "$line" = "%" ]; then
+      # Now comes the stderr section.
+      mode=2
+      continue
+    fi
+
+    # Else this is a normal input/output line.
+    case "$mode" in
+      0)
+        STDIN[$i]="${STDIN[$i]}${line}"
+        ;;
+      1)
+        STDOUT[$i]="${STDOUT[$i]}${line}"
+        ;;
+      2)
+        STDERR[$i]="${STDERR[$i]}${line}"
+        ;;
+    esac
+   done < "$FILE"
+
+   UNIT_TESTCASES=$(($i + 1))
+}
+
+### Function to get the correct test name for a file.
+function get_name {
+  filename="${1##*/}"
+  filename="${filename%%.*}"
+  echo "$filename"
+}
+
+### Get the filename to a given test name
+function get_filename {
+  name="$1"
+  echo "$TESTDIR/$name.rail"
+}
+
+### Function to run a single test
+function run_one {
+  dontrun=false
+  filename=$(get_name "$1")
+  unset compilefail
+  if [ -f "$TESTDIR/$filename$EXT" ]
+    then
+      readtest "$TESTDIR/$filename$EXT"
+    else
+      fail=$(($fail + 1))
+      echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". $EXT-file is missing."
+      return
+  fi
+  if [[ -n "$ast" ]]; then 
+    return
+  fi
+  if [[ -z $cpp && -z $interpreter ]]; then
+    # Run Haskell compiler and llvm-linker.
+    errormsg=$(dist/build/RailCompiler/RailCompiler --exportAST -i "$1" | dist/build/RailCompiler/RailCompiler --importAST -o "$TMPDIR/$filename.ll" 2>&1) \
+      && errormsg2=$(llvm-link "$TMPDIR/$filename.ll" src/RailCompiler/*.ll 2>&1 > "$TMPDIR/$filename") \
+      && chmod +x "$TMPDIR/$filename" || compilefail=true
+  elif [ -n "$cpp" ]; then
+    # Run C++ compiler.
+    errormsg=$($CPPCOMPILER -q -i "$1" -o "$TMPDIR/$filename.class" 2>&1) || compilefail=true
+  fi
+  if [ -n "$compilefail" ]; then
+    TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
+    if [ -n "$fileoutput" ]; then
+      echo "$filename" >> "${fileoutput}.tests"
+      echo "$errormsg" >> "${fileoutput}.err"
+      echo "${STDERR[0]}" >> "${fileoutput}.exp.err"
+    elif [[ "$errormsg$errormsg2" == "${STDERR[0]}" ]]; then
+      [ $verbose -gt 0 ] && echo -en "`$green`Passed`$NC` expected fail \"$filename.rail\"."
+      if [ $verbose -gt 1 ]; then
+        echo "  The error message was: \"$errormsg$errormsg2\""
+      else
+        [ $verbose -gt 0 ] && echo -ne "\n"
+      fi
+    else
+      fail=$(($fail + 1))
+      echo -e "`$red`ERROR`$NC` compiling/linking \"$filename.rail\" with error: \"$errormsg$errormsg2\""
+    fi
+    return
+  fi
+  # Create temporary files for stdout and stderr.
+  stdoutfile=$(mktemp -t swp14_ci_stdout.XXXXX)
+  if [ $? -gt 0 ]; then
+    echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stdout."
+    fail=$(($fail + 1))
+    return
+  fi
+
+  stderrfile=$(mktemp -t swp14_ci_stderr.XXXXX)
+  if [ $? -gt 0 ]; then
+    echo -e "`$red`ERROR`$NC` testing: \"$filename.rail\". Could not create temporary file for stderr."
+    fail=$(($fail + 1))
+    return
+  fi
+
+  for i in $(seq 0 $(($UNIT_TESTCASES - 1))); do
+    TOTAL_TESTCASES=$(($TOTAL_TESTCASES + 1))
+
+    # Execute the test!
+    echo -ne "${STDIN[$i]}" | run "$filename" 1>"$stdoutfile" 2>"$stderrfile"
+
+    # Read stdout and stderr, while converting all actual newlines to \n.
+    # Really ugly: bash command substitution eats trailing newlines so we
+    # need to add a terminating character and then remove it again.
+    stdout=$(cat "$stdoutfile"; echo x)
+    stdout=${stdout%x}
+    stdout=${stdout//$'\n'/\\n}
+
+    stderr=$(cat "$stderrfile"; echo x)
+    stderr=${stderr%x}
+    stderr=${stderr//$'\n'/\\n}
+    if [ -n "$fileoutput" ]; then
+      echo "$filename - Input: \"${STDIN[$i]}\"" >> "${fileoutput}.tests"
+      echo "$stdout" >> "$fileoutput"
+      echo "$stderr" >> "${fileoutput}.err"
+      echo "${STDOUT[$i]}" >> "${fileoutput}.exp"
+      echo "${STDERR[$i]}" >> "${fileoutput}.exp.err"
+    elif [[ "$stdout" == "${STDOUT[$i]}" && "$stderr" == "${STDERR[$i]}" ]]; then
+      [ $verbose -gt 0 ] && echo -n "`$green`Passed`$NC` \"$filename.rail\" with input \"${STDIN[$i]}\""
+	if [ $verbose -gt 1 ]; then
+          echo "  Got output: \"$stdout\". Stderr: \"$stderr\"."
+        else
+          [ $verbose -gt 0 ] && echo -ne "\n"
+        fi
+    else
+      fail=$(($fail + 1))
+      echo "`$red`ERROR`$NC` testing \"$filename.rail\" with input \"${STDIN[$i]}\"!" \
+        "Expected \"${STDOUT[$i]}\" on stdout, got \"$stdout\";" \
+        "expected \"${STDERR[$i]}\" on stderr, got \"$stderr\"."
+    fi
+  done
+}
+
+### Function to compile and run all .rail files
+function run_all {
+  for f in "$TESTDIR"/*.rail; do
+    if [ "$reverse" = true ]; then
+      if [ ! -f "$TESTDIR/run/$(get_name "$f").rail" ]; then 
+        run_one "$f"
+      fi
+    else
+      run_one "$f"
+    fi
+  done
+}
+
+### Function to correctly call the LLVM/java interpreter/rail interpreter
+function run {
+  # On some platforms, the LLVM IR interpreter is not called "lli", but
+  # something like "lli-x.y", where x.y is the LLVM version -- there may be
+  # multiple such binaries for different LLVM versions.
+  # Instead of trying to find the right version, we currently assume that
+  # such platforms use binfmt_misc to execute LLVM IR files directly (e. g. Ubuntu).
+  if [ -n "$cpp" ]; then
+    java -cp "$TMPDIR/" "$@"
+  elif [ -n "$interpreter" ]; then
+    "$INTERPRETER" "$TESTDIR/$@.rail"
+  else
+    if command -v lli >/dev/null; then
+        lli "$TMPDIR/$@"
+    else
+        "$TMPDIR/$@"
+    fi
+  fi
+}
+
+
+### Directory magic, so our cwd is the project home directory.
+OLDDIR=$(pwd)
+unset CDPATH
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+cd "$DIR/.."
+
+### Define Terminal Colours
+red="eval tput setaf 1; tput bold"
+green="eval tput setaf 2; tput bold"
+NC="tput sgr 0" # No Color
+
+### Parse commandline options.
+verbose=0
+test=""    # The test to run.
+enable=""  # The test to enable.
+disable="" # The test to disable.
+
+OPTIND=1
+while getopts "hviclre:ad:o:" opt; do
+  case "$opt" in
+    h)
+      show_help
+      exit 0
+      ;;
+    v)
+      verbose=$(($verbose + 1))
+      ;;
+    l)
+      list=true
+      ;;
+    i)
+      interpreter=true
+      ;;
+    c)
+      cpp=true
+      ;;
+    a)
+      ast=true
+      ;;
+    r)
+      reverse=true
+      ;;
+    e)
+      enable=$OPTARG
+      ;;
+    d)
+      disable=$OPTARG
+      ;;
+    o)
+      fileoutput=$OPTARG
+      ;;
+    '?')
+      show_help >&2
+      exit 1
+      ;;
+  esac
+done
+shift "$((OPTIND-1))" # Shift off the options and optional --.
+test="$1"
+# Set fileoutput to absolute path.
+if [ -n "$fileoutput" ]; then 
+  fileoutput="$OLDDIR/$fileoutput"
+  if [ -f "$fileoutput" ]; then
+    echo "Outpput file exists. Removing."
+    rm "$fileoutput"{,.exp,.err,.exp.err}
+  fi
+fi
+
+# -r implies -v
+[[ -n $reverse && $verbose -eq 0 ]] && verbose=1
+
+### Checking for incompatible options.
+count=0
+[[ -n $interpreter ]] && count=$(($count + 1))
+[[ -n $cpp ]] && count=$(($count + 1))
+[[ -n $list ]] && count=$(($count + 1))
+[[ -n "$disable" ]] && count=$(($count + 1))
+[[ -n "$enable" ]] && count=$(($count + 1))
+if (( $count > 1 )); then
+  echo "Only specify one of -l, -e, -d, -c, -i."
+  exit 1
+fi
+
+
+### Main function.
+TOTAL_TESTCASES=0
+CPPCOMPILER=dist/build/RailCompiler/cppRail
+INTERPRETER=dist/build/RailCompiler/rail_interpreter
+
+if [ "$reverse" = true ]; then
+  TESTDIR="integration-tests"
+else
+  TESTDIR="integration-tests/run"
+fi
+EXT=".io"
+if [ -n "$disable" ];then
+  rm "$TESTDIR"/"$disable".{rail,io}
+  exit 0
+fi
+if [ -n "$enable" ];then
+  ln -s -t "$TESTDIR" ../$enable.{rail,io}
+  exit 0
+fi
+if [ -n "$list" ]; then
+  echo -ne "`$green`Tests to run:`$NC`\n\n"
+  for file in "$TESTDIR"/*.rail;do
+    echo $(get_name $file)
+  done
+  echo -ne "\n\n`$red`Disabled tests:`$NC`\n\n"
+  for file in "$TESTDIR"/../*.rail;do
+    if [ ! -f "$TESTDIR"/`basename "$file"` ];then
+      echo $(get_name $file)
+    fi
+  done
+  exit 0
+fi
+
+export TMPDIR=tests/tmp
+mkdir -p $TMPDIR
+
+fail=0
+if [ -n "$test" ]; then
+  if [ -d "$test" ]; then # Use that directory as TESTDIR
+    TESTDIR="$OLDDIR/$test"
+    run_all
+  else
+    if [ "${test##*.}" == "rail" ]; then
+      # Set the TESTDIR to the directory the .rail file is in.
+      test="$OLDDIR"/"$test"
+      TESTDIR=${test%/*}
+    else
+      TESTDIR="integration-tests"
+      test=$(get_filename "$test") # Find the path to the specified test
+    fi
+  fi
+  if [ -f "$test" ]; then
+    run_one "$test"
+  else
+    echo "`$red`ERROR:`$NC` Test $test not found."
+  fi
+else
+  run_all
+fi
+
+rm -rf tests/tmp
+
+echo
+echo "RAN $TOTAL_TESTCASES TESTCASES IN TOTAL."
+if [ -n "$fileoutput" ]; then 
+  echo "Written outputs to $fileoutput."
+  exit 0
+fi
+if [ ! $fail -eq 0 ];then
+  echo "`$red`FAILED`$NC` $fail test cases."
+  exit 1
+fi
+echo "All testcases `$green`PASSED`$NC`."
+
+### DEBUGGING:
+function debugprint {
+echo "STDIN"
+for e in "${STDIN[@]}";do
+  echo "$e"
+done
+
+echo "STDOUT"
+for e in "${STDOUT[@]}";do
+  echo "$e"
+done
+
+echo "STDERR"
+for e in "${STDERR[@]}";do
+  echo "$e"
+done
+}
+
+#debugprint
+
+
+# vim:ts=2 sw=2 et
