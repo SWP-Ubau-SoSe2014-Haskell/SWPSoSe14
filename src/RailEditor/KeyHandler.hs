@@ -575,6 +575,7 @@ findOldDir tac pos@(x,y) dir@(dx,dy)
       (_,_,Just _) -> return (dx,-1)
       (Just _, _, _) -> return (dx,1)
       otherwise -> return (0,0)
+  |otherwise = return (0,0)
 
 -- | neighbours of position depending on direction
 findNeighbours :: TAC.TextAreaContent
