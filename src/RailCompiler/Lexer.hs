@@ -26,7 +26,8 @@ module Lexer (
               -- * Utility functions
               fromAST, toAST,
               -- * Editor functions
-              step, parse, IP(IP), posx, posy, count, start, crash, turnaround, junctionturns, lambdadirs , move , current, RelDirection(Forward), funcname
+              Direction (N, NE, E, SE, S, SW, W, NW),
+              step, parse, IP(IP), dir, posx, posy, count, start, crash, turnaround, junctionturns, lambdadirs , move , current, RelDirection(Forward), funcname
              )
  where
 

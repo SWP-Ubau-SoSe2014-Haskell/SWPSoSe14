@@ -69,12 +69,12 @@ highlightFct :: Grid2D
   -> IP
   -> Int
   -> TAC.TextAreaContent
-  -> Map.Map (Int,Int) Bool --Map of colored positions
+  -> Map.Map (Int,Int) [Lexer.Direction] --Map of colored positions
   -> IO IP
 highlightFct grid2D ip yOffset textAC mOCPos
   | ip == crash = return crash
   |otherwise =
-  if isPosColored mOCPos (posx ip,(posy ip))
+  if isPosColored mOCPos (posx ip,posy ip) (dir ip)
   then return crash
   else
    case lex of
@@ -114,7 +114,7 @@ highlightFct grid2D ip yOffset textAC mOCPos
       y = posy ip
       xC = fromIntegral $ x
       yC = fromIntegral $ y+yOffset
-      inMap = Map.insert (x,y) True mOCPos
+      inMap = Map.alter (\x -> if isNothing x then Just [dir ip] else Just $ (dir ip):(fromJust x)) (x,y) mOCPos
       -- colors Start and finish gold
       cGold ::IO ()
       cGold | fromJust lex `elem` [Start,Finish] = TAC.putColor textAC (xC,yC) TAC.gold
@@ -151,9 +151,10 @@ paintItRed :: TAC.TextAreaContent -> IO ()
 paintItRed = TAC.deleteColors
   
 -- Is the position colored?
-isPosColored :: Map.Map (Int,Int) Bool
+isPosColored :: Map.Map (Int,Int) [Lexer.Direction]
   -> (Int,Int)
+  -> Lexer.Direction
   -> Bool
-isPosColored mOCPos pos =
-  isJust $ Map.lookup pos mOCPos
+isPosColored mOCPos pos dir =
+  elem dir $ Map.findWithDefault [] pos mOCPos
   
