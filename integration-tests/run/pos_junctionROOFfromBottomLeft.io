@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_junctionROOFfromBottomLeft.io
+../pos_junctionROOFfromBottomLeft.io

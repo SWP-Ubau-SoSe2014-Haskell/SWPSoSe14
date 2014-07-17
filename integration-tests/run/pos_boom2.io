@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_boom2.io
+../pos_boom2.io

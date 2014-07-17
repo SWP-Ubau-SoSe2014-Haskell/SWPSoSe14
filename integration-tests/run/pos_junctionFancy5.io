@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_junctionFancy5.io
+../pos_junctionFancy5.io

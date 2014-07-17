@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_helloOtto2.io
+../pos_helloOtto2.io

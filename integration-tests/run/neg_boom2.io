@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_boom2.io
+../neg_boom2.io

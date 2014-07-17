@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_math_remainder_int_float.io
+../pos_math_remainder_int_float.io

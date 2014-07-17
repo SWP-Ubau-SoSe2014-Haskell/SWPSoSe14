@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_noInfiniteLoop1.io
+../pos_noInfiniteLoop1.io

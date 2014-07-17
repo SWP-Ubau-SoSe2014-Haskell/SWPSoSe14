@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_underflow3.io
+../pos_underflow3.io

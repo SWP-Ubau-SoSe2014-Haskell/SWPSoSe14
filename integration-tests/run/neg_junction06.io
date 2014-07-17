@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_junction06.io
+../neg_junction06.io

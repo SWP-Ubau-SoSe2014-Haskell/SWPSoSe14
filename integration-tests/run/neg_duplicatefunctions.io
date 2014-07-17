@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_duplicatefunctions.io
+../neg_duplicatefunctions.io

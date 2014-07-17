@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_movesFromLeft.io
+../pos_movesFromLeft.io

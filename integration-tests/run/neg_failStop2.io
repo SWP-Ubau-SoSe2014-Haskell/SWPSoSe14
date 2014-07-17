@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_failStop2.io
+../neg_failStop2.io

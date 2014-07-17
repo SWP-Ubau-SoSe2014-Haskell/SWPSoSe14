@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/test_conditional_equal_bool_true.io
+../test_conditional_equal_bool_true.io

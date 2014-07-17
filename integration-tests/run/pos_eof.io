@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_eof.io
+../pos_eof.io

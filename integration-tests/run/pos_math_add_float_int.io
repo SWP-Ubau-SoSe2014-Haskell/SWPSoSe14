@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_math_add_float_int.io
+../pos_math_add_float_int.io

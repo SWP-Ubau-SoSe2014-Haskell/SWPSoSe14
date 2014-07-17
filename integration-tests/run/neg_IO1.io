@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_IO1.io
+../neg_IO1.io

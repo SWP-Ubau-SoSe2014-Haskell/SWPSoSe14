@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_math_divide_by_zero_int.io
+../neg_math_divide_by_zero_int.io

@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_variables2.io
+../neg_variables2.io

@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_functions1.io
+../pos_functions1.io

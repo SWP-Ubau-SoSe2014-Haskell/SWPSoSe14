@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_math_remainder_two_type_mismatches.io
+../neg_math_remainder_two_type_mismatches.io

@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_comp_greater_one_argument.io
+../neg_comp_greater_one_argument.io

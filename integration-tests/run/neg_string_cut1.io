@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_string_cut1.io
+../neg_string_cut1.io

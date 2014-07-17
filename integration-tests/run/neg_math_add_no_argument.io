@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_math_add_no_argument.io
+../neg_math_add_no_argument.io

@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_string_append.io
+../pos_string_append.io

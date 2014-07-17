@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_laterMain.io
+../pos_laterMain.io

@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_simpleJunctionMoveCROSS2.io
+../neg_simpleJunctionMoveCROSS2.io

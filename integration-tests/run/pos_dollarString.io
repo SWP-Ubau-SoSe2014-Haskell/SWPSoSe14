@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_dollarString.io
+../pos_dollarString.io

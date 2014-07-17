@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/pos_typecheck3.io
+../pos_typecheck3.io

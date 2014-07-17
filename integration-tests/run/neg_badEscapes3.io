@@ -1,1 +1,1 @@
-/home/chris/SWPSoSe14/integration-tests/neg_badEscapes3.io
+../neg_badEscapes3.io
