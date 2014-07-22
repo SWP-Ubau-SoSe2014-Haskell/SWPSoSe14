@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>Lexer</title><link href="ocean.css" rel="stylesheet" type="text/css" title="Ocean" /><script src="haddock-util.js" type="text/javascript"></script><script type="text/javascript">//<![CDATA[
+window.onload = function () {pageLoad();setSynopsis("mini_Lexer.html");};
+//]]>
+</script></head><body><div id="package-header"><ul class="links" id="page-menu"><li><a href="index.html">Contents</a></li><li><a href="doc-index.html">Index</a></li></ul><p class="caption">rail-compiler-editor-0.2.0.0: Compiler and editor for the esolang rail.</p></div><div id="content"><div id="module-header"><table class="info"><tr><th>Maintainer</th><td>Christian H. et al.</td></tr><tr><th>Safe Haskell</th><td>Safe-Inferred</td></tr></table><p class="caption">Lexer</p></div><div id="description"><p class="caption">Description</p><div class="doc"><p>License     : MIT
+</p><p>The lexer receives the output of the preprocessor -- a list of lists of strings,
+where each list represents a single function -- and turns it into a forest of function
+graphs. The forest is represented as a list of tuples; each tuple describes a function
+graph and contains the function name as a string as well as the function's graph itself.
+</p><p>A single function graph is a list of nodes. A node is a triple containing the following
+elements, in this order:
+</p><ul><li> Node ID as an Integer. Starts with 1 for each function.
+    * The <code><a href="InterfaceDT.html#t:Lexeme">Lexeme</a></code> for this node.
+    * The node ID of the follower node or 0 if there is no next node.
+</li></ul><p>Note that for valid input, the only node with a follower ID of 0 can be
+a node containing the <code><a href="InterfaceDT.html#v:Finish">Finish</a></code> lexeme. If any other node contains a follower
+ID of 0, this is an error (or, in Rail terms, a <a href="crash.html">crash</a>.
+</p></div></div><div id="synopsis"><p id="control.syn" class="caption expander" onclick="toggleSection('syn')">Synopsis</p><ul id="section.syn" class="hide" onclick="toggleSection('syn')"><li class="src short"><a href="#v:process">process</a> :: <a href="InterfaceDT.html#t:PreProc2Lexer">PreProc2Lexer</a> -&gt; <a href="InterfaceDT.html#t:Lexer2SynAna">Lexer2SynAna</a></li><li class="src short"><a href="#v:processfn">processfn</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InterfaceDT.html#t:Graph">Graph</a></li><li class="src short"><a href="#v:funcname">funcname</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; Either String String</li><li class="src short"><a href="#v:nodes">nodes</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]] -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; ([[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]], <a href="InstructionPointer.html#t:IP">IP</a>)</li><li class="src short"><a href="#v:handle">handle</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]] -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; ([[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]], <a href="InstructionPointer.html#t:IP">IP</a>)</li><li class="src short"><a href="#v:update">update</a> :: [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]] -&gt; <a href="InstructionPointer.html#t:RelDirection">RelDirection</a> -&gt; Int -&gt; [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]]</li><li class="src short"><a href="#v:merge">merge</a> :: [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]] -&gt; [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]]</li><li class="src short"><a href="#v:step">step</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a></li><li class="src short"><a href="#v:finalize">finalize</a> :: [<a href="InterfaceDT.html#t:LexNode">LexNode</a>] -&gt; [<a href="InterfaceDT.html#t:LexNode">LexNode</a>]</li></ul></div><div id="interface"><h1>Documentation</h1><div class="top"><p class="src"><a name="v:process" class="def">process</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:PreProc2Lexer">PreProc2Lexer</a></td><td class="doc"><p>Preprocessor output (a list of lists of strings; i. e. a list of functions
+ in their line representation).
+</p></td></tr><tr><td class="src">-&gt; <a href="InterfaceDT.html#t:Lexer2SynAna">Lexer2SynAna</a></td><td class="doc"><p>A list of ASTs, each describing a single function.
+</p></td></tr></table></div><div class="doc"><p>Process preprocessor output into a list of function ASTs.
+</p><p>Raises <code>error</code>s on invalid input; see <code>ErrorHandling</code> for a list of error messages.
+</p></div></div><div class="top"><p class="src"><a name="v:processfn" class="def">processfn</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>The lines representing the function.
+</p></td></tr><tr><td class="src">-&gt; <a href="InterfaceDT.html#t:Graph">Graph</a></td><td class="doc"><p>A graph of nodes representing the function.
+ There may be more functions because of lambdas.
+</p></td></tr></table></div><div class="doc"><p>Process a single function.
+</p></div></div><div class="top"><p class="src"><a name="v:funcname" class="def">funcname</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; Either String String</p><div class="doc"><p>Get the name of the given function.
+</p></div></div><div class="top"><p class="src"><a name="v:nodes" class="def">nodes</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Lines representing the function.
+</p></td></tr><tr><td class="src">-&gt; [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]]</td><td class="doc"><p>Current graph representing the function.
+ Initialize with <code>[[(1, Start, 0, (0, 0, SE))]]</code>.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer.
+ Initialize with <code><code><a href="InstructionPointer.html#v:start">start</a></code></code>.
+</p></td></tr><tr><td class="src">-&gt; ([[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]], <a href="InstructionPointer.html#t:IP">IP</a>)</td><td class="doc"><p>Final graph for the function and the new instruction pointer.
+</p></td></tr></table></div><div class="doc"><p>Get the nodes for the given function.
+</p></div></div><div class="top"><p class="src"><a name="v:handle" class="def">handle</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Line representation of input function.
+</p></td></tr><tr><td class="src">-&gt; [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]]</td><td class="doc"><p>Current list of nodes.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer.
+</p></td></tr><tr><td class="src">-&gt; ([[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]], <a href="InstructionPointer.html#t:IP">IP</a>)</td><td class="doc"><p>New node list and new instruction pointer.
+</p></td></tr></table></div><div class="doc"><p>Helper function for <code><a href="Lexer.html#v:nodes">nodes</a></code>: Handle the creation of the next <code>PreLexNode</code>
+ for the current function.
+</p></div></div><div class="top"><p class="src"><a name="v:update" class="def">update</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]]</td><td class="doc"><p>The graph to operate on.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:RelDirection">RelDirection</a></td><td class="doc empty">&nbsp;</td></tr><tr><td class="src">-&gt; Int</td><td class="doc"><p>ID of new follower to set for the first node in the list.
+</p></td></tr><tr><td class="src">-&gt; [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]]</td><td class="doc"><p>Resulting graph.
+</p></td></tr></table></div><div class="doc"><p>Change the following node of the first (i. e. <a href="last.html">last</a>, since the list is reversed)
+ node in the graph.
+</p></div></div><div class="top"><p class="src"><a name="v:merge" class="def">merge</a> :: [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]] -&gt; [[<a href="InterfaceDT.html#t:LexNode">LexNode</a>]]</p></div><div class="top"><p class="src"><a name="v:step" class="def">step</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Current function in its line representation.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>New instruction pointer.
+</p></td></tr></table></div><div class="doc"><p>Move the instruction pointer a single step.
+</p></div></div><div class="top"><p class="src"><a name="v:finalize" class="def">finalize</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: [<a href="InterfaceDT.html#t:LexNode">LexNode</a>]</td><td class="doc"><p><code><a href="InterfaceDT.html#t:LexNode">LexNode</a></code>s to convert.
+</p></td></tr><tr><td class="src">-&gt; [<a href="InterfaceDT.html#t:LexNode">LexNode</a>]</td><td class="doc"><p>Resulting list of <code><a href="InterfaceDT.html#t:LexNode">LexNode</a></code>s.
+</p></td></tr></table></div><div class="doc"><p>Brings it into right order
+</p></div></div></div></div><div id="footer"><p>Produced by <a href="http://www.haskell.org/haddock/">Haddock</a> version 2.13.2</p></div></body></html>

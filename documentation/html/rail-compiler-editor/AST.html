@@ -1,0 +1,99 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>AST</title><link href="ocean.css" rel="stylesheet" type="text/css" title="Ocean" /><script src="haddock-util.js" type="text/javascript"></script><script type="text/javascript">//<![CDATA[
+window.onload = function () {pageLoad();setSynopsis("mini_AST.html");};
+//]]>
+</script></head><body><div id="package-header"><ul class="links" id="page-menu"><li><a href="index.html">Contents</a></li><li><a href="doc-index.html">Index</a></li></ul><p class="caption">rail-compiler-editor-0.2.0.0: Compiler and editor for the esolang rail.</p></div><div id="content"><div id="module-header"><table class="info"><tr><th>Maintainer</th><td>Christian H. et al.</td></tr><tr><th>Safe Haskell</th><td>Safe-Inferred</td></tr></table><p class="caption">AST</p></div><div id="description"><p class="caption">Description</p><div class="doc"><p>License     : MIT
+</p></div></div><div id="synopsis"><p id="control.syn" class="caption expander" onclick="toggleSection('syn')">Synopsis</p><ul id="section.syn" class="hide" onclick="toggleSection('syn')"><li class="src short"><a href="#v:fromAST">fromAST</a> :: <a href="InterfaceDT.html#t:Lexer2SynAna">Lexer2SynAna</a> -&gt; String</li><li class="src short"><a href="#v:toAST">toAST</a> :: String -&gt; <a href="InterfaceDT.html#t:Lexer2SynAna">Lexer2SynAna</a></li><li class="src short"><a href="#v:fromGraph">fromGraph</a> :: <a href="InterfaceDT.html#t:Graph">Graph</a> -&gt; String</li><li class="src short"><a href="#v:splitfunctions">splitfunctions</a> :: String -&gt; [[String]]</li><li class="src short"><a href="#v:toGraph">toGraph</a> :: [String] -&gt; <a href="InterfaceDT.html#t:Graph">Graph</a></li><li class="src short"><a href="#v:offset">offset</a> :: Int -&gt; <a href="InterfaceDT.html#t:LexNode">LexNode</a> -&gt; <a href="InterfaceDT.html#t:LexNode">LexNode</a></li><li class="src short"><a href="#v:adjacent">adjacent</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; (Char, Char, Char)</li><li class="src short"><a href="#v:parse">parse</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; (Maybe <a href="InterfaceDT.html#t:Lexeme">Lexeme</a>, <a href="InstructionPointer.html#t:IP">IP</a>)</li><li class="src short"><a href="#v:stepwhile">stepwhile</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; (Char -&gt; Bool) -&gt; (String, <a href="InstructionPointer.html#t:IP">IP</a>)</li><li class="src short"><a href="#v:moveable">moveable</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; <a href="InstructionPointer.html#t:RelDirection">RelDirection</a> -&gt; Bool</li><li class="src short"><a href="#v:readconstant">readconstant</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; Char -&gt; Char -&gt; (String, <a href="InstructionPointer.html#t:IP">IP</a>)</li><li class="src short"><a href="#v:escapestring">escapestring</a> :: String -&gt; String</li><li class="src short"><a href="#v:lookahead">lookahead</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; Int -&gt; String</li><li class="src short"><a href="#v:skip">skip</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; Int -&gt; <a href="InstructionPointer.html#t:IP">IP</a></li><li class="src short"><a href="#v:next">next</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; Char</li><li class="src short"><a href="#v:valids">valids</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; (String, String, String)</li><li class="src short"><a href="#v:commandchars">commandchars</a> :: String</li><li class="src short"><a href="#v:turnblocked">turnblocked</a> :: String</li></ul></div><div id="interface"><h1>Documentation</h1><div class="top"><p class="src"><a name="v:fromAST" class="def">fromAST</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Lexer2SynAna">Lexer2SynAna</a></td><td class="doc"><p>Input graph<em>AST</em>forest.
+</p></td></tr><tr><td class="src">-&gt; String</td><td class="doc"><p>Portable text representation of the AST:
+</p><p>Each function is represented by its own section. A section has a header
+ and content; it continues either until the next section, a blank line or
+ the end of the file, whichever comes first.
+</p><p>A section header consists of a single line containing the name of the function,
+ enclosed in square brackets, e. g. <code>[function_name]</code>. There cannot be any whitespace
+ before the opening bracket.
+</p><p>The section content consists of zero or more non-blank lines containing exactly
+ three records delimited by a semicolon <code>;</code>. Each line describes a node and contains
+ the following records, in this order:
+</p><ul><li> The node ID (numeric), e. g. <code>1</code>.
+     * The Rail lexeme, e. g. <code>o</code> or <code>[constant]</code> etc. Note that track lexemes like
+     <code>-</code> or <code>+</code> are not included in the graph. Multi-character lexemes like constants
+     may include semicolons, so you need to parse them correctly! In other words, you need
+     to take care of lines like <code>1;[some ; constant];2</code>.
+     * Node ID of the follower node, e. g. <code>2</code>. May be <code>0</code> if there is no next node.
+</li></ul></td></tr></table></div><div class="doc"><p>Convert a graph/AST into a portable text representation.
+ See also <code><a href="AST.html#v:fromGraph">fromGraph</a></code>.
+</p></div></div><div class="top"><p class="src"><a name="v:toAST" class="def">toAST</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: String</td><td class="doc"><p>Portable text representation. See <code><a href="AST.html#v:fromAST">fromAST</a></code>.
+</p></td></tr><tr><td class="src">-&gt; <a href="InterfaceDT.html#t:Lexer2SynAna">Lexer2SynAna</a></td><td class="doc"><p>Output graph.
+</p></td></tr></table></div><div class="doc"><p>Convert a portable text representation of a graph into a concrete graph representation.
+ See also <code><a href="AST.html#v:toGraph">toGraph</a></code>. See <code><a href="AST.html#v:fromAST">fromAST</a></code> for a specification of the portable text representation.
+</p></div></div><div class="top"><p class="src"><a name="v:fromGraph" class="def">fromGraph</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Graph">Graph</a></td><td class="doc"><p>Input graph.
+</p></td></tr><tr><td class="src">-&gt; String</td><td class="doc"><p>Text representation.
+</p></td></tr></table></div><div class="doc"><p>Convert an <code><a href="InterfaceDT.html#t:Graph">Graph</a></code> for a single function to a portable text representation.
+ See <code><a href="AST.html#v:fromAST">fromAST</a></code> for a specification of the representation.
+</p><p>TODO: Currently, this apparently crashes the program on invalid input. More sensible error handling?
+       At least a nice error message would be nice.
+</p></div></div><div class="top"><p class="src"><a name="v:splitfunctions" class="def">splitfunctions</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: String</td><td class="doc"><p>Portable text representation of the forest.
+</p></td></tr><tr><td class="src">-&gt; [[String]]</td><td class="doc"><p>List of lists, each being a list of lines making up a separate function graph.
+</p></td></tr></table></div><div class="doc"><p>Split a portable text representation of multiple function graphs (a forest) into separate
+ text representations of each function graph.
+</p></div></div><div class="top"><p class="src"><a name="v:toGraph" class="def">toGraph</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: [String]</td><td class="doc"><p>List of lines making up the text representation of the function.
+</p></td></tr><tr><td class="src">-&gt; <a href="InterfaceDT.html#t:Graph">Graph</a></td><td class="doc"><p>Graph describing the function.
+</p></td></tr></table></div><div class="doc"><p>Convert a portable text representation of a single function into an <code><a href="InterfaceDT.html#t:Graph">Graph</a></code>.
+ Raises <code>error</code>s on invalid input (see <code>ErrorHandling</code>).
+</p></div></div><div class="top"><p class="src"><a name="v:offset" class="def">offset</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: Int</td><td class="doc"><p>Amount to shift node by.
+</p></td></tr><tr><td class="src">-&gt; <a href="InterfaceDT.html#t:LexNode">LexNode</a></td><td class="doc"><p>Node to operate on.
+</p></td></tr><tr><td class="src">-&gt; <a href="InterfaceDT.html#t:LexNode">LexNode</a></td><td class="doc"><p>Shifted node.
+</p></td></tr></table></div><div class="doc"><p>Shift a node by the given amount. May be positive or negative.
+ This is used by <code><a href="AST.html#v:toGraph">toGraph</a></code> and <code><a href="AST.html#v:fromGraph">fromGraph</a></code> to shift all nodes by 1 or -1, respectively,
+ which is done because the portable text representation of the graph does not include
+ a leading <a href="Start.html">Start</a> node with ID 1 -- instead, the node with ID 1 is the first <a href="real.html">real</a>
+ graph node. In other words, when exporting to the text representation, the <a href="Start.html">Start</a>
+ node is removed and all other nodes are <a href="shifted.html">shifted</a> by -1 using this function. When
+ importing, a <a href="Start.html">Start</a> node is added and all nodes are shifted by 1.
+</p></div></div><div class="top"><p class="src"><a name="v:adjacent" class="def">adjacent</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Line representation of the current function.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer.
+</p></td></tr><tr><td class="src">-&gt; (Char, Char, Char)</td><td class="doc"><p>Adjacent (left secondary, primary, right secondary) symbols
+</p></td></tr></table></div><div class="doc"><p>Get adjacent (left secondary, primary, right secondary)
+ symbols for the current IP position.
+</p></div></div><div class="top"><p class="src"><a name="v:parse" class="def">parse</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Line representation of current function.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer.
+</p></td></tr><tr><td class="src">-&gt; (Maybe <a href="InterfaceDT.html#t:Lexeme">Lexeme</a>, <a href="InstructionPointer.html#t:IP">IP</a>)</td><td class="doc"><p>Resulting lexeme (if any) and
+ the new instruction pointer.
+</p></td></tr></table></div><div class="doc"><p>Get the next lexeme at the current position.
+</p></div></div><div class="top"><p class="src"><a name="v:stepwhile" class="def">stepwhile</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Line representation of current function.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer.
+</p></td></tr><tr><td class="src">-&gt; (Char -&gt; Bool)</td><td class="doc"><p>Function: Should return True if collection should stop.
+ Gets the current Char as an argument.
+</p></td></tr><tr><td class="src">-&gt; (String, <a href="InstructionPointer.html#t:IP">IP</a>)</td><td class="doc"><p>Collected characters and the new instruction pointer.
+</p></td></tr></table></div><div class="doc"><p>Collect characters until a condition is met while moving in the current direction.
+</p></div></div><div class="top"><p class="src"><a name="v:moveable" class="def">moveable</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Line representation of current function
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:RelDirection">RelDirection</a></td><td class="doc"><p>Where to move to
+</p></td></tr><tr><td class="src">-&gt; Bool</td><td class="doc"><p>Whether or not the move could be made
+</p></td></tr></table></div><div class="doc"><p>Checks if the instruction pointer can be moved without leaving the grid
+</p></div></div><div class="top"><p class="src"><a name="v:readconstant" class="def">readconstant</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Current function in line representation
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer
+</p></td></tr><tr><td class="src">-&gt; Char</td><td class="doc"><p>Opening string delimiter, e. g. '['
+</p></td></tr><tr><td class="src">-&gt; Char</td><td class="doc"><p>Closing string delimiter, e. g. ']'
+</p></td></tr><tr><td class="src">-&gt; (String, <a href="InstructionPointer.html#t:IP">IP</a>)</td><td class="doc"><p>The processed constant and the new instruction pointer
+</p></td></tr></table></div><div class="doc"><p>Read a string constant and handle escape sequences like n.
+ Raises an error on invalid escape sequences and badly formatted constants.
+</p></div></div><div class="top"><p class="src"><a name="v:escapestring" class="def">escapestring</a> :: String -&gt; String</p></div><div class="top"><p class="src"><a name="v:lookahead" class="def">lookahead</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Line representation of current function
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer
+</p></td></tr><tr><td class="src">-&gt; Int</td><td class="doc"><p>How many characters of lookahead to produce?
+</p></td></tr><tr><td class="src">-&gt; String</td><td class="doc"><p>n characters of lookahead
+</p></td></tr></table></div><div class="doc"><p>Lookahead n characters in the current direction.
+</p></div></div><div class="top"><p class="src"><a name="v:skip" class="def">skip</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Line representation of current function
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer
+</p></td></tr><tr><td class="src">-&gt; Int</td><td class="doc"><p>How many characters to skip? If 1, this is the same
+ as doing <a href="move ip Forward.html">move ip Forward</a>.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>New instruction pointer
+</p></td></tr></table></div><div class="doc"><p>Skip n characters in the current direction and return the new IP.
+</p></div></div><div class="top"><p class="src"><a name="v:next" class="def">next</a> :: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a> -&gt; <a href="InstructionPointer.html#t:IP">IP</a> -&gt; Char</p><div class="doc"><p>Get the <code>Char</code> at the next position of the instruction pointer
+</p></div></div><div class="top"><p class="src"><a name="v:valids" class="def">valids</a></p><div class="subs arguments"><p class="caption">Arguments</p><table><tr><td class="src">:: <a href="InterfaceDT.html#t:Grid2D">Grid2D</a></td><td class="doc"><p>Line representation of current function.
+</p></td></tr><tr><td class="src">-&gt; <a href="InstructionPointer.html#t:IP">IP</a></td><td class="doc"><p>Current instruction pointer.
+</p></td></tr><tr><td class="src">-&gt; (String, String, String)</td><td class="doc"><p>Tuple consisting of:
+</p><ul><li> Valid characters for movement to the (relative) left.
+     * Valid characters for movement in the (relative) forward direction.
+     * Valid characters for movement to the (relative) right.
+</li></ul></td></tr></table></div><div class="doc"><p>Return valid chars for movement depending on the current direction.
+</p></div></div><div class="top"><p class="src"><a name="v:commandchars" class="def">commandchars</a> :: String</p></div><div class="top"><p class="src"><a name="v:turnblocked" class="def">turnblocked</a> :: String</p></div></div></div><div id="footer"><p>Produced by <a href="http://www.haskell.org/haddock/">Haddock</a> version 2.13.2</p></div></body></html>
